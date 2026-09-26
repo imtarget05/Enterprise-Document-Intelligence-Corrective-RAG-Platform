@@ -116,6 +116,12 @@ Thumbs.db
 ehthumbs.db
 Desktop.ini
 
+# macOS AppleDouble sidecar files (._name) - these shadow real files
+# and break tooling (esbuild/vitest) with NUL bytes
+._*
+.AppleDouble
+.LSOverride
+
 # ═══════════════════════════════════════════════════════════════
 # DOCKER
 # ═══════════════════════════════════════════════════════════════

@@ -1,0 +1,3 @@
+# macOS AppleDouble resource forks and metadata - never track these
+._*          binary
+.DS_Store    binary
