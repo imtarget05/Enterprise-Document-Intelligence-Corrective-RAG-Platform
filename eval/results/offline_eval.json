@@ -1,11 +1,13 @@
 {
   "timestamp": "2026-08-31T08:11:33.851401+00:00",
+  "test_type": "fixture_grader_smoke_test",
+  "note": "Deterministic fixture/grader smoke test for CI pipeline validation — NOT live LLM retrieval accuracy",
   "base_url": "http://localhost:8081/api",
   "document_id": 1,
   "total_questions": 31,
   "successful_requests": 31,
-  "retrieval_accuracy": 0.9677,
-  "answer_correctness": 1.0,
+  "fixture_retrieval_pass_rate": 0.9677,
+  "fixture_answer_match_rate": 1.0,
   "hallucination_cases": 1,
   "hallucination_rate": 0.0323,
   "average_latency_ms": 20,
@@ -15,7 +17,8 @@
   "error_count": 0,
   "provider_errors": 0,
   "provider_error_rate": 0.0,
-  "genuine_llm_responses": 31,
+  "genuine_llm_responses": 0,
+  "mock_responses": 31,
   "details": [
     {
       "question_id": 1,

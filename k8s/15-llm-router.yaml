@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: smartdoc-llm-router
+  namespace: portfolio
+  labels:
+    app: smartdoc-llm-router
+    role: ai-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: smartdoc-llm-router
+  template:
+    metadata:
+      labels:
+        app: smartdoc-llm-router
+        role: ai-service
+    spec:
+      containers:
+      - name: llm-router
+        image: smart-doc-llm-router:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 8000
+        env:
+        - name: ROUTER_CONFIDENCE_THRESHOLD
+          value: "0.7"
+        - name: CLOUDFLARE_CHAT_MODEL
+          value: "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+        - name: CLOUDFLARE_EMBED_MODEL
+          value: "@cf/baai/bge-base-en-v1.5"
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: smartdoc-llm-router
+  namespace: portfolio
+  labels:
+    app: smartdoc-llm-router
+spec:
+  type: ClusterIP
+  selector:
+    app: smartdoc-llm-router
+  ports:
+  - name: http
+    port: 8000
+    targetPort: http

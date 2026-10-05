@@ -21,7 +21,7 @@ function sseBody(events: string) {
   };
 }
 
-function renderChatPage(token = "test-token") {
+function renderChatPage(_token = "test-token") {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -34,11 +34,11 @@ function renderChatPage(token = "test-token") {
   );
 }
 
-function mockFetch(responses: Record<string, any>) {
+function mockFetch(responses: Record<string, unknown>) {
   const fetchMock = vi.fn(async (url: string) => {
     for (const [pattern, response] of Object.entries(responses)) {
       if (url.startsWith(pattern)) {
-        return response;
+        return response as Response;
       }
     }
     throw new Error(`unexpected fetch: ${url}`);
@@ -214,7 +214,6 @@ describe("ChatPage", () => {
   });
 
   it("handles file upload via hidden file input", async () => {
-    const user = userEvent.setup();
     let uploadResolve: (value: Response) => void;
     const uploadPromise = new Promise<Response>((resolve) => {
       uploadResolve = resolve;
@@ -285,7 +284,10 @@ describe("ChatPage", () => {
     await user.keyboard("{enter}");
 
     await waitFor(() => expect(screen.getByText("Agent answer.")).toBeInTheDocument());
-    const calledWith = fetchMock.mock.calls.find((c: any) => c[1]?.body?.includes("agent"));
+    const calledWith = fetchMock.mock.calls.find((c: unknown[]) => {
+      const init = c[1] as RequestInit | undefined;
+      return typeof init?.body === "string" && init.body.includes("agent");
+    });
     expect(calledWith).toBeTruthy();
   });
 

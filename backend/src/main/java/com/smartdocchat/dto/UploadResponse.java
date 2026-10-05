@@ -13,5 +13,6 @@ public class UploadResponse {
     private boolean success;
     private String message;
     private Long documentId;
+    private Long jobId;
     private String fileName;
 }

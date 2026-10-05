@@ -7,12 +7,13 @@ import {
   useEffect,
   type ReactNode,
 } from "react";
+import { API_BASE_URL } from "./apiConfig";
 
 interface AuthContextType {
   token: string | null;
   username: string | null;
   role: string | null;
-  login: (token: string, username: string, role: string) => void;
+  login: (token: string | null, username: string, role: string) => void;
   logout: () => void;
   isAuthenticated: boolean;
   isAdmin: boolean;
@@ -23,45 +24,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-const STORAGE_KEY = "smartdoc.auth";
-
-interface PersistedAuth {
-  token: string;
-  username: string;
-  role: string;
-}
-
-function readPersistedAuth(): PersistedAuth | null {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as PersistedAuth;
-    if (parsed.token && parsed.username && parsed.role) return parsed;
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function writePersistedAuth(auth: PersistedAuth) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(auth));
-}
-
-function clearPersistedAuth() {
-  localStorage.removeItem(STORAGE_KEY);
-}
-
-async function validateToken(token: string): Promise<boolean> {
-  try {
-    const res = await fetch("/api/documents", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
@@ -69,35 +31,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
+    // Clean up any legacy localStorage entry
+    try {
+      localStorage.removeItem("smartdoc.auth");
+    } catch {
+      // ignore
+    }
+
     let cancelled = false;
     (async () => {
-      const persisted = readPersistedAuth();
-      if (!persisted) {
-        setIsInitializing(false);
-        return;
+      try {
+        const res = await fetch(`${API_BASE_URL}/auth/me`, {
+          credentials: "include",
+        });
+        if (cancelled) return;
+        if (res.ok) {
+          const data = await res.json();
+          setUsername(data.username ?? null);
+          setRole(data.role ?? null);
+          setToken(data.token ?? null);
+        } else {
+          setUsername(null);
+          setRole(null);
+          setToken(null);
+        }
+      } catch {
+        if (!cancelled) {
+          setUsername(null);
+          setRole(null);
+          setToken(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsInitializing(false);
+        }
       }
-      const valid = await validateToken(persisted.token);
-      if (cancelled) return;
-      if (valid) {
-        setToken(persisted.token);
-        setUsername(persisted.username);
-        setRole(persisted.role);
-      } else {
-        clearPersistedAuth();
-      }
-      setIsInitializing(false);
     })();
+
     return () => {
       cancelled = true;
     };
   }, []);
 
   const login = useCallback(
-    (newToken: string, newUsername: string, newRole: string) => {
+    (newToken: string | null, newUsername: string, newRole: string) => {
       setToken(newToken);
       setUsername(newUsername);
       setRole(newRole);
-      writePersistedAuth({ token: newToken, username: newUsername, role: newRole });
     },
     [],
   );
@@ -106,10 +86,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(null);
     setUsername(null);
     setRole(null);
-    clearPersistedAuth();
+    void fetch(`${API_BASE_URL}/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+    }).catch(() => {
+      // ignore network errors on logout
+    });
   }, []);
 
-  const isAuthenticated = !!token;
+  const isAuthenticated = !!username;
   const isAdmin = role === "ROLE_ADMIN" || role === "ADMIN";
   const isEngineer = role === "ROLE_ENGINEER" || role === "ENGINEER";
   const isViewer = role === "ROLE_VIEWER" || role === "VIEWER";

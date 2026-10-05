@@ -477,8 +477,9 @@ async def login():
 async def chat_ask(request: ChatRequest, token: str = Depends(verify_token)):
     """Mock /api/chat/ask endpoint."""
     response = match_response(request.message)
+    response["is_mock"] = True
     await asyncio.sleep(response["latency_ms"] / 1000 * 0.1)  # 10% of mocked latency
-    return ChatResponse(**response)
+    return JSONResponse(content=response, headers={"X-Mock-Backend": "true", "X-Provider": "mock-backend"})
 
 
 @app.post("/api/chat/ask-stream")

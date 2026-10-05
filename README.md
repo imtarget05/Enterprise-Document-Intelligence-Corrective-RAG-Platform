@@ -19,7 +19,7 @@
 
 ---
 
-**Smart Document Chatbot** is an enterprise-grade, self-hosted RAG (Retrieval-Augmented Generation) platform that lets users upload legal and business documents, ask questions in natural language (Vietnamese & English), and receive accurate, citation-backed answers with zero tolerance for hallucination. The system employs a **Corrective RAG (CRAG)** architecture with a 5-layer verification pipeline, a local-first LLM strategy via Ollama, and a LangGraph-powered autonomous agent capable of multi-step reasoning and Human-in-the-Loop (HITL) action execution.
+**Smart Document Chatbot** is a production-oriented, self-hosted RAG (Retrieval-Augmented Generation) platform that lets users upload legal and business documents, ask questions in natural language (Vietnamese & English), and receive citation-backed answers with abstention when evidence is insufficient. The system employs a **Corrective RAG (CRAG)** architecture with a 5-layer verification pipeline, a local-first LLM strategy via Ollama, and a LangGraph-powered autonomous agent capable of multi-step reasoning and Human-in-the-Loop (HITL) action execution.
 
 Core workflow: `Upload → Retrieve → Verify → Cite → Answer`
 
@@ -31,11 +31,12 @@ Core workflow: `Upload → Retrieve → Verify → Cite → Answer`
 4. **LangGraph Agent Orchestration**: Multi-agent architecture with 9 specialized agents (RAG, CSKH, Research, Report, Engineering Analysis, Ingestion, Action, Comparator) orchestrated by a central agent with state persistence.
 5. **Human-in-the-Loop (HITL)**: Side-effect actions (document ingestion, external API calls) require explicit human approval before execution, preventing unintended mutations.
 6. **Agent-First Routing**: All chat queries default to Agent mode (LangGraph multi-step reasoning) with RAG as fallback. The agent *reasons*, the RAG *retrieves* — each has its lane.
-7. **Enterprise Security Stack**: JWT + CSRF + Rate Limiting (sliding-window; **fail-open** on Redis outage — deliberate availability-over-strictness trade-off) + CORS + SSO/Keycloak + Audit Logging + PII-aware guardrails. `SecretStrengthValidator` enforces strong secrets in staging/production.
-8. **Real-Time Streaming**: Server-Sent Events (SSE) for token-by-token streaming with dedicated `SseStreamManager`, deduplication via `ChatDedupService`, and dead-letter queue via `ChatDlqService`.
-9. **A/B Testing Framework**: Built-in experiment framework for comparing model performance, retrieval strategies, and prompt variants with statistical significance tracking.
+7. **Enterprise Security Stack**: HttpOnly SameSite cookie authentication + in-memory token state (replaces localStorage token storage), CSRF protection, sliding-window rate limiting, CORS, Audit Logging, and PII-aware guardrails. Password reset uses cryptographically secure single-use SHA-256 hashed tokens (`V21__password_reset_tokens.sql`) with generic request responses and IP/user rate limiting to eliminate account takeover vulnerabilities. Dependency posture (2026-10-05): `npm audit --omit=dev` reports **0 vulnerabilities** in production dependencies; remaining advisories (esbuild dev-server, braces via chokidar, vitest chain) are dev-only and fixable only via breaking upgrades (Vite 8 / Tailwind v4) — tracked, not hidden.
+8. **Real-Time Streaming & Endpoints**: Server-Sent Events (SSE) with progressive rendering via `POST /chat/stream` (with legacy `/chat/ask-stream`), search via `POST /search` and `POST /documents/search`, and owner-scoped ingestion monitoring via `GET /jobs/{id}`. Event sequence is `status → metadata → content chunk(s) → complete` (+ `error` on failure). Chunk granularity is word/full-answer depending on the serving path (Spring CRAG emits one content chunk; the Python agent word-splits the completed answer) — this is progressive rendering, not guaranteed provider token-by-token streaming. Dedicated `SseStreamManager`, deduplication via `ChatDedupService`, and dead-letter queue via `ChatDlqService`.
+9. **A/B Testing & Evaluation Framework**: Built-in evaluation suite supporting both fast, transparent mock fixture tests (`eval/run_fixture_eval.py` tagged as smoke tests) and live production benchmarks (`eval/run_live_benchmark.py`) computing real chunk-level Hit@K, Recall@K, and MRR.
 10. **Cloud-Native Storage**: Neon PostgreSQL (managed), Qdrant Cloud (vector), Cloudflare R2 (document blobs) — all connected and verified.
-11. **Durable Ingestion Queue (ADR-004)**: the async document workflow runs as a DB-backed job (idempotent enqueue via partial unique index, `FOR UPDATE SKIP LOCKED` claiming, exponential-backoff retry, lease-timeout crash recovery) with a durable dead-letter state replayable by admins — replacing the previous fire-and-forget `CompletableFuture`.
+11. **Durable Ingestion Queue (ADR-004) & Correlation Tracing**: The async document workflow runs as a DB-backed job with idempotent enqueue, `FOR UPDATE SKIP LOCKED` claiming, exponential-backoff retry, and durable dead-letter replay. `DocumentController` returns `jobId` in `UploadResponse` on `POST /documents`. SLF4J MDC binds `traceId` (from `X-Trace-Id` header), `jobId`, and `documentId` across the execution pipeline for end-to-end observability.
+12. **Cloud-Native Kubernetes Topology**: Declarative manifests in `k8s/` (`10-qdrant.yaml`, `15-llm-router.yaml`, `20-smartdoc-backend.yaml`, `30-smartdoc-frontend.yaml`) configure containerized deployments with horizontal pod autoscaling (HPA), non-root execution profiles, resource guarantees, and health probes.
 
 ---
 
@@ -72,8 +73,16 @@ graph TD
     L -->|Rejected| N[Abort]
 ```
 
-### Corrective RAG (CRAG) Pipeline
+### Two retrieval paths (deliberate, not duplication)
 
+| Path | Owner | Store | Method | Used when |
+|:---|:---|:---|:---|:---|
+| Spring CRAG fallback | Spring Boot `RetrievalService` | PostgreSQL legal chunks | Lexical retrieval with diacritic folding + legal-structure boost, owner-isolated | Agent unavailable/degraded, or request explicitly `mode: "rag"` |
+| Agent hybrid search | Python `rag_agent` + `qdrant_tool` | Qdrant | Dense cosine + BM25-over-subset fused by RRF | Default chat path (agent-first routing) |
+
+Do not claim "all retrieval uses Qdrant": the Spring path never touches Qdrant, and the agent path never touches PostgreSQL chunks. Each path enforces owner isolation independently.
+
+### Corrective RAG (CRAG) Pipeline
 ```mermaid
 graph TD
     Q[User Question] --> R[Hybrid Retrieval]
@@ -132,6 +141,21 @@ cp .env.example .env   # Fill in your credentials
 docker compose -f docker/docker-compose.yml up --build -d
 ```
 
+#### Validate the Compose file without credentials
+
+From a clean clone you can prove the Compose file is well-formed before
+provisioning any secret, using the committed `.env.test` fixture (dummy values
+only — `JWT_SECRET` decodes to `test-secret-key-for-testing-purposes-only`):
+
+```bash
+docker compose --env-file .env.test -f docker/docker-compose.yml config > /dev/null \
+  && echo "compose config OK"
+```
+
+This also verifies that every `condition: service_healthy` dependency targets a
+service that actually defines a `healthcheck`. `.env.test` is a validation
+fixture only — never run the stack with it; real runs use `.env` from Option 1.
+
 ### Option 2: Local Development
 
 ```bash
@@ -180,7 +204,7 @@ npm run dev
 | `POST` | `/api/auth/login` | JWT authentication |
 | `POST` | `/api/auth/google` | Google OAuth2 / One Tap login |
 | `POST` | `/api/chat` | Send query (Agent-first, RAG fallback) |
-| `GET` | `/api/chat/stream` | SSE token-by-token streaming |
+| `GET` | `/api/chat/stream` | SSE streaming (status → metadata → chunk → complete) |
 | `POST` | `/api/documents/upload` | Upload PDF/DOCX/TXT documents |
 | `GET` | `/api/documents` | List uploaded documents |
 | `GET` | `/api/history` | Conversation history |
@@ -266,17 +290,28 @@ make test-agent
 # fast path (bỏ integration/slow):
 make test-agent-fast  # pytest -m "not integration and not slow"
 
-# Backend (285 tests)
+# Backend (316 tests)
 cd backend && mvn test
 
 # LLM Router (80 tests — MUST dùng llm-router/.venv)
 cd llm-router && .venv/bin/python -m pytest -q
 
-# Frontend (101 tests)
+# Frontend (104 tests)
 cd frontend && npm test
 ```
 
 Tái lập 2026-09-18: `agent/tests` collect 219 tests; chạy kèm `tests/` = 221 — **221 passed** (fix: `agent/tests/conftest.py` force in-memory fallback, không chạm Neon staging; trước fix: 214 passed + 7 failed `test_graph_memory.py` do `.env` trỏ Neon thật).
+
+### Eval semantics — fixture smoke vs live benchmark (read before quoting numbers)
+
+Two tracks, different meanings — do not mix them:
+
+| Track | Command | What it measures | Evidence |
+|:---|:---|:---|:---|
+| Fixture smoke (mock backend) | `pytest eval` (28 tests) or `python eval/run_fixture_eval.py` | Deterministic grader + fixture regression on 31 questions; the ~96.8% figure in `eval/results/offline_eval.json` is the **fixture retrieval pass rate against a mock backend** (`mock_responses: 31, genuine_llm_responses: 0`) — a CI regression signal, **not** live retrieval accuracy | `eval/results/offline_eval.json` (self-labeled `test_type: fixture_grader_smoke_test`) |
+| Live benchmark (real stack) | `python eval/run_live_benchmark.py --base-url http://localhost:8080/api` | Chunk-level Hit@K / Recall@K / MRR against the live Spring + Qdrant stack with a real provider | `eval/results/live_benchmark.json` — **requires a running backend, Qdrant, and an LLM provider (LM Studio/Qwen or Cloudflare Workers AI); cannot run offline and must never be fabricated** |
+
+Wording rule: say "96.8% fixture pass rate (mock, 31 questions)" — never "96.8% live retrieval accuracy" — unless `live_benchmark.json` with real provider provenance exists to back it.
 
 ### Local LLM Benchmark (Apple M1 Pro, 16GB)
 

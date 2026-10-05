@@ -73,7 +73,15 @@ public class SecurityConfig {
                             ? SessionCreationPolicy.IF_REQUIRED
                             : SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/auth/**").permitAll()
+                .requestMatchers(
+                    "/auth/login",
+                    "/auth/register",
+                    "/auth/logout",
+                    "/auth/reset-password/request",
+                    "/auth/reset-password/confirm",
+                    "/auth/google",
+                    "/auth/google-client-id"
+                ).permitAll()
                 .requestMatchers("/csrf").permitAll()
                 .requestMatchers("/login/oauth2/**", "/oauth2/**").permitAll()
                 .requestMatchers(

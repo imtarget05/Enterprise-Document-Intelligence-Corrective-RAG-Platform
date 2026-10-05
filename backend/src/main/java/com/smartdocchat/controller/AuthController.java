@@ -3,12 +3,14 @@ package com.smartdocchat.controller;
 import com.smartdocchat.dto.AuthRequest;
 import com.smartdocchat.dto.AuthResponse;
 import com.smartdocchat.dto.RegisterRequest;
+import com.smartdocchat.dto.ResetPasswordConfirmRequest;
 import com.smartdocchat.dto.ResetPasswordRequest;
 import com.smartdocchat.entity.Role;
 import com.smartdocchat.entity.User;
 import com.smartdocchat.repository.UserRepository;
 import com.smartdocchat.service.AuditLogService;
 import com.smartdocchat.service.LoginAuditService;
+import com.smartdocchat.service.PasswordResetTokenService;
 import com.smartdocchat.util.JwtTokenProvider;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,10 +18,14 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+
+import java.security.Principal;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/auth")
@@ -32,6 +38,8 @@ public class AuthController {
     private final JwtTokenProvider tokenProvider;
     private final LoginAuditService loginAuditService;
     private final AuditLogService auditLogService;
+    private final PasswordResetTokenService passwordResetTokenService;
+    private final Environment env;
 
     private static final String JWT_COOKIE_NAME = "jwt_token";
     private static final int JWT_COOKIE_MAX_AGE_SECONDS = 86400;
@@ -119,11 +127,11 @@ public class AuthController {
         jwtCookie.setPath("/");
         jwtCookie.setMaxAge(JWT_COOKIE_MAX_AGE_SECONDS);
         jwtCookie.setAttribute("SameSite", "Lax");
-        jwtCookie.setSecure(request.isSecure());
+        jwtCookie.setSecure(isSecureCookie(request));
         response.addCookie(jwtCookie);
 
         return ResponseEntity.ok(AuthResponse.builder()
-                .token(token)
+                .token(resolveResponseToken(token))
                 .username(user.getUsername())
                 .role(user.getRole().name())
                 .build());
@@ -151,7 +159,7 @@ public class AuthController {
 
         String token = tokenProvider.generateToken(user.getUsername(), user.getRole().name());
         return ResponseEntity.ok(AuthResponse.builder()
-                .token(token)
+                .token(resolveResponseToken(token))
                 .username(user.getUsername())
                 .role(user.getRole().name())
                 .build());
@@ -188,11 +196,11 @@ public class AuthController {
                     jwtCookie.setPath("/");
                     jwtCookie.setMaxAge(JWT_COOKIE_MAX_AGE_SECONDS);
                     jwtCookie.setAttribute("SameSite", "Lax");
-                    jwtCookie.setSecure(request.isSecure());
+                    jwtCookie.setSecure(isSecureCookie(request));
                     response.addCookie(jwtCookie);
 
                     return ResponseEntity.ok(AuthResponse.builder()
-                            .token(token)
+                            .token(resolveResponseToken(token))
                             .username(user.getUsername())
                             .role(user.getRole().name())
                             .build());
@@ -213,28 +221,106 @@ public class AuthController {
         jwtCookie.setPath("/");
         jwtCookie.setMaxAge(0);
         jwtCookie.setAttribute("SameSite", "Lax");
-        jwtCookie.setSecure(request.isSecure());
+        jwtCookie.setSecure(isSecureCookie(request));
         response.addCookie(jwtCookie);
         return ResponseEntity.ok("Logged out successfully");
     }
 
-    @PostMapping("/reset-password")
-    public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequest req) {
-        // Try by username first, then by email — only show generic response
+    @GetMapping("/me")
+    public ResponseEntity<?> getCurrentUser(Principal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return userRepository.findByUsername(principal.getName())
+                .filter(User::getEnabled)
+                .map(user -> ResponseEntity.ok(Map.of(
+                        "username", user.getUsername(),
+                        "role", user.getRole().name(),
+                        "email", user.getEmail() != null ? user.getEmail() : ""
+                )))
+                .orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
+    }
+
+    @PostMapping("/reset-password/request")
+    public ResponseEntity<?> requestPasswordReset(@Valid @RequestBody ResetPasswordRequest req, HttpServletRequest request) {
+        String clientIp = getClientIp(request);
+        if (loginAuditService.isPasswordResetRateLimited(clientIp)
+                || (req.getEmail() != null && loginAuditService.isPasswordResetRateLimited(req.getEmail()))) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body("Too many password reset requests. Please try again later.");
+        }
+
+        loginAuditService.recordPasswordResetAttempt(clientIp);
+        if (req.getEmail() != null) {
+            loginAuditService.recordPasswordResetAttempt(req.getEmail());
+        }
+
         var userOpt = userRepository.findByUsername(req.getEmail());
         if (userOpt.isEmpty()) {
             userOpt = userRepository.findByEmail(req.getEmail());
         }
-        if (userOpt.isEmpty()) {
-            // Hide whether user exists
-            return ResponseEntity.ok("If an account exists, a reset link has been sent");
+
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            if (Boolean.TRUE.equals(user.getEnabled())) {
+                passwordResetTokenService.issue(user, clientIp);
+            }
+        } else {
+            auditLogService.record("anonymous", "auth.reset-password.request", "user", req.getEmail(), clientIp, "user_not_found");
         }
-        User user = userOpt.get();
-        user.setPassword(passwordEncoder.encode(req.getNewPassword()));
-        userRepository.save(user);
-        log.info("Password reset for user: {}", user.getUsername());
-        auditLogService.record(user.getUsername(), "auth.reset-password", "user", user.getUsername(), "0.0.0.0", "success");
-        return ResponseEntity.ok("Password has been reset successfully");
+
+        // Generic response to prevent user enumeration
+        return ResponseEntity.ok(Map.of(
+                "message", "If an account exists, a reset link has been sent"
+        ));
+    }
+
+    @PostMapping("/reset-password/confirm")
+    public ResponseEntity<?> confirmPasswordReset(@Valid @RequestBody ResetPasswordConfirmRequest req, HttpServletRequest request) {
+        String clientIp = getClientIp(request);
+        if (loginAuditService.isPasswordResetRateLimited(clientIp)) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body("Too many attempts. Please try again later.");
+        }
+
+        PasswordResetTokenService.ConsumeResult result =
+                passwordResetTokenService.consume(req.getToken(), req.getNewPassword(), clientIp);
+
+        return switch (result) {
+            case SUCCESS -> ResponseEntity.ok(Map.of("message", "Password has been reset successfully"));
+            case EXPIRED_TOKEN -> {
+                loginAuditService.recordPasswordResetAttempt(clientIp);
+                yield ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Reset token has expired");
+            }
+            case ALREADY_USED -> {
+                loginAuditService.recordPasswordResetAttempt(clientIp);
+                yield ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Reset token has already been used");
+            }
+            case INVALID_TOKEN -> {
+                loginAuditService.recordPasswordResetAttempt(clientIp);
+                yield ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid reset token");
+            }
+        };
+    }
+
+    private boolean isSecureCookie(HttpServletRequest request) {
+        if ("https".equalsIgnoreCase(request.getHeader("X-Forwarded-Proto"))) {
+            return true;
+        }
+        if (request.isSecure()) {
+            return true;
+        }
+        if (env != null && env.getActiveProfiles() != null && java.util.Arrays.asList(env.getActiveProfiles()).contains("prod")) {
+            return true;
+        }
+        return false;
+    }
+
+    private String resolveResponseToken(String token) {
+        if (env != null && env.getActiveProfiles() != null && java.util.Arrays.asList(env.getActiveProfiles()).contains("prod")) {
+            return null;
+        }
+        return token;
     }
 
     private String getClientIp(HttpServletRequest request) {

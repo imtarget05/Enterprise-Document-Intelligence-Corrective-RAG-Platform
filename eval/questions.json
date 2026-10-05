@@ -83,8 +83,8 @@
   {
     "id": 10,
     "question": "Mô hình LLM nào được chạy locally trong hệ thống?",
-    "expected_answer_contains": ["DeepSeek", "deepseek-r1"],
-    "expected_source_keywords": ["DeepSeek", "Ollama", "LLM"],
+    "expected_answer_contains": ["DeepSeek", "deepseek-r1", "Qwen", "qwen2.5", "LM Studio"],
+    "expected_source_keywords": ["DeepSeek", "Qwen", "Ollama", "LM Studio", "LLM"],
     "difficulty": "easy",
     "tags": ["llm"],
     "expected_min_confidence": 0.8

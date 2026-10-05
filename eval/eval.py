@@ -131,6 +131,13 @@ def ask_question(
                 }
 
             data = resp.json()
+            is_mock = (
+                resp.headers.get("X-Mock-Backend") == "true"
+                or resp.headers.get("X-Provider") == "mock-backend"
+                or data.get("is_mock") is True
+                or "8081" in base_url
+                or "mock" in str(data.get("model", "")).lower()
+            )
             return {
                 "status": "success",
                 "latency_ms": latency_ms,
@@ -140,6 +147,7 @@ def ask_question(
                 "confidence_score": data.get("confidenceScore"),
                 "rag_strategy": data.get("ragStrategy"),
                 "model": data.get("model"),
+                "is_mock": is_mock,
             }
         except requests.exceptions.RequestException as e:
             last_error = e
@@ -428,6 +436,7 @@ def evaluate_answer(result: dict, question: dict, overrides: Optional[dict[str, 
         "confidence_score": result.get("confidence_score"),
         "rag_strategy": result.get("rag_strategy"),
         "status": result["status"],
+        "is_mock": result.get("is_mock", False),
     }
     if concept_payload:
         evaluation.update(concept_payload)
@@ -588,8 +597,16 @@ def run_evaluation(args: argparse.Namespace) -> dict[str, Any]:
     ]
     avg_relevance = round(sum(relevance_scores) / max(len(relevance_scores), 1), 4) if relevance_scores else None
 
+    is_mock_run = any(d.get("is_mock") for d in details) or "8081" in args.base_url or "mock" in args.base_url
+    genuine_responses = 0 if is_mock_run else len(
+        [d for d in details if d.get("status") == "success" and not d.get("provider_error")]
+    )
+    mock_responses = len(successful) if is_mock_run else 0
+
     summary = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
+        "test_type": "fixture_grader_smoke_test" if is_mock_run else "live_llm_benchmark",
+        "is_mock_run": is_mock_run,
         "base_url": args.base_url,
         "document_id": args.document_id,
         "total_questions": total,
@@ -610,7 +627,8 @@ def run_evaluation(args: argparse.Namespace) -> dict[str, Any]:
         "error_count": error_count,
         "provider_errors": len(provider_errors),
         "provider_error_rate": round(len(provider_errors) / max(total, 1), 4),
-        "genuine_llm_responses": len(successful),
+        "genuine_llm_responses": genuine_responses,
+        "mock_responses": mock_responses,
 
         "llm_judge_enabled": llm_judge is not None,
         "llm_judge_avg_score": avg_llm_judge_score,

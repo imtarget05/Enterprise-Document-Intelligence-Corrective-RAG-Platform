@@ -12,7 +12,7 @@
     "recharts": "^3.10.1",
     "rehype-highlight": "^7.0.2",
     "remark-gfm": "^4.0.1",
-    "uuid": "^9.0.0"
+    "uuid": "^11.1.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
@@ -22,7 +22,7 @@
     "@testing-library/user-event": "^14.5.2",
     "@types/react": "^18.2.56",
     "@types/react-dom": "^18.2.19",
-    "@types/uuid": "^9.0.8",
+    "@types/uuid": "^10.0.0",
     "@vitejs/plugin-react": "^4.2.1",
     "@vitest/coverage-v8": "^1.6.0",
     "autoprefixer": "^10.4.14",
@@ -39,13 +39,22 @@
     "vite": "^5.1.4",
     "vitest": "^1.6.0"
   },
+  "overrides": {
+    "braces": "^3.0.3",
+    "chokidar": {
+      "braces": "^3.0.3"
+    },
+    "micromatch": {
+      "braces": "^3.0.3"
+    }
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "vitest run --coverage",
+    "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage --passWithNoTests",
+    "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "lint": "eslint . --ext ts,tsx"
   },

@@ -33,12 +33,13 @@ export default function DocumentViewer({
     queryKey: ["legalDocument", documentId, token],
     queryFn: async () => {
       const res = await fetch(`${API_BASE_URL}/documents/${documentId}/legal-chunks`, {
-        headers: { Authorization: `Bearer ${token ?? ""}` },
+        credentials: "include",
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       });
       if (!res.ok) throw new Error("not_found");
       return res.json();
     },
-    enabled: documentId != null && !!token,
+    enabled: documentId != null,
   });
 
   useEffect(() => {

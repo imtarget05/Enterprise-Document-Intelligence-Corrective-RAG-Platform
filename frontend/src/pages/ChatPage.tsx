@@ -18,11 +18,7 @@ import DeleteConfirmDialog from "../components/DeleteConfirmDialog";
 import VersionHistory from "../components/VersionHistory";
 import { useRenameDocument, useDeleteDocument, useDeleteDocumentsBatch } from "../hooks/useDocumentMutations";
 
-interface ChatPageProps {
-  // Navigation between views is wired via window.__appView bridge (set in App).
-}
-
-export default function ChatPage(_props: ChatPageProps) {
+export default function ChatPage() {
   const { token, username, logout } = useAuth();
   const queryClient = useQueryClient();
 
@@ -57,29 +53,29 @@ export default function ChatPage(_props: ChatPageProps) {
 
   // Fetch documents
   const { data: documents = [] } = useQuery<Document[]>({
-    queryKey: ["documents", token],
+    queryKey: ["documents", username, token],
     queryFn: async () => {
-      if (!token) return [];
       const response = await fetch(`${API_BASE_URL}/documents`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: "include",
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       });
       if (!response.ok) throw new Error("Failed to fetch documents");
       return response.json();
     },
-    enabled: !!token,
+    enabled: !!username || !!token,
   });
 
   // Fetch chat history
   const historyQueryKey = ["chatHistory", sessionId, selectedDoc?.id];
 
   const fetchChatHistory = useCallback(async () => {
-    if (!token) return [];
     let url = `${API_BASE_URL}/chat/history/${sessionId}`;
     if (selectedDoc?.id) {
       url = `${API_BASE_URL}/chat/history/${sessionId}/${selectedDoc.id}`;
     }
     const response = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     });
     if (!response.ok) throw new Error("Failed to fetch chat history");
     return response.json();
@@ -88,7 +84,7 @@ export default function ChatPage(_props: ChatPageProps) {
   const { data: history = [] } = useQuery<ChatMessageType[]>({
     queryKey: historyQueryKey,
     queryFn: fetchChatHistory,
-    enabled: !!token,
+    enabled: !!username || !!token,
   });
 
   // Sync history to messages

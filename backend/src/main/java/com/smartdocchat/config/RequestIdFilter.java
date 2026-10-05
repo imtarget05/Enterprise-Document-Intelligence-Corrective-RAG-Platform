@@ -33,12 +33,18 @@ public class RequestIdFilter extends OncePerRequestFilter {
         if (requestId == null || requestId.isBlank()) {
             requestId = UUID.randomUUID().toString();
         }
+        String traceId = request.getHeader("X-Trace-Id");
+        if (traceId == null || traceId.isBlank()) {
+            traceId = requestId;
+        }
 
         try {
             MDC.put("requestId", requestId);
+            MDC.put("traceId", traceId);
             MDC.put("method", request.getMethod());
             MDC.put("path", request.getRequestURI());
             response.setHeader("X-Request-Id", requestId);
+            response.setHeader("X-Trace-Id", traceId);
 
             filterChain.doFilter(request, response);
         } finally {

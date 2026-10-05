@@ -38,6 +38,8 @@ public interface DocumentIngestionJobRepository extends JpaRepository<DocumentIn
 
     Page<DocumentIngestionJob> findByStatus(JobStatus status, Pageable pageable);
 
+    java.util.Optional<DocumentIngestionJob> findFirstByDocumentIdOrderByIdDesc(Long documentId);
+
     /**
      * Crash recovery (lease timeout): RUNNING rows that were claimed but whose
      * worker died before completing are handed back to the queue. The poller

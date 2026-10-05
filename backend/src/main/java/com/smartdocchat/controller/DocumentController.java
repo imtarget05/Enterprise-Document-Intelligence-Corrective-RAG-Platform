@@ -37,6 +37,12 @@ public class DocumentController {
     private final DocumentAccessService documentAccessService;
     private final AuditLogService auditLogService;
     private final DocumentVersionService documentVersionService;
+    private com.smartdocchat.repository.DocumentIngestionJobRepository jobRepository;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setJobRepository(com.smartdocchat.repository.DocumentIngestionJobRepository jobRepository) {
+        this.jobRepository = jobRepository;
+    }
 
     private Role currentRole() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -106,7 +112,7 @@ public class DocumentController {
         }
     }
 
-    @PostMapping("/upload")
+    @PostMapping({"", "/upload"})
     public ResponseEntity<UploadResponse> uploadDocument(
             @RequestParam("file") MultipartFile file, Principal principal) {
         try {
@@ -124,12 +130,21 @@ public class DocumentController {
             Document document = documentService.uploadDocument(file, principal.getName());
             audit("document.upload", principal.getName(), "document",
                     String.valueOf(document.getId()), "fileName=" + document.getFileName());
+
+            Long jobId = null;
+            if (jobRepository != null && document.getId() != null) {
+                jobId = jobRepository.findFirstByDocumentIdOrderByIdDesc(document.getId())
+                        .map(com.smartdocchat.entity.DocumentIngestionJob::getId)
+                        .orElse(null);
+            }
+
             return ResponseEntity.ok(
                     UploadResponse.builder()
                             .success(true)
                             .message("Document uploaded successfully")
                             .documentId(document.getId())
                             .fileName(document.getFileName())
+                            .jobId(jobId)
                             .build()
             );
         } catch (IllegalArgumentException e) {
@@ -161,6 +176,21 @@ public class DocumentController {
 
     @GetMapping("/search")
     public ResponseEntity<List<DocumentDTO>> searchDocuments(@RequestParam("q") String query, Principal principal) {
+        return ResponseEntity.ok(documentService.searchDocuments(principal.getName(), query));
+    }
+
+    @PostMapping("/search")
+    public ResponseEntity<List<DocumentDTO>> searchDocumentsPost(
+            @RequestBody(required = false) Map<String, String> body,
+            @RequestParam(value = "q", required = false) String queryParam,
+            Principal principal) {
+        String query = body != null ? (body.get("query") != null ? body.get("query") : body.get("q")) : null;
+        if (query == null || query.isBlank()) {
+            query = queryParam;
+        }
+        if (query == null) {
+            query = "";
+        }
         return ResponseEntity.ok(documentService.searchDocuments(principal.getName(), query));
     }
 

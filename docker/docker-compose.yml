@@ -19,7 +19,11 @@ services:
     container_name: smart-document-chatbox-llm-router
     restart: unless-stopped
     env_file:
-      - ../.env
+      # Optional: lets `docker compose config` be validated from a clean clone
+      # without real credentials. The file is still loaded when it exists, so
+      # normal setup (`cp .env.example .env`) is unchanged.
+      - path: ../.env
+        required: false
     environment:
       ROUTER_CONFIDENCE_THRESHOLD: ${ROUTER_CONFIDENCE_THRESHOLD:-0.7}
       # Cloudflare Workers AI (primary provider with circuit breaker)
@@ -30,6 +34,12 @@ services:
       CLOUDFLARE_TIMEOUT_SECONDS: ${CLOUDFLARE_TIMEOUT_SECONDS:-60}
     ports:
       - "${LLM_ROUTER_PORT:-8001}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     networks:
       app-network:
         aliases:
@@ -49,7 +59,11 @@ services:
     container_name: smart-document-chatbox-backend
     restart: unless-stopped
     env_file:
-      - ../.env
+      # Optional: lets `docker compose config` be validated from a clean clone
+      # without real credentials. The file is still loaded when it exists, so
+      # normal setup (`cp .env.example .env`) is unchanged.
+      - path: ../.env
+        required: false
     environment:
       # Database — Neon Serverless PostgreSQL (free 512MB)
       # pgjdbc does NOT parse user:password@ in JDBC URLs; NEON_JDBC_URL is a
@@ -125,7 +139,11 @@ services:
     container_name: smart-document-chatbox-frontend
     restart: unless-stopped
     env_file:
-      - ../.env
+      # Optional: lets `docker compose config` be validated from a clean clone
+      # without real credentials. The file is still loaded when it exists, so
+      # normal setup (`cp .env.example .env`) is unchanged.
+      - path: ../.env
+        required: false
     ports:
       - "${FRONTEND_PORT:-80}:80"
     depends_on:
@@ -170,7 +188,7 @@ services:
       - "3000:3000"
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:?GRAFANA_PASSWORD must be set}
       - GF_INSTALL_PLUGINS=grafana-clock-panel
     volumes:
       - grafana_data:/var/lib/grafana
@@ -190,7 +208,11 @@ services:
     container_name: smart-document-chatbox-agent
     restart: unless-stopped
     env_file:
-      - ../.env
+      # Optional: lets `docker compose config` be validated from a clean clone
+      # without real credentials. The file is still loaded when it exists, so
+      # normal setup (`cp .env.example .env`) is unchanged.
+      - path: ../.env
+        required: false
     environment:
       INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-}
       LLM_BASE_URL: http://llm-router:8000
@@ -272,7 +294,11 @@ services:
       --firstname Smart --lastname Doc --role Admin --email admin@example.com
       && airflow webserver"
     env_file:
-      - ../.env
+      # Optional: lets `docker compose config` be validated from a clean clone
+      # without real credentials. The file is still loaded when it exists, so
+      # normal setup (`cp .env.example .env`) is unchanged.
+      - path: ../.env
+        required: false
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${AIRFLOW_USERNAME:-airflow}:${AIRFLOW_PASSWORD:-airflow}@airflow-postgres:5432/${AIRFLOW_DB:-airflow}
@@ -310,7 +336,11 @@ services:
     restart: unless-stopped
     command: airflow scheduler
     env_file:
-      - ../.env
+      # Optional: lets `docker compose config` be validated from a clean clone
+      # without real credentials. The file is still loaded when it exists, so
+      # normal setup (`cp .env.example .env`) is unchanged.
+      - path: ../.env
+        required: false
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${AIRFLOW_USERNAME:-airflow}:${AIRFLOW_PASSWORD:-airflow}@airflow-postgres:5432/${AIRFLOW_DB:-airflow}

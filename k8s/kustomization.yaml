@@ -1,0 +1,8 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: portfolio
+resources:
+  - 10-qdrant.yaml
+  - 15-llm-router.yaml
+  - 20-smartdoc-backend.yaml
+  - 30-smartdoc-frontend.yaml

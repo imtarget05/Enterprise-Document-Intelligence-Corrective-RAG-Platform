@@ -147,7 +147,7 @@ describe("LoginPage", () => {
   it("submits password reset request and shows success", async () => {
     const user = userEvent.setup();
     mockFetch({
-      "/auth/reset-password": {
+      "/auth/reset-password/request": {
         ok: true,
         text: async () => "OK",
       },
@@ -165,7 +165,7 @@ describe("LoginPage", () => {
   it("shows error when password reset fails", async () => {
     const user = userEvent.setup();
     mockFetch({
-      "/auth/reset-password": {
+      "/auth/reset-password/request": {
         ok: false,
         text: async () => "Email không tồn tại",
       },
@@ -246,5 +246,63 @@ describe("LoginPage", () => {
 
     // The form doesn't have explicit email validation, but password strength should show
     expect(screen.getByText(/Độ mạnh/)).toBeInTheDocument();
+  });
+
+  it("shows confirm reset password form when token is in url and resets successfully", async () => {
+    const originalLocation = window.location;
+    delete (window as unknown as { location: unknown }).location;
+    window.location = new URL("http://localhost:3000/?token=sample-reset-token") as unknown as Location;
+
+    try {
+      const user = userEvent.setup();
+      mockFetch({
+        "/auth/reset-password/confirm": {
+          ok: true,
+          text: async () => "OK",
+        },
+      });
+
+      renderLoginPage();
+
+      expect(screen.getByText("Đặt lại mật khẩu mới")).toBeInTheDocument();
+      await user.type(screen.getByPlaceholderText("Mật khẩu mới"), "NewPassword123!");
+      await user.type(screen.getByPlaceholderText("Xác nhận mật khẩu mới"), "NewPassword123!");
+      await user.click(screen.getByRole("button", { name: "Lưu mật khẩu" }));
+
+      expect(await screen.findByText("Đặt lại mật khẩu thành công!")).toBeInTheDocument();
+    } finally {
+      window.location = originalLocation;
+    }
+  });
+
+  it("rejects a reset password that is weaker than the registration policy", async () => {
+    const user = userEvent.setup();
+    const fetchMock = mockFetch({
+      "/auth/reset-password/confirm": {
+        ok: true,
+        text: async () => "OK",
+      },
+    });
+
+    const originalLocation = window.location;
+    delete (window as unknown as { location: unknown }).location;
+    window.location = new URL("http://localhost:3000/?token=sample-reset-token") as unknown as Location;
+
+    try {
+      renderLoginPage();
+
+      await user.type(screen.getByPlaceholderText("Mật khẩu mới"), "short");
+      await user.type(screen.getByPlaceholderText("Xác nhận mật khẩu mới"), "short");
+      await user.click(screen.getByRole("button", { name: "Lưu mật khẩu" }));
+
+      expect(await screen.findByText("Mật khẩu phải có ít nhất 12 ký tự")).toBeInTheDocument();
+      // The weak password must never reach the backend: parity with the
+      // 12-character registration minimum (see RegisterRequest / register form).
+      expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/auth/reset-password/confirm"))).toBe(
+        false
+      );
+    } finally {
+      window.location = originalLocation;
+    }
   });
 });

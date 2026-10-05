@@ -67,6 +67,8 @@ public class DocumentJobExecutor {
             return; // deleted or requeued concurrently — never double-execute
         }
         try {
+            org.slf4j.MDC.put("jobId", String.valueOf(job.getId()));
+            org.slf4j.MDC.put("documentId", String.valueOf(job.getDocumentId()));
             runWorkflow(job);
             job.setStatus(JobStatus.COMPLETED);
             job.setLastError(null);
@@ -87,6 +89,9 @@ public class DocumentJobExecutor {
                 log.warn("Ingestion job {} attempt {}/{} failed for document {} — retry in {}s: {}",
                         job.getId(), attempt, job.getMaxAttempts(), job.getDocumentId(), backoff, job.getLastError());
             }
+        } finally {
+            org.slf4j.MDC.remove("jobId");
+            org.slf4j.MDC.remove("documentId");
         }
     }
 

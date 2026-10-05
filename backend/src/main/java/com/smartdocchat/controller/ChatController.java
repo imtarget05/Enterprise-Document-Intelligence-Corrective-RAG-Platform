@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 public class ChatController {
     private final ChatService chatService;
 
-    @PostMapping("/ask")
+    @PostMapping({"", "/ask"})
     public ResponseEntity<ChatResponse> askQuestion(@Valid @RequestBody ChatRequest request, Principal principal) {
         try {
             return ResponseEntity.ok(chatService.processQuery(principal.getName(), request));
@@ -33,7 +33,7 @@ public class ChatController {
         }
     }
 
-    @PostMapping(value = "/ask-stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @PostMapping(value = {"/stream", "/ask-stream"}, produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter askQuestionStream(@Valid @RequestBody ChatRequest request, Principal principal) {
         try {
             return chatService.processQueryStream(principal.getName(), request);

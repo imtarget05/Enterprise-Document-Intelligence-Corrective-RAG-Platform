@@ -80,4 +80,35 @@ public class LoginAuditService {
         }
         return false;
     }
+
+    public boolean isPasswordResetRateLimited(String identifier) {
+        if (redisTemplate == null || identifier == null) {
+            return false;
+        }
+        String key = "reset:rate:" + identifier.toLowerCase();
+        try {
+            String count = redisTemplate.opsForValue().get(key);
+            if (count != null && Integer.parseInt(count) >= MAX_FAILED_ATTEMPTS) {
+                return true;
+            }
+        } catch (Exception e) {
+            log.warn("Redis reset rate check failed for {}, allowing (fail-open)", identifier, e);
+        }
+        return false;
+    }
+
+    public void recordPasswordResetAttempt(String identifier) {
+        if (redisTemplate == null || identifier == null) {
+            return;
+        }
+        String key = "reset:rate:" + identifier.toLowerCase();
+        try {
+            Long count = redisTemplate.opsForValue().increment(key);
+            if (count != null && count == 1) {
+                redisTemplate.expire(key, Duration.ofMinutes(15));
+            }
+        } catch (Exception e) {
+            log.warn("Redis reset attempt record failed for {}", identifier, e);
+        }
+    }
 }

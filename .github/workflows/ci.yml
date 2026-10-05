@@ -106,19 +106,23 @@ jobs:
 
       - name: Run frontend tests with coverage
         working-directory: ./frontend
-        # `npm test` already runs `vitest run --coverage` (see package.json);
-        # do not append another --coverage/--run or vitest rejects the dup.
-        run: npm test
+        # `npm test` runs `vitest run` WITHOUT coverage; `test:coverage` is the
+        # script that collects coverage AND enforces vite.config.ts thresholds.
+        # Use it explicitly — otherwise no lcov.info is produced and this job
+        # would report a green build with zero coverage enforcement.
+        run: npm run test:coverage
 
       - name: Check frontend coverage threshold
         working-directory: ./frontend
         run: |
-          # Vitest already enforces coverage thresholds (lines 0.80, branches 0.70)
-          # at test time; here we just surface the number for the lint panel.
-          # Vitest writes lcov.info, not coverage-summary.json.
+          # Vitest enforces the coverage thresholds (lines/statements 80,
+          # branches 70, functions 65) at test time, so a shortfall already
+          # failed the previous step. Here we surface the number — but a
+          # missing report means coverage never ran, which must fail loudly
+          # rather than silently passing.
           if [ ! -f coverage/lcov.info ]; then
-            echo "⚠️ No coverage/lcov.info found"
-            exit 0
+            echo "ERROR: coverage/lcov.info was not produced — coverage did not run."
+            exit 1
           fi
           python3 - <<'PYEOF'
           import sys

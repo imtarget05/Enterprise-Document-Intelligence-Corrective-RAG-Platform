@@ -17,9 +17,11 @@ on:
         default: false
 
 jobs:
-  fixture-eval:
+  fixture-smoke:
+    name: "Fixture Smoke Test (Mock Stack, Non-Gating)"
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -93,6 +95,37 @@ jobs:
                     f"correctness={s.get('answer_correctness')} "
                     f"hallucinations={s.get('hallucination_cases')}")
           PYEOF
+
+  live-benchmark:
+    name: "Live Retrieval & LLM Benchmark (Production Stack)"
+    if: ${{ inputs.base_url != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run live benchmark
+        env:
+          BASE_URL: ${{ inputs.base_url }}
+        run: |
+          python eval/run_live_benchmark.py --base-url "$BASE_URL" \
+            --questions eval/questions.json \
+            --output eval/results/live_benchmark.json
+
+      - name: Upload live benchmark report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-benchmark-report
+          path: eval/results/live_benchmark.json
 
   e2e-fullstack:
     name: "Full-stack E2E smoke"

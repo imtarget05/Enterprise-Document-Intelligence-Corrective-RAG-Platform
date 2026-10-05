@@ -170,30 +170,33 @@ export default function LoginPage() {
       }
       return res;
     },
-    [login],
+    [],
   );
 
-  const handleGoogleCredential = async (credential: string) => {
-    setAuthLoading(true);
-    setAuthError("");
-    try {
-      const res = await postGoogleCredential(credential);
-      const text = await res.text();
-      let data: Record<string, string> = {};
-      try { data = text ? JSON.parse(text) : {}; } catch { data = { error: text }; }
-      if (!res.ok) throw new Error(data.error || data.message || text || "Đăng nhập Google thất bại");
-      setGoogleModalOpen(false);
-      login(data.token, data.username, data.role);
-    } catch (err: unknown) {
-      if (err instanceof TypeError) {
-        setAuthError("Không thể kết nối máy chủ. Máy chủ có thể đang khởi động — vui lòng thử lại sau vài giây.");
-      } else {
-        setAuthError(err instanceof Error ? err.message : "Đăng nhập Google thất bại");
+  const handleGoogleCredential = useCallback(
+    async (credential: string) => {
+      setAuthLoading(true);
+      setAuthError("");
+      try {
+        const res = await postGoogleCredential(credential);
+        const text = await res.text();
+        let data: Record<string, string> = {};
+        try { data = text ? JSON.parse(text) : {}; } catch { data = { error: text }; }
+        if (!res.ok) throw new Error(data.error || data.message || text || "Đăng nhập Google thất bại");
+        setGoogleModalOpen(false);
+        login(data.token, data.username, data.role);
+      } catch (err: unknown) {
+        if (err instanceof TypeError) {
+          setAuthError("Không thể kết nối máy chủ. Máy chủ có thể đang khởi động — vui lòng thử lại sau vài giây.");
+        } else {
+          setAuthError(err instanceof Error ? err.message : "Đăng nhập Google thất bại");
+        }
+      } finally {
+        setAuthLoading(false);
       }
-    } finally {
-      setAuthLoading(false);
-    }
-  };
+    },
+    [login, postGoogleCredential],
+  );
 
   // Google Identity Services One Tap auto-login: if the browser still has the
   // user's Google session, prompt for it automatically so they don't have to
@@ -215,7 +218,7 @@ export default function LoginPage() {
     } catch {
       /* prompt unavailable — user can still use the button */
     }
-  }, [GOOGLE_CLIENT_ID]);
+  }, [handleGoogleCredential]);
 
   const renderGoogleButton = useCallback(() => {
     const el = googleBtnRef.current;
@@ -225,7 +228,7 @@ export default function LoginPage() {
       callback: (resp) => { void handleGoogleCredential(resp.credential); },
     });
     window.google.accounts.id.renderButton(el, { theme: "outline", size: "large", width: 320, text: "continue_with", locale: "vi" });
-  }, []);
+  }, [handleGoogleCredential]);
 
   const handleGoogleLogin = async () => {
     if (!GOOGLE_CLIENT_ID) {
@@ -257,16 +260,26 @@ export default function LoginPage() {
     return () => { cancelled = true; };
   }, [googleModalOpen, renderGoogleButton]);
 
+  const [resetToken, setResetToken] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      return new URLSearchParams(window.location.search).get("token");
+    }
+    return null;
+  });
+  const [newResetPassword, setNewResetPassword] = useState("");
+  const [confirmResetPassword, setConfirmResetPassword] = useState("");
+  const [resetSuccess, setResetSuccess] = useState(false);
+
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!resetEmail.trim()) { setAuthError("Vui lòng nhập email"); return; }
     setAuthLoading(true); setAuthError("");
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+      const res = await fetch(`${API_BASE_URL}/auth/reset-password/request`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(await ensureCsrfHeaders()) },
         credentials: "include",
-        body: JSON.stringify({ email: resetEmail, newPassword: "Temp12345678!" }),
+        body: JSON.stringify({ email: resetEmail }),
       });
       const t = await res.text();
       if (!res.ok) throw new Error(t || "Gửi email thất bại");
@@ -276,11 +289,137 @@ export default function LoginPage() {
     } finally { setAuthLoading(false); }
   };
 
+  const handleConfirmReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newResetPassword || !confirmResetPassword) {
+      setAuthError("Vui lòng nhập đầy đủ mật khẩu mới");
+      return;
+    }
+    if (newResetPassword !== confirmResetPassword) {
+      setAuthError("Mật khẩu xác nhận không khớp");
+      return;
+    }
+    if (newResetPassword.length < 12) {
+      setAuthError("Mật khẩu phải có ít nhất 12 ký tự");
+      return;
+    }
+    setAuthLoading(true);
+    setAuthError("");
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/reset-password/confirm`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(await ensureCsrfHeaders()) },
+        credentials: "include",
+        body: JSON.stringify({ token: resetToken, newPassword: newResetPassword }),
+      });
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(t || "Đặt lại mật khẩu thất bại");
+      }
+      setResetSuccess(true);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } catch (err: unknown) {
+      setAuthError(err instanceof Error ? err.message : "Đặt lại mật khẩu thất bại");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
   const switchMode = () => {
     setAuthMode(authMode === "login" ? "register" : "login");
     setAuthError("");
     setConfirmPassword("");
   };
+
+  if (resetToken) {
+    return (
+      <div className="min-h-screen bg-surface-dim flex">
+        <div className="hidden lg:flex w-[52%] bg-gradient-to-br from-google-blue via-google-blueLight to-google-blueDark p-12 text-white flex-col justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-white/20 rounded-material flex items-center justify-center">
+              <DocIcon size={20} className="text-white" />
+            </div>
+            <span className="text-[15px] font-medium">Smart Document</span>
+          </div>
+          <div className="my-auto">
+            <h2 className="text-[40px] leading-[48px] font-normal tracking-tight">Tạo mật khẩu mới</h2>
+            <p className="text-[16px] text-white/80 mt-4 max-w-[360px] leading-6">Nhập mật khẩu mới an toàn cho tài khoản của bạn</p>
+          </div>
+          <div className="text-white/60 text-[12px]">&copy; 2026 Smart Document Chatbot &bull; Enterprise CRAG</div>
+        </div>
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="w-full max-w-[448px]">
+            <h1 className="text-[24px] leading-8 text-onsurface font-normal">Đặt lại mật khẩu mới</h1>
+            <p className="text-[14px] text-onsurface-muted mt-1">Xác thực bằng mã token bảo mật</p>
+            {resetSuccess ? (
+              <div className="mt-6 space-y-4">
+                <div className="p-4 bg-[#e6f4ea] border border-google-green rounded-material text-google-green text-[14px] flex items-center gap-2">
+                  <CheckIcon />
+                  <span>Đặt lại mật khẩu thành công!</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setResetToken(null); setShowReset(false); }}
+                  className="w-full bg-google-blue hover:bg-google-blueDark text-white py-2.5 rounded-material-full text-[14px] font-medium"
+                >
+                  Đăng nhập ngay
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleConfirmReset} className="mt-6 space-y-4">
+                <div className="relative">
+                  <input
+                    type="password"
+                    value={newResetPassword}
+                    onChange={(e) => setNewResetPassword(e.target.value)}
+                    placeholder="Mật khẩu mới"
+                    className="peer w-full px-3.5 py-3.5 border border-outline rounded-material text-[16px] placeholder-transparent focus:outline-none focus:border-google-blue focus:ring-1 focus:ring-google-blue"
+                  />
+                  <label className="absolute left-3 -top-2.5 bg-white px-1 text-[12px] text-google-blue peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-[16px] peer-placeholder-shown:text-onsurface-muted peer-focus:-top-2.5 peer-focus:text-[12px] peer-focus:text-google-blue transition-all duration-200">
+                    Mật khẩu mới (tối thiểu 6 ký tự)
+                  </label>
+                </div>
+                <div className="relative">
+                  <input
+                    type="password"
+                    value={confirmResetPassword}
+                    onChange={(e) => setConfirmResetPassword(e.target.value)}
+                    placeholder="Xác nhận mật khẩu mới"
+                    className="peer w-full px-3.5 py-3.5 border border-outline rounded-material text-[16px] placeholder-transparent focus:outline-none focus:border-google-blue focus:ring-1 focus:ring-google-blue"
+                  />
+                  <label className="absolute left-3 -top-2.5 bg-white px-1 text-[12px] text-google-blue peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-[16px] peer-placeholder-shown:text-onsurface-muted peer-focus:-top-2.5 peer-focus:text-[12px] peer-focus:text-google-blue transition-all duration-200">
+                    Xác nhận mật khẩu mới
+                  </label>
+                </div>
+                {authError && (
+                  <div className="flex gap-2 items-start bg-[#fce8e6] border border-[#f5c6cb] text-[#a50e0e] text-[13px] px-3 py-2.5 rounded-material">
+                    <ErrorIcon />
+                    <span>{authError}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between pt-2">
+                  <button
+                    type="button"
+                    onClick={() => { setResetToken(null); setShowReset(false); }}
+                    className="text-google-blue text-[14px] font-medium px-3 py-2 hover:bg-surface-container rounded-material-full"
+                  >
+                    Hủy bỏ
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={authLoading}
+                    className="bg-google-blue hover:bg-google-blueDark text-white px-6 py-2.5 rounded-material-full text-[14px] font-medium shadow-material-btn min-w-[96px] h-9 disabled:opacity-60 transition-shadow duration-200"
+                  >
+                    {authLoading ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" /> : "Lưu mật khẩu"}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (showReset) {
     return (

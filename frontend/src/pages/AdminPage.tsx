@@ -39,15 +39,16 @@ export default function AdminPage() {
 function AdminOverview() {
   const { token, username } = useAuth();
   const { data: documents = [] } = useQuery<Array<{ id: number; title?: string }>>({
-    queryKey: ["documents", token],
+    queryKey: ["documents", username, token],
     queryFn: async () => {
       const res = await fetch(`${API_BASE_URL}/documents`, {
-        headers: { Authorization: `Bearer ${token ?? ""}` },
+        credentials: "include",
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       });
       if (!res.ok) return [];
       return res.json();
     },
-    enabled: !!token,
+    enabled: !!username || !!token,
   });
 
   const { data: auditData } = useAuditLogs({ page: 0, size: 1 });

@@ -166,3 +166,8 @@ frontend/test-results/
 # Agent planning artifacts
 plans/
 tasks/
+.env.test
+
+.terraform/
+*.tfstate*
+.terraform.lock.hcl

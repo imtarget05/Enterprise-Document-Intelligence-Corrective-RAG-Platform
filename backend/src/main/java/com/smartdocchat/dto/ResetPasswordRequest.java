@@ -13,7 +13,4 @@ import lombok.NoArgsConstructor;
 public class ResetPasswordRequest {
     @NotBlank(message = "Email or username must not be blank")
     private String email;
-
-    @NotBlank(message = "New password must not be blank")
-    private String newPassword;
 }

@@ -1,0 +1,123 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: smartdoc-backend
+  namespace: portfolio
+  labels:
+    app: smartdoc-backend
+    role: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: smartdoc-backend
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: smartdoc-backend
+        role: api
+    spec:
+      serviceAccountName: portfolio-api
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: backend
+        image: smart-document:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 8080
+        env:
+        - name: SPRING_DATASOURCE_URL
+          valueFrom:
+            secretKeyRef:
+              name: portfolio-secrets
+              key: SMARTDOC_JDBC_URL
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: portfolio-secrets
+              key: JWT_SECRET
+        - name: QDRANT_HOST
+          value: "smartdoc-qdrant"
+        - name: QDRANT_PORT
+          value: "6333"
+        - name: LLM_BASE_URL
+          value: "http://smartdoc-llm-router:8000"
+        - name: SPRING_PROFILES_ACTIVE
+          value: "prod"
+        - name: JAVA_OPTS
+          value: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: http
+          initialDelaySeconds: 15
+          periodSeconds: 5
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          failureThreshold: 3
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "512Mi"
+          limits:
+            cpu: "1000m"
+            memory: "1024Mi"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: smartdoc-backend
+  namespace: portfolio
+  labels:
+    app: smartdoc-backend
+spec:
+  type: ClusterIP
+  selector:
+    app: smartdoc-backend
+  ports:
+  - name: http
+    port: 8080
+    targetPort: http
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: smartdoc-backend
+  namespace: portfolio
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: smartdoc-backend
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
