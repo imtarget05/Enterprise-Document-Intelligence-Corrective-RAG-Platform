@@ -43,7 +43,10 @@ spring:
     timeout-per-shutdown-phase: 30s
 
 server:
-  port: ${SERVER_PORT:8080}
+  # Render injects $PORT (not SERVER_PORT). The container must listen on it,
+  # otherwise the platform health check on $PORT never reaches Spring and the
+  # service is routed as "no-server".
+  port: ${SERVER_PORT:${PORT:8080}}
   servlet:
     context-path: /api
   shutdown: graceful

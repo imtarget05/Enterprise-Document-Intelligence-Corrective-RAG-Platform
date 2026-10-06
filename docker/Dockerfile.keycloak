@@ -3,4 +3,7 @@ FROM quay.io/keycloak/keycloak:24.0.5
 # Use dev file DB (H2) for free tier — prod should switch to Neon via KC_DB env if needed
 ENV KC_DB=dev-file
 EXPOSE 8080
-ENTRYPOINT ["/opt/keycloak/bin/kc.sh", "start", "--http-enabled=true", "--hostname-strict=false"]
+# Render injects $PORT at runtime; Keycloak otherwise binds its default 8080
+# and the platform health check on $PORT never sees the server
+# (x-render-routing: no-server). Exec form cannot expand env vars, hence sh -c.
+ENTRYPOINT ["/bin/sh", "-c", "exec /opt/keycloak/bin/kc.sh start --http-enabled=true --hostname-strict=false --http-port=${PORT:-8080}"]
