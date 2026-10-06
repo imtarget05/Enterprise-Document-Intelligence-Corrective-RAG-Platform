@@ -32,7 +32,10 @@ spring:
           min-idle: 2
 
 server:
-  port: ${SERVER_PORT:8080}
+  # Render injects $PORT (not SERVER_PORT) — the base application.yml already
+  # resolves ${SERVER_PORT:${PORT:8080}}; this profile must not drop $PORT or
+  # the platform health check probes a port Spring never binds ("no-server").
+  port: ${SERVER_PORT:${PORT:8080}}
   ssl:
     enabled: ${SSL_ENABLED:false}
     key-store: ${SSL_KEY_STORE:classpath:keystore.p12}
