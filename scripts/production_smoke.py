@@ -43,6 +43,17 @@ def main() -> int:
     results = []
     s = requests.Session()
 
+    # --- 0. Backend health first (fail fast with a clear message)
+    try:
+        h = s.get(f"{b}/actuator/health", timeout=60)
+        results.append(check("BACKEND HEALTH  ", h.status_code == 200, f"({h.status_code})"))
+        if h.status_code != 200:
+            print("Backend is not healthy — aborting remaining checks.", file=sys.stderr)
+            return 1
+    except Exception as e:
+        check("BACKEND HEALTH  ", False, str(e)[:80])
+        return 1
+
     # --- 1. CSRF endpoint
     try:
         csrf = s.get(f"{b}/csrf", timeout=60).json()["token"]
