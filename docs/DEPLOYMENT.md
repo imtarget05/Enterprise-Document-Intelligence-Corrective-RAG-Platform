@@ -122,3 +122,23 @@ Chi tiết smoke test: `docs/render-smoke-test.md`.
 Mọi component đều nằm trong free tier vĩnh viễn. Nếu tăng traffic, điểm nâng cấp
 đầu tiên là Render paid plan (tắt spin-down) — mọi cấu hình khác giữ nguyên.
 
+## Render production recovery checklist (2026-10-06)
+
+Ordered steps to bring the production chain back (dashboard work + this repo's code):
+
+1. **Backend `smart-doc-backend-h4mt`**: Docker runtime — no startCommand override.
+   The app now binds `${SERVER_PORT:${PORT:8080}}`, so Render's `$PORT` is honored.
+   Fill `sync:false` env: `SPRING_DATASOURCE_*` (Neon), `QDRANT_*`, `R2_*`,
+   `JWT_SECRET`, `INTERNAL_SERVICE_TOKEN`, Langfuse keys.
+2. **Gate 1**: `curl https://smart-doc-backend-h4mt.onrender.com/api/actuator/health`
+   → `200` with `"status":"UP"`.
+3. **llm-router**: set `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_API_TOKEN` (+ optional
+   `ROUTER_INTERNAL_TOKEN`, Langfuse). Gate: `GET /health/live` → 200.
+4. **Keycloak**: container now passes `--http-port=${PORT:-8080}`. Gate:
+   `GET /realms/master` → 200. Then flip `SSO_OIDC_ENABLED=true` + issuer URI.
+5. **GitHub secrets**: `RENDER_API_KEY` + `RENDER_SERVICE_ID` (backend service) so
+   `ci.yml` can redeploy and poll readiness — the job fails loudly until they exist.
+6. **Frontend**: merge `fix/pages-api-h4mt` (Pages + Docker build-args →
+   `smart-doc-backend-h4mt`), push, then `python scripts/production_smoke.py`
+   (health → register/login → upload → chat) must pass.
+

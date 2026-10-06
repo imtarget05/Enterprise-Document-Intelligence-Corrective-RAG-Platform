@@ -23,6 +23,20 @@
 
 Core workflow: `Upload → Retrieve → Verify → Cite → Answer`
 
+## 🚦 Production status (audited 2026-10-06)
+
+| Component | URL | State |
+|---|---|---|
+| Frontend (Cloudflare Pages) | https://smart-doc-chatbot.pages.dev | Serving; **built against the retired Express backend** (`smart-doc-backend.onrender.com`) — business API calls fail in the browser |
+| Spring backend (Render, canonical) | https://smart-doc-backend-h4mt.onrender.com | **Down** — `x-render-routing: no-server`. Root cause: the container listened on `8080` while Render health-checks `$PORT`; fixed in `application.yml` + `docker/Dockerfile.backend` + `docker/Dockerfile.keycloak` |
+| LLM router / Keycloak (Render free) | — | **Down** — Keycloak had the same `$PORT` binding issue (fixed here); router requires Cloudflare credentials in the Render dashboard |
+| Python agent | — | Alive (separate service) |
+
+Hard gate before merging `fix/pages-api-h4mt` (the branch that repoints Pages and
+Docker build-args to h4mt): `curl https://smart-doc-backend-h4mt.onrender.com/api/actuator/health`
+must return `200`. The CI deploy job failing on missing Render credentials is
+intentional honesty, not a regression.
+
 ## ✨ Key Features & Engineering Decisions
 
 1. **Corrective RAG (CRAG) Pipeline**: 5-layer verification — Hybrid Retrieval → Relevance Grading → Knowledge Refinement → Hallucination Check → Answer Grading. If evidence is insufficient, the system honestly refuses rather than hallucinating.
