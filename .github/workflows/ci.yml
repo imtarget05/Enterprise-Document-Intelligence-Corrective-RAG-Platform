@@ -502,21 +502,57 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Deploy to Render (optional)
-        if: env.RENDER_API_KEY != '' && env.RENDER_SERVICE_ID != ''
-        # No continue-on-error: a failed deploy must fail the pipeline —
-        # hiding it here meant a red-deploy shipped silently (audit P1).
+      - name: Require real Render deployment credentials
+        # CI green is NOT evidence of a live deployment. Without these secrets
+        # nothing can be redeployed, so this job must fail loudly instead of
+        # skipping while still reporting success (audit: deploy illusion).
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+        run: |
+          if [ -z "$RENDER_API_KEY" ] || [ -z "$RENDER_SERVICE_ID" ]; then
+            echo "::error::RENDER_API_KEY / RENDER_SERVICE_ID secrets are not configured. Production redeploy cannot run — add both (Render dashboard -> smart-doc-backend service: API key + Service ID) or remove this deploy job deliberately."
+            exit 1
+          fi
+          echo "Render credentials present — proceeding with backend redeploy."
+
+      - name: Deploy backend to Render
         uses: johnbeynon/render-deploy-action@v0.0.8
         with:
           service-id: ${{ secrets.RENDER_SERVICE_ID }}
           api-key: ${{ secrets.RENDER_API_KEY }}
 
-      - name: Notify deployment
+      - name: Wait for backend readiness (/api/actuator/health)
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
         run: |
-          echo "✅ Deployment complete!"
-          echo "Images built: backend, frontend"
+          HOST=$(curl -s -H "Authorization: Bearer ${RENDER_API_KEY}" \
+            "https://api.render.com/v1/services/${RENDER_SERVICE_ID}" \
+            | jq -r '.serviceDetails.url // empty')
+          if [ -z "$HOST" ]; then
+            echo "::error::Could not resolve service URL from Render API"
+            exit 1
+          fi
+          echo "Polling ${HOST}/api/actuator/health (Spring cold start up to ~5 min)..."
+          for i in $(seq 1 20); do
+            CODE=$(curl -s -o /tmp/health.json -w '%{http_code}' --max-time 15 "${HOST}/api/actuator/health" || echo 000)
+            if [ "$CODE" = "200" ]; then
+              echo "Backend healthy: $(cat /tmp/health.json)"
+              exit 0
+            fi
+            echo "Attempt $i/20 — HTTP $CODE"
+            sleep 15
+          done
+          echo "::error::Backend /api/actuator/health did not return 200 within 5 minutes of deploy"
+          exit 1
+
+      - name: Report deployment outcome
+        run: |
+          echo "Deployment pipeline finished with a verified backend readiness probe."
+          echo "Images: backend + frontend built for GHCR/Render/Cloudflare consumers."
           if [ -n "${{ secrets.GHCR_TOKEN }}" ]; then
-            echo "Images pushed to GHCR"
+            echo "GHCR images pushed."
           else
-            echo "No registry credentials — images built locally only"
+            echo "GHCR images built locally only (no registry credentials)."
           fi
