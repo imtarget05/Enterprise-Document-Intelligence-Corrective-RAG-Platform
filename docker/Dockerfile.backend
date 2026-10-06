@@ -52,8 +52,11 @@ USER appuser
 # Expose port
 EXPOSE 8080
 
-# Health check (shell form so $PORT expands — must match the port Spring binds)
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+# Health check (shell form so $PORT expands — must match the port Spring binds).
+# start-period 300s: Spring Boot + Flyway against remote Neon can exceed the old
+# 60s window on constrained containers; give the JVM room before counting
+# failures.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=300s --retries=5 \
   CMD curl -f http://localhost:${PORT:-8080}/api/actuator/health || exit 1
 
 # JVM tuning for containers
