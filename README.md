@@ -33,9 +33,9 @@ Core workflow: `Upload → Retrieve → Verify → Cite → Answer`
 | LLM router / Keycloak (Render free) | — | **Down** — Keycloak had the same `$PORT` binding issue (fixed here); router requires Cloudflare credentials in the Render dashboard |
 | Python agent | — | Alive (separate service) |
 
-Hard gate before merging `fix/pages-api-h4mt` (the branch that repoints Pages and
-Docker build-args to h4mt): `curl https://smart-doc-backend-h4mt.onrender.com/api/actuator/health`
-must return `200`. The CI deploy job failing on missing Render credentials is
+The `fix/pages-api-h4mt` branch (repoints Pages + Docker build-args to h4mt) must **not** be
+merged until Render dashboard/OAuth console evidence confirms `h4mt` is a valid backend for
+this project; today `h4mt` is legacy/unresolved and `2hhz` is canonical. The CI deploy job failing on missing Render credentials is
 intentional honesty, not a regression.
 
 ## ✨ Key Features & Engineering Decisions
