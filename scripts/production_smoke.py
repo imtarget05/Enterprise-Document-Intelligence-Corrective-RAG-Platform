@@ -71,11 +71,21 @@ def main() -> int:
     r = s.post(f"{b}/auth/login", headers=h,
                json={"username": u, "password": SMOKE_PASSWORD}, timeout=120)
     jwt = r.json().get("token") or r.json().get("accessToken")
+    cookie_jwt = s.cookies.get("jwt_token")
+    # The prod profile suppresses the JSON `token` field and delivers the JWT
+    # only via the HttpOnly `jwt_token` cookie (CSRF-protected flow). Fall
+    # back to the session cookie so the same script works in both profiles.
+    if r.status_code == 200 and (jwt or cookie_jwt):
+        auth_detail = f"({r.status_code}, {'cookie' if cookie_jwt else 'bearer'})"
+    else:
+        auth_detail = f"({r.status_code}, no token in body or cookie)"
     results.append(check("JWT              ",
-                         r.status_code == 200 and bool(jwt), f"({r.status_code})"))
-    if not jwt:
+                         r.status_code == 200 and (jwt or cookie_jwt), auth_detail))
+    if not (jwt or cookie_jwt):
         return 1
-    ah = {"Authorization": f"Bearer {jwt}"}
+    # Cookie auth: the session already carries jwt_token — send no Authorization
+    # header. Bearer auth: attach the token from the JSON body.
+    ah = {} if cookie_jwt else {"Authorization": f"Bearer {jwt}"}
 
     def fresh_csrf():
         return s.get(f"{b}/csrf", timeout=60).json()["token"]
