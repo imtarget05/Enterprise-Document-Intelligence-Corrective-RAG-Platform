@@ -1,5 +1,13 @@
 # Smart Document Chatbot — Comprehensive Architecture & Production Audit
 
+> **HISTORICAL — dated 2026-09-03, SUPERSEDED in places (added 2026-10-06).**
+> Do NOT quote the verdict/test counts below as current: counts (583 total /
+> 259 BE / 99 FE / 213 Agent) predate the verified anchors (`CV_EVIDENCE.md`:
+> 319 BE + 104 FE + 219 agent-fast + 28 eval). "Production-Ready" / "All builds
+> passing" describe that snapshot, not the audited 2026-10-06 status (README
+> records backend + router down on Render free tier). Kept as evidence of
+> review history, not as a live claim.
+
 **Audit Date:** 2026-09-03  
 **Auditor:** AI System Evaluator  
 **Scope:** Full codebase (Backend, Frontend, Agent, Eval, CI/CD, Infra, Security)  

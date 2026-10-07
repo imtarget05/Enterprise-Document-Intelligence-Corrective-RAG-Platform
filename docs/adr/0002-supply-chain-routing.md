@@ -1,6 +1,18 @@
 # ADR 0002: Supply-Chain Intent Routing
 
-Status: Accepted
+Status: SUPERSEDED / REMOVED (2026-10-06, verified by `git grep` + `mvn test`)
+
+> **Removal record:** `SupplyChainIntentDetector.java` / `SupplyChainIntentDetectorTest.java`
+> do not exist at HEAD (`b046a02`) — zero hits in `backend/`, `frontend/`, `agent/`,
+> `llm-router/`, `eval/`, `scripts/`. The detector was removed in an earlier refactor;
+> this ADR is retained as historical context only. Current routing (verified by
+> `ChatServiceTest` 11/11 + `AgentClientTest` 5/5):
+>
+> ```text
+> Chat request → ChatService → mode routing
+>   ├─ default / mode:"agent" → AgentClient → Python Agent (Qdrant+BM25+RRF)
+>   └─ mode:"rag" (or Agent failure) → Spring CRAG → PostgreSQL lexical retrieval
+> ```
 
 ## Context
 

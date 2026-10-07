@@ -28,7 +28,7 @@ Verify: `psql $NEON_DATABASE_URL -c "select count(*) from documents;"` + `curl $
 ## Incident
 
 1. Detect via `BackendDown` / `SloBurnFast` alert (PagerDuty/Slack).
-2. Check `render.yaml` health: `curl https://smart-doc-backend.onrender.com/api/actuator/health`
+2. Check `render.yaml` health: `curl https://smartdoc-backend-2hhz.onrender.com/api/actuator/health`
 3. If DB down: promote Neon read-replica or restore from latest `pg_*.sql.gz`.
 4. If Qdrant down: recover from snapshot, re-index from Postgres `document_chunks`.
 5. Verify `docs/render-smoke-test.md` curl checks.

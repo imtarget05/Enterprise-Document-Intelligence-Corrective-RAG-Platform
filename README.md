@@ -28,7 +28,8 @@ Core workflow: `Upload → Retrieve → Verify → Cite → Answer`
 | Component | URL | State |
 |---|---|---|
 | Frontend (Cloudflare Pages) | https://smart-doc-chatbot.pages.dev | Serving; **built against the retired Express backend** (`smart-doc-backend.onrender.com`) — business API calls fail in the browser |
-| Spring backend (Render, canonical) | https://smart-doc-backend-h4mt.onrender.com | **Down** — `x-render-routing: no-server`. Root cause: the container listened on `8080` while Render health-checks `$PORT`; fixed in `application.yml` + `docker/Dockerfile.backend` + `docker/Dockerfile.keycloak` |
+| Spring backend (Render, operational) | https://smartdoc-backend-2hhz.onrender.com | Currently verified production API — used by Cloudflare Pages `pages.yml`, the CD frontend build, and production smoke tests |
+| Spring backend (Render, legacy) | https://smart-doc-backend-h4mt.onrender.com | Legacy/alternate endpoint — **status unresolved** (last known Down with `x-render-routing: no-server`); **not canonical** until re-verified via Render dashboard. Not to be referenced in new deploy config |
 | LLM router / Keycloak (Render free) | — | **Down** — Keycloak had the same `$PORT` binding issue (fixed here); router requires Cloudflare credentials in the Render dashboard |
 | Python agent | — | Alive (separate service) |
 
@@ -48,9 +49,9 @@ intentional honesty, not a regression.
 7. **Enterprise Security Stack**: HttpOnly SameSite cookie authentication + in-memory token state (replaces localStorage token storage), CSRF protection, sliding-window rate limiting, CORS, Audit Logging, and PII-aware guardrails. Password reset uses cryptographically secure single-use SHA-256 hashed tokens (`V21__password_reset_tokens.sql`) with generic request responses and IP/user rate limiting to eliminate account takeover vulnerabilities. Dependency posture (2026-10-05): `npm audit --omit=dev` reports **0 vulnerabilities** in production dependencies; remaining advisories (esbuild dev-server, braces via chokidar, vitest chain) are dev-only and fixable only via breaking upgrades (Vite 8 / Tailwind v4) — tracked, not hidden.
 8. **Real-Time Streaming & Endpoints**: Server-Sent Events (SSE) with progressive rendering via `POST /chat/stream` (with legacy `/chat/ask-stream`), search via `POST /search` and `POST /documents/search`, and owner-scoped ingestion monitoring via `GET /jobs/{id}`. Event sequence is `status → metadata → content chunk(s) → complete` (+ `error` on failure). Chunk granularity is word/full-answer depending on the serving path (Spring CRAG emits one content chunk; the Python agent word-splits the completed answer) — this is progressive rendering, not guaranteed provider token-by-token streaming. Dedicated `SseStreamManager`, deduplication via `ChatDedupService`, and dead-letter queue via `ChatDlqService`.
 9. **A/B Testing & Evaluation Framework**: Built-in evaluation suite supporting both fast, transparent mock fixture tests (`eval/run_fixture_eval.py` tagged as smoke tests) and live production benchmarks (`eval/run_live_benchmark.py`) computing real chunk-level Hit@K, Recall@K, and MRR.
-10. **Cloud-Native Storage**: Neon PostgreSQL (managed), Qdrant Cloud (vector), Cloudflare R2 (document blobs) — all connected and verified.
+10. **Cloud-Native Storage**: Neon PostgreSQL (managed), Qdrant Cloud (vector), Cloudflare R2 (document blobs) — wired in code/config (`render.yaml`, `docker/docker-compose.yml`); live reachability follows the Production status table above (backend/router currently down, not "verified live").
 11. **Durable Ingestion Queue (ADR-004) & Correlation Tracing**: The async document workflow runs as a DB-backed job with idempotent enqueue, `FOR UPDATE SKIP LOCKED` claiming, exponential-backoff retry, and durable dead-letter replay. `DocumentController` returns `jobId` in `UploadResponse` on `POST /documents`. SLF4J MDC binds `traceId` (from `X-Trace-Id` header), `jobId`, and `documentId` across the execution pipeline for end-to-end observability.
-12. **Cloud-Native Kubernetes Topology**: Declarative manifests in `k8s/` (`10-qdrant.yaml`, `15-llm-router.yaml`, `20-smartdoc-backend.yaml`, `30-smartdoc-frontend.yaml`) configure containerized deployments with horizontal pod autoscaling (HPA), non-root execution profiles, resource guarantees, and health probes.
+12. **Cloud-Native Kubernetes Topology (manifests-only, NOT live)**: Declarative manifests in `k8s/` (`10-qdrant.yaml`, `15-llm-router.yaml`, `20-smartdoc-backend.yaml`, `30-smartdoc-frontend.yaml`) configure containerized deployments with horizontal pod autoscaling (HPA), non-root execution profiles, resource guarantees, and health probes. These YAMLs are validated (`CV_EVIDENCE.md`) but describe a portability/demo target — no live cluster, metrics-server, or HPA operation is claimed.
 
 ---
 
@@ -304,7 +305,9 @@ make test-agent
 # fast path (bỏ integration/slow):
 make test-agent-fast  # pytest -m "not integration and not slow"
 
-# Backend (316 tests)
+# Backend — current verified baseline: 310 tests as of 2026-10-06 @ b046a02
+# (`mvn test` reactor summary; naive surefire-report grep-sum shows 319 due to a
+# stale VideoJobServiceTest report under target/ — clean with `mvn clean`)
 cd backend && mvn test
 
 # LLM Router (80 tests — MUST dùng llm-router/.venv)
