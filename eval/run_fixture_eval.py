@@ -8,7 +8,7 @@ End-to-end regression workflow:
 
 Usage:
     python eval/run_fixture_eval.py \
-        --base-url https://smart-doc-backend-h4mt.onrender.com/api \
+        --base-url https://smartdoc-backend-2hhz.onrender.com/api \
         [--questions eval/agent_questions.json]
 
 Credentials are created at runtime — no secrets are stored or printed.
