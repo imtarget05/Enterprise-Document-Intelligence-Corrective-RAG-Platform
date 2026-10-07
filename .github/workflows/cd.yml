@@ -88,7 +88,7 @@ jobs:
             ${{ env.REGISTRY }}/${{ steps.image-names.outputs.frontend }}:${{ steps.tag.outputs.value }}
             ${{ env.REGISTRY }}/${{ steps.image-names.outputs.frontend }}:latest
           build-args: |
-            VITE_API_URL=https://smart-doc-backend.onrender.com/api
+            VITE_API_URL=https://smartdoc-backend-2hhz.onrender.com/api
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
