@@ -456,7 +456,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build backend Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/Dockerfile.backend
@@ -466,7 +466,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build frontend Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/Dockerfile.frontend
@@ -508,7 +508,7 @@ jobs:
           password: ${{ secrets.GHCR_TOKEN }}
 
       - name: Build and push backend Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/Dockerfile.backend
@@ -520,7 +520,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build and push frontend Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/Dockerfile.frontend
