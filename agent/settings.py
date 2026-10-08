@@ -10,7 +10,7 @@ Security note:
 
 import os
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from dotenv import load_dotenv
 from pydantic import field_validator
@@ -134,6 +134,13 @@ class Settings(BaseSettings):
     # Governance — Human-in-the-Loop approval for orchestrated actions
     hitl_require_approval: bool = True
     hitl_approval_ttl_seconds: int = 3600
+    # HITL approval store backend: "auto" | "redis" | "memory".
+    # auto → Redis when REDIS_URL is set, otherwise in-memory.
+    hitl_store_backend: str = "auto"
+    # Fail-closed when the Redis approval store is unreachable.
+    # None → auto-derive from APP_ENV (fail closed everywhere except
+    # local/dev/development/test), mirroring rate_limiter.py.
+    hitl_fail_closed: Optional[bool] = None
     notion_api_token: str = ""
     teams_webhook_url: str = ""
 
@@ -170,6 +177,14 @@ class Settings(BaseSettings):
     # per-IP counting across multiple replicas. Falls back to in-memory if blank.
     # Example: redis://redis:6379/0
     redis_url: str = ""
+
+    # ── LangGraph ───────────────────────────────────────────────────────────
+    # SQLite file backing the workflow checkpointer — what allows an interrupted
+    # run to be resumed after a restart. A relative path resolves against the
+    # service working directory (the container image uses /app). Override with
+    # LANGGRAPH_CHECKPOINT_DB. Use ":memory:" only for throwaway processes:
+    # checkpoints are then lost as soon as the process exits.
+    langgraph_checkpoint_db: str = "checkpoints.sqlite"
 
     # ── Validators ───────────────────────────────────────────────────────────
     @field_validator("internal_service_token")

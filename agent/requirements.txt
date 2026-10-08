@@ -11,6 +11,8 @@ python-multipart==0.0.9
 # LangGraph & LangChain (Phase 2 - Multi-agent orchestration)
 # NOTE: langgraph 0.2.76 requires langchain-core >= 0.2.43
 langgraph==0.2.76
+langgraph-checkpoint-sqlite==3.1.1
+aiosqlite==0.22.1
 langchain==0.2.16
 langchain-core==0.2.43
 langchain-community==0.2.16

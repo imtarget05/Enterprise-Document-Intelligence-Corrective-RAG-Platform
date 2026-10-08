@@ -1,0 +1,111 @@
+# Shared Redis for the agent service HITL approval store (and rate limiting).
+# Internal-only ClusterIP: no ingress, no NodePort. Password comes from the
+# portfolio-secrets Secret — add a REDIS_PASSWORD key (URL-safe: no @ : / # ?)
+# or create the Secret with: kubectl -n portfolio create secret generic
+# portfolio-secrets --from-literal=REDIS_PASSWORD='...' (see note in
+# 25-smartdoc-agent.yaml — the agent builds REDIS_URL from the same value).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: smartdoc-redis
+  namespace: portfolio
+  labels:
+    app: smartdoc-redis
+    role: cache
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: smartdoc-redis
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: smartdoc-redis
+        role: cache
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        imagePullPolicy: IfNotPresent
+        args:
+        - redis-server
+        - --appendonly
+        - "yes"
+        - --requirepass
+        - $(REDIS_PASSWORD)
+        ports:
+        - name: redis
+          containerPort: 6379
+        env:
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: portfolio-secrets
+              key: REDIS_PASSWORD
+        readinessProbe:
+          tcpSocket:
+            port: redis
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          failureThreshold: 3
+        livenessProbe:
+          tcpSocket:
+            port: redis
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          failureThreshold: 3
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: smartdoc-redis-data
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: smartdoc-redis-data
+  namespace: portfolio
+  labels:
+    app: smartdoc-redis
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: smartdoc-redis
+  namespace: portfolio
+  labels:
+    app: smartdoc-redis
+spec:
+  type: ClusterIP
+  selector:
+    app: smartdoc-redis
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: redis

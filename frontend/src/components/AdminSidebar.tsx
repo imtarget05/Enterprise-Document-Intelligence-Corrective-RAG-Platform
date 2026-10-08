@@ -1,14 +1,18 @@
 interface AdminSidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
+  /** False for ENGINEER (sees only the approvals queue, not admin tabs). */
+  canAdmin?: boolean;
 }
 
 const TABS = [
-  { id: "overview", label: "Tổng quan", icon: "📊" },
-  { id: "audit", label: "Audit Logs", icon: "📋" },
+  { id: "overview", label: "Tổng quan", icon: "📊", adminOnly: true },
+  { id: "approvals", label: "Phê duyệt", icon: "⏸", adminOnly: false },
+  { id: "audit", label: "Audit Logs", icon: "📋", adminOnly: true },
 ];
 
-export default function AdminSidebar({ activeTab, onTabChange }: AdminSidebarProps) {
+export default function AdminSidebar({ activeTab, onTabChange, canAdmin = true }: AdminSidebarProps) {
+  const visibleTabs = TABS.filter((tab) => canAdmin || !tab.adminOnly);
   return (
     <aside className="w-56 h-full bg-surface border-r border-outline flex flex-col shrink-0">
       <div className="p-4 border-b border-outline">
@@ -28,7 +32,7 @@ export default function AdminSidebar({ activeTab, onTabChange }: AdminSidebarPro
         </button>
       </div>
       <nav className="flex-1 p-2 space-y-0.5">
-        {TABS.map((tab) => (
+        {visibleTabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => onTabChange(tab.id)}

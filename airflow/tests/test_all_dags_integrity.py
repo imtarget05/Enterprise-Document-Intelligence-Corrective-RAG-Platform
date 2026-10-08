@@ -1,4 +1,4 @@
-"""Integrity and syntax test for all 4 Airflow DAGs across SmartDocument, CreditFlow, and SupportDesk."""
+"""Integrity and syntax test for Smart-Document-Chatbot Airflow DAGs."""
 import ast
 import glob
 import os
@@ -8,7 +8,7 @@ DAG_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "dags"))
 
 def test_dag_files_exist():
     dag_files = glob.glob(os.path.join(DAG_DIR, "*.py"))
-    assert len(dag_files) >= 4, f"Expected at least 4 DAG files, found {len(dag_files)}: {dag_files}"
+    assert len(dag_files) >= 2, f"Expected at least 2 DAG files, found {len(dag_files)}: {dag_files}"
 
 @pytest.mark.parametrize("dag_path", glob.glob(os.path.join(DAG_DIR, "*.py")))
 def test_dag_python_syntax(dag_path):

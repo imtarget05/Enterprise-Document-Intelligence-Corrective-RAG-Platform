@@ -23,6 +23,7 @@ def _settings() -> Settings:
     return Settings(
         cloudflare_chat_model=MODEL,
         cloudflare_timeout_seconds=3.0,
+        internal_token="router-test-secret",
     )
 
 
@@ -277,7 +278,11 @@ def test_main_busy_maps_503_retry_after():
 
     app = create_app(_settings(), router=AlwaysBusyRouter())  # type: ignore[arg-type]
     with TestClient(app, raise_server_exceptions=False) as client:
-        r = client.post("/api/chat", json={"messages": [{"role": "user", "content": "hi"}]})
+        r = client.post(
+            "/api/chat",
+            json={"messages": [{"role": "user", "content": "hi"}]},
+            headers={"X-Internal-Token": "router-test-secret"},
+        )
         assert r.status_code == 503
         assert "retry-after" in {k.lower() for k in r.headers}
         assert r.headers["retry-after"] == "2"

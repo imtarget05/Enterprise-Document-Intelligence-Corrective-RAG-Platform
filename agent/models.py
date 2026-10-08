@@ -71,6 +71,10 @@ class AgentResponse(BaseModel):
     sources: List[Dict[str, Any]] = []
     confidence_score: float = 0.0
     action_result: Optional[Dict[str, Any]] = None
+    # HITL contract for the main chat flow (Java backend + frontend parse
+    # these instead of digging inside action_result):
+    hitl_pending: bool = False  # True → action paused, awaiting human approval
+    hitl_approval_id: Optional[str] = None  # request id for /agent/approvals/{id}
     report_path: Optional[str] = None
     trace_id: Optional[str] = None
     tokens_used: Optional[int] = None

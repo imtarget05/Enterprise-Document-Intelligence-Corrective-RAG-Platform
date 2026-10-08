@@ -4,5 +4,7 @@ namespace: portfolio
 resources:
   - 10-qdrant.yaml
   - 15-llm-router.yaml
+  - 16-redis.yaml
   - 20-smartdoc-backend.yaml
+  - 25-smartdoc-agent.yaml
   - 30-smartdoc-frontend.yaml

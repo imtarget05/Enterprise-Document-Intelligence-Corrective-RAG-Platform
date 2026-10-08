@@ -26,7 +26,10 @@ jobs:
       - run: npm run build
         working-directory: frontend
         env:
-          VITE_API_URL: ${{ vars.VITE_API_URL || 'https://smartdoc-backend-2hhz.onrender.com/api' }}
+          # Single source: repo variable SMARTDOC_API_URL (fallback = current
+          # canonical backend). Mirrors cd.yml GHCR frontend build-arg so the
+          # Pages deploy and the container image can never drift apart.
+          VITE_API_URL: ${{ vars.SMARTDOC_API_URL || 'https://smartdoc-backend-2hhz.onrender.com/api' }}
       - name: Ensure Pages project exists
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

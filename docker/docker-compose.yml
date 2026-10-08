@@ -200,6 +200,28 @@ services:
       - prometheus
 
   # --- AI Agent Automation Service (LangGraph multi-agent orchestration) ---
+  # --- Redis (HITL approval store + rate limiting, prod) ---
+  # Internal-only: no published ports. The agent reaches it as redis:6379.
+  # Production MUST set REDIS_PASSWORD (URL-safe, no @ : / # ?) and mirror it
+  # into REDIS_URL below — auth mismatch surfaces loudly as fail-closed 503s.
+  redis:
+    image: redis:7-alpine
+    container_name: smart-document-chatbox-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-change-me-in-production}
+    volumes:
+      - redis_data:/data
+    expose:
+      - "6379"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-change-me-in-production}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   agent:
     build:
       context: ../agent
@@ -239,6 +261,14 @@ services:
       JIRA_API_TOKEN: ${JIRA_API_TOKEN:-}
       NOTION_API_TOKEN: ${NOTION_API_TOKEN:-}
       REPORT_OUTPUT_DIR: /app/reports
+      # HITL approval store: shared Redis so paused approvals survive restarts
+      # and every replica sees the same queue. REDIS_URL must embed the same
+      # REDIS_PASSWORD as the redis service above (URL-safe password).
+      REDIS_URL: ${REDIS_URL:-redis://:change-me-in-production@redis:6379/0}
+      HITL_STORE_BACKEND: ${HITL_STORE_BACKEND:-redis}
+      HITL_FAIL_CLOSED: ${HITL_FAIL_CLOSED:-true}
+      HITL_REQUIRE_APPROVAL: ${HITL_REQUIRE_APPROVAL:-true}
+      APP_ENV: ${APP_ENV:-production}
     ports:
       - "${AGENT_PORT:-9000}:9000"
     volumes:
@@ -251,6 +281,8 @@ services:
       start_period: 30s
     depends_on:
       llm-router:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       app-network:
@@ -372,6 +404,8 @@ volumes:
   grafana_data:
     driver: local
   agent_reports:
+    driver: local
+  redis_data:
     driver: local
   airflow_postgres_data:
     driver: local

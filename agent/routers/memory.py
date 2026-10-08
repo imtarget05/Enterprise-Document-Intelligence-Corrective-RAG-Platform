@@ -3,13 +3,17 @@ Graph Memory (GraphRAG) endpoints for knowledge graph retrieval.
 """
 
 import logging
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 import state
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/agent/memory/graph", tags=["memory"])
+router = APIRouter(
+    prefix="/agent/memory/graph",
+    tags=["memory"],
+    dependencies=[Depends(state.verify_and_rate_limit)],
+)
 
 
 @router.get("/stats")

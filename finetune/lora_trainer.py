@@ -301,7 +301,7 @@ class LoRATrainer:
             raise RuntimeError("peft and transformers are required.")
         from peft import PeftModel
 
-        tok_path = Path(tokenizer_path) if adapter_path else Path(adapter_path)
+        tok_path = Path(tokenizer_path) if tokenizer_path else Path(adapter_path)
         tokenizer = AutoTokenizer.from_pretrained(tok_path)
         model = AutoModelForCausalLM.from_pretrained(base_model, device_map="auto")
         model = PeftModel.from_pretrained(model, str(adapter_path))

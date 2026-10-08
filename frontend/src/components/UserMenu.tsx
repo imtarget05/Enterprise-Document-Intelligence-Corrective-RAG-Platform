@@ -16,7 +16,7 @@ function useAppView(): [AppView, (v: AppView) => void] {
 export default function UserMenu({ username, role, onLogout }: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { isAdmin } = useAuth();
+  const { isAdmin, isEngineer } = useAuth();
   const [, setView] = useAppView();
 
   const initials = username ? username.slice(0, 2).toUpperCase() : "U";
@@ -82,13 +82,13 @@ export default function UserMenu({ username, role, onLogout }: UserMenuProps) {
               </svg>
               Trò chuyện
             </button>
-            {isAdmin && (
+            {(isAdmin || isEngineer) && (
               <button
                 onClick={() => { setIsOpen(false); setView("admin"); }}
                 className="w-full text-left px-4 py-2.5 text-[13px] text-onsurface-variant hover:bg-surface-container transition-colors duration-200 flex items-center gap-3"
               >
                 <span className="text-[15px]">🛡️</span>
-                Quản trị
+                {isAdmin ? "Quản trị" : "Phê duyệt"}
               </button>
             )}
             <div className="h-[1px] bg-outline my-1" />

@@ -178,6 +178,10 @@ public class ChatService {
                 ChatMessage saved = saveResponse(ownerUsername, request, userMessage,
                         agentResp.answer(), null);
                 response = toResponse(ownerUsername, saved, emptyCrag("agentic"));
+                // HITL: surface a paused action so the frontend can render the
+                // approval card (approve/reject via /api/agent/approvals).
+                response.setHitlPending(agentResp.hitlPending());
+                response.setHitlApprovalId(agentResp.approvalId());
                 ragMetrics.recordRequest("agentic", "high");
                 ragMetrics.recordAnswer("agentic", false);
                 ragMetrics.recordLatency(System.currentTimeMillis() - started);
@@ -286,12 +290,17 @@ public class ChatService {
                         agentMeta.put("sources", agentResp.sources());
                         agentMeta.put("sourceChunks", "");
                         agentMeta.put("documentId", request.getDocumentId());
+                        agentMeta.put("hitlPending", agentResp.hitlPending());
+                        agentMeta.put("hitlApprovalId", agentResp.approvalId());
                         emitter.send(SseEmitter.event().name("metadata").data(agentMeta));
                         emitter.send(SseEmitter.event().name("chunk").data(agentResp.answer()));
 
                         ChatMessage saved = saveResponse(ownerUsername, request, userMessage,
                                 agentResp.answer(), null);
-                        emitter.send(SseEmitter.event().name("complete").data(toResponse(ownerUsername, saved, emptyCrag("agentic"))));
+                        ChatResponse done = toResponse(ownerUsername, saved, emptyCrag("agentic"));
+                        done.setHitlPending(agentResp.hitlPending());
+                        done.setHitlApprovalId(agentResp.approvalId());
+                        emitter.send(SseEmitter.event().name("complete").data(done));
                         emitter.complete();
                         return;
                     } catch (Exception e) {

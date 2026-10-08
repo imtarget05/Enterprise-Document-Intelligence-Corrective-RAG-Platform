@@ -30,6 +30,7 @@ LM_EMBED_MODEL = "text-embedding-nomic-embed-text-v1.5"
 CF_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
 
 LM_SETTINGS = Settings(
+    internal_token="router-test-secret",
     local_lmstudio_url="http://localhost:1234/v1",
     local_lmstudio_model=LM_MODEL,
     local_lmstudio_embed_model=LM_EMBED_MODEL,
@@ -303,7 +304,11 @@ def test_embeddings_route_prefers_lmstudio():
     router = FakeRouter()
     app = create_app(LM_SETTINGS, router=router)  # type: ignore[arg-type]
     with TestClient(app) as client:
-        response = client.post("/api/embeddings", json={"prompt": "hi"})
+        response = client.post(
+            "/api/embeddings",
+            json={"prompt": "hi"},
+            headers={"X-Internal-Token": "router-test-secret"},
+        )
 
     assert response.status_code == 200
     assert response.json()["backend"] == "local_lmstudio"

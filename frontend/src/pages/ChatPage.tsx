@@ -7,6 +7,7 @@ import { csrfHeaders } from "../csrf";
 import type { Document, ChatMessage as ChatMessageType, SourceCitation } from "../types";
 import SourceCitations from "../components/SourceCitations";
 import MessageBubble from "../components/MessageBubble";
+import ApprovalCard from "../components/ApprovalCard";
 import EvidenceState from "../components/EvidenceState";
 import DocumentViewer from "../components/DocumentViewer";
 import AppBar from "../components/AppBar";
@@ -273,6 +274,8 @@ export default function ChatPage() {
                       ragStrategy: meta.ragStrategy ?? null,
                       confidence: meta.confidence ?? null,
                       agentType: meta.agentType ?? null,
+                      hitlPending: meta.hitlPending ?? null,
+                      hitlApprovalId: meta.hitlApprovalId ?? null,
                     }
                   : msg,
               ),
@@ -374,6 +377,21 @@ export default function ChatPage() {
                     <div key={msg.id || idx} className="space-y-3">
                       <MessageBubble content={msg.userMessage} role="user" />
                       <MessageBubble content={msg.aiResponse} role="assistant" isStreaming={msg.isStreaming} />
+                      {msg.hitlApprovalId && !msg.isStreaming && (
+                        <ApprovalCard
+                          approvalId={msg.hitlApprovalId}
+                          token={token}
+                          onDecided={() =>
+                            setMessages((prev) =>
+                              prev.map((m) =>
+                                m.id === msg.id || m === msg
+                                  ? { ...m, hitlPending: false }
+                                  : m,
+                              ),
+                            )
+                          }
+                        />
+                      )}
                       {msg.agentType && !msg.isStreaming && (
                         <div data-testid="agent-badge" className="flex items-center gap-2 ml-1">
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-material-full bg-google-blue/10 text-google-blue text-[11px] font-medium">

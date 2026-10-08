@@ -214,7 +214,7 @@ class ChatServiceTest {
         when(agentClient.invokeAgent(eq("alice"), eq("session-1"),
                 eq("who are the suppliers?"), nullable(String.class)))
                 .thenReturn(new AgentClient.AgentResponse("supplier list", "rag",
-                        List.of(), 0.9, "trace-1"));
+                        List.of(), 0.9, "trace-1", false, null));
         // RAG fallback path used for the suppressed (dedup'd) second request.
         when(retrievalService.retrieve(eq("alice"), eq(1L), anyString(), anyInt()))
                 .thenReturn(List.of(new RetrievalService.RetrievalResult(
@@ -242,7 +242,7 @@ class ChatServiceTest {
         when(agentClient.invokeAgent(eq("alice"), eq("session-1"),
                 eq("general question"), nullable(String.class)))
                 .thenReturn(new AgentClient.AgentResponse("agent answer", "general",
-                        List.of(), 0.95, "trace-10"));
+                        List.of(), 0.95, "trace-10", false, null));
         stubSaveReturnsArgument();
 
         ChatRequest req = ChatRequest.builder()
@@ -260,8 +260,28 @@ class ChatServiceTest {
     }
 
     @Test
-    void explicitRagModeBypassesAgentDirectlyToCrag() {
-        when(retrievalService.retrieve(eq("alice"), eq(1L), anyString(), anyInt()))
+    void agenticPausedActionPropagatesHitlFieldsToResponse() {
+        when(agentClient.invokeAgent(eq("alice"), eq("session-1"),
+                eq("send the report by email"), nullable(String.class)))
+                .thenReturn(new AgentClient.AgentResponse("⏸ approval needed", "action",
+                        List.of(), 0.5, "trace-hitl", true, "hitl-xyz"));
+        stubSaveReturnsArgument();
+
+        ChatRequest req = ChatRequest.builder()
+                .sessionId("session-1")
+                .documentId(1L)
+                .message("send the report by email")
+                .build();
+
+        ChatResponse response = chatService.processQuery("alice", req);
+
+        assertEquals("agentic", response.getRagStrategy());
+        assertTrue(response.getHitlPending());
+        assertEquals("hitl-xyz", response.getHitlApprovalId());
+    }
+
+    @Test
+    void explicitRagModeBypassesAgentDirectlyToCrag() {        when(retrievalService.retrieve(eq("alice"), eq(1L), anyString(), anyInt()))
                 .thenReturn(List.of(new RetrievalService.RetrievalResult("direct content", 0.9)));
         when(messageHandler.buildPrompt(anyString(), anyList())).thenReturn("direct prompt");
         when(messageHandler.callLLM("direct prompt")).thenReturn("rag answer");
