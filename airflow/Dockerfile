@@ -1,14 +1,29 @@
-# Airflow service image for the Smart Document Chatbot.
-# Adds the project ingestion DAGs and the deps they need (psycopg2, requests).
-FROM apache/airflow:2.9.3
+# Airflow multi-project platform image for SmartDocument, CreditFlow, and SupportDesk.
+FROM apache/airflow:2.9.3-python3.11
 
 USER root
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc libpq-dev curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+USER airflow
+WORKDIR /opt/airflow
+
 COPY requirements.txt /requirements.txt
 RUN pip install --no-cache-dir -r /requirements.txt
-USER airflow
 
-# DAGs are mounted at /opt/airflow/dags via the compose volume, so no COPY needed.
-# The project itself (finetune/, eval/, scripts/) is mounted read-only at
-# /opt/smartdoc so the retrain DAG can run finetune/build_dataset.py with
-# FINETUNE_ROOT=/opt/smartdoc. Without that mount the DAG fails loudly.
-ENV FINETUNE_ROOT=/opt/smartdoc
+COPY --chown=airflow:root dags/ /opt/airflow/dags/
+
+ENV AIRFLOW__CORE__DAGS_FOLDER=/opt/airflow/dags \
+    AIRFLOW__CORE__LOAD_EXAMPLES=False \
+    AIRFLOW__CORE__EXECUTOR=LocalExecutor \
+    AIRFLOW__WEBSERVER__RBAC=True \
+    AIRFLOW__WEBSERVER__EXPOSE_CONFIG=False \
+    FINETUNE_ROOT=/opt/smartdoc
+
+EXPOSE 8080
+
+ENTRYPOINT ["/entrypoint.sh"]
