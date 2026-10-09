@@ -129,6 +129,26 @@ Optional for 8-bit training:
 pip install bitsandbytes
 ```
 
+## Local Training Runner (TRAINING_RUNNER_URL contract)
+
+`agent/local_training_runner.py` is the external-runner side of
+`agent/training_jobs.py`, running locally on Apple Silicon (MPS). It accepts
+`POST /jobs`, spawns `lora_trainer.py`, and reports the real result
+(`model_version`, `adapter_uri`, `sha256`, `metrics` from `trainer_state.json`)
+back via the job's `callback_url` + `X-Callback-Token` (validated by
+`/v1/training-jobs/{job_id}/callback`).
+
+```bash
+# from repo root
+python -m agent.local_training_runner            # listens on :8791
+export TRAINING_RUNNER_URL=http://127.0.0.1:8791 # then POST /v1/training-jobs
+```
+
+Default base model `Qwen/Qwen2.5-0.5B-Instruct` trains on M1 in ~2 min;
+override with `LORA_BASE_MODEL` / `LORA_EPOCHS` / `LORA_MAX_LENGTH`.
+Proven end-to-end locally: job `lora-20261009.001023-E7A2B2`,
+eval_loss 2.67, perplexity 14.46.
+
 ## Integration with Smart Document Chatbot
 
 After training, the adapter can be served via:

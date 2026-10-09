@@ -171,3 +171,5 @@ tasks/
 .terraform/
 *.tfstate*
 .terraform.lock.hcl
+finetune/adapters/runner-*
+finetune/adapters/lora-m1-real

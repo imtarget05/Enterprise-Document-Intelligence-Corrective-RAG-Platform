@@ -6,6 +6,7 @@ returns a job identity. Serving traffic never changes until an explicit,
 authenticated promotion.
 """
 
+import hmac
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -58,16 +59,12 @@ async def get_training_job(job_id: str):
     return job.result_payload()
 
 
-@router.post("/training-jobs/{job_id}/result", dependencies=[Depends(state.verify_internal_token)])
-async def record_training_job_result(job_id: str, request: Request):
-    """Record the runner's immutable result for one specific job."""
-    job = _store.load(job_id)
-    if job is None:
-        raise HTTPException(status_code=404, detail="TRAINING_JOB_NOT_FOUND")
-    try:
-        payload = await request.json()
-    except Exception:
-        raise HTTPException(status_code=400, detail="JSON body required")
+def _record_result(job, payload: dict):
+    """Validate + persist a runner result; register a Candidate on success.
+
+    Shared by the internal-token ``/result`` route and the per-job
+    ``/callback`` route so both enforce the exact same immutability rules.
+    """
     ok, reason = validate_training_result(payload)
     if not ok:
         apply_runner_result(job, payload, store=_store)
@@ -80,6 +77,40 @@ async def record_training_job_result(job_id: str, request: Request):
         except Exception as exc:  # registration must not mask the job result
             logger.warning("Candidate registration skipped: %s", exc)
     return {**job.result_payload(), "candidate_version": candidate}
+
+
+@router.post("/training-jobs/{job_id}/result", dependencies=[Depends(state.verify_internal_token)])
+async def record_training_job_result(job_id: str, request: Request):
+    """Record the runner's immutable result for one specific job."""
+    job = _store.load(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="TRAINING_JOB_NOT_FOUND")
+    try:
+        payload = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="JSON body required")
+    return _record_result(job, payload)
+
+
+@router.post("/training-jobs/{job_id}/callback")
+async def training_job_callback(job_id: str, request: Request):
+    """Runner callback: authenticated by the per-job ``callback_token``.
+
+    This is the endpoint the runner receives as ``callback_url`` at submit
+    time. The token is generated with the job and compared in constant time;
+    it is never derivable from the job id.
+    """
+    job = _store.load(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="TRAINING_JOB_NOT_FOUND")
+    token = request.headers.get("X-Callback-Token", "")
+    if not job.callback_token or not hmac.compare_digest(token, job.callback_token):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    try:
+        payload = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="JSON body required")
+    return _record_result(job, payload)
 
 
 @router.post("/training-jobs/{job_id}/promote", dependencies=[Depends(state.verify_internal_token)])
