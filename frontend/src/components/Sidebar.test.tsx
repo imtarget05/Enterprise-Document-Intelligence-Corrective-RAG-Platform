@@ -227,4 +227,73 @@ describe("Sidebar", () => {
     expect(onDeleteBatchDocs).toHaveBeenCalledTimes(1);
     expect(onDeleteBatchDocs).toHaveBeenCalledWith([1, 2]);
   });
+
+  it("toggles a document's selection when its row is clicked in multi-select mode", async () => {
+    const user = userEvent.setup();
+    const onSelectDoc = vi.fn();
+    renderSidebar({ documents: mockDocuments, onSelectDoc });
+
+    await user.click(screen.getByRole("button", { name: "Chọn nhiều" }));
+
+    const row = screen.getByText("Document One").closest('[role="button"]')!;
+    await user.click(row);
+    expect(screen.getByText("Đã chọn: 1")).toBeInTheDocument();
+    expect(onSelectDoc).not.toHaveBeenCalled();
+
+    await user.click(row);
+    expect(screen.getByText("Đã chọn: 0")).toBeInTheDocument();
+  });
+
+  it("toggles selection with the Enter and Space keys on a document row", async () => {
+    const user = userEvent.setup();
+    renderSidebar({ documents: mockDocuments });
+
+    await user.click(screen.getByRole("button", { name: "Chọn nhiều" }));
+
+    const row = screen.getByText("Document Two").closest('[role="button"]')!;
+    row.focus();
+    await user.keyboard("{Enter}");
+    expect(screen.getByText("Đã chọn: 1")).toBeInTheDocument();
+
+    await user.keyboard(" ");
+    expect(screen.getByText("Đã chọn: 0")).toBeInTheDocument();
+  });
+
+  it("toggles a document via its checkbox without selecting the document", async () => {
+    const user = userEvent.setup();
+    const onSelectDoc = vi.fn();
+    renderSidebar({ documents: mockDocuments, onSelectDoc });
+
+    await user.click(screen.getByRole("button", { name: "Chọn nhiều" }));
+
+    await user.click(screen.getByLabelText("Chọn tài liệu Document One"));
+    expect(screen.getByText("Đã chọn: 1")).toBeInTheDocument();
+    expect(onSelectDoc).not.toHaveBeenCalled();
+  });
+
+  it("deselects all documents when 'Chọn tất cả' is clicked twice", async () => {
+    const user = userEvent.setup();
+    renderSidebar({ documents: mockDocuments });
+
+    await user.click(screen.getByRole("button", { name: "Chọn nhiều" }));
+    const selectAll = screen.getByLabelText("Chọn tất cả tài liệu");
+    await user.click(selectAll);
+    expect(screen.getByText("Đã chọn: 2")).toBeInTheDocument();
+
+    await user.click(selectAll);
+    expect(screen.getByText("Đã chọn: 0")).toBeInTheDocument();
+  });
+
+  it("exits multi-select mode and clears the selection when 'Hủy chọn' is clicked", async () => {
+    const user = userEvent.setup();
+    renderSidebar({ documents: mockDocuments });
+
+    await user.click(screen.getByRole("button", { name: "Chọn nhiều" }));
+    await user.click(screen.getByLabelText("Chọn tất cả tài liệu"));
+    expect(screen.getByText("Đã chọn: 2")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Hủy chọn" }));
+    expect(screen.getByRole("button", { name: "Chọn nhiều" })).toBeInTheDocument();
+    expect(screen.queryByText("Đã chọn: 2")).not.toBeInTheDocument();
+  });
 });
