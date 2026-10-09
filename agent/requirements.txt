@@ -9,9 +9,11 @@ uvicorn[standard]==0.30.1
 python-multipart==0.0.9
 
 # LangGraph & LangChain (Phase 2 - Multi-agent orchestration)
-# NOTE: langgraph 0.2.76 requires langchain-core >= 0.2.43
+# NOTE: langgraph 0.2.76 requires langchain-core >= 0.2.43 and
+# langgraph-checkpoint>=2.0.10,<3.0.0 — sqlite checkpoint must stay on 2.x
+# (3.x needs langgraph-checkpoint>=4.1 → ResolutionImpossible in CI/Render).
 langgraph==0.2.76
-langgraph-checkpoint-sqlite==3.1.1
+langgraph-checkpoint-sqlite==2.0.11
 aiosqlite==0.22.1
 langchain==0.2.16
 langchain-core==0.2.43
