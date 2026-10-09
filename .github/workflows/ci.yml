@@ -327,18 +327,40 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Run Trivy vulnerability scanner
-        # Informational scan (exit-code: 0 — findings reported, not blocking).
-        # continue-on-error: Trivy periodically hits public Maven Central 429
-        # rate-limits while resolving Java deps; that is infra noise, not a
-        # vulnerability, and must not red the whole pipeline.
-        continue-on-error: true
+      - name: Run Trivy vulnerability scanner (blocking, table output)
+        # Blocking scan: exit-code 1 fails the job on CRITICAL/HIGH findings
+        # (ignore-unfixed skips CVEs with no patch available yet — nothing
+        # actionable, so they must not block merges). No continue-on-error:
+        # if Trivy flakes (e.g. Maven Central 429), the failure is visible
+        # and the job can be re-run instead of silently passing.
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'fs'
           scan-ref: '.'
           severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+          format: 'table'
+          exit-code: '1'
+
+      - name: Run Trivy vulnerability scanner (SARIF report)
+        # Non-blocking second pass that only produces the SARIF report for
+        # the GitHub Security tab (same pattern as Semgrep generateSarif
+        # below); the table pass above is the one that gates the merge.
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+          format: 'sarif'
+          output: 'trivy-results.sarif'
           exit-code: '0'
+
+      - name: Upload Trivy SARIF to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
 
       - name: Check for hardcoded secrets
         uses: trufflesecurity/trufflehog@main
@@ -346,6 +368,9 @@ jobs:
           extra_args: --only-verified
 
       - name: Semgrep SAST (Python + JS)
+        # continue-on-error kept intentionally: Semgrep rules are heuristic
+        # and can flag false positives; findings are still reported via SARIF
+        # (generateSarif) without blocking merges. Trivy is the gate.
         continue-on-error: true
         uses: returntocorp/semgrep-action@v1
         with:
@@ -356,6 +381,10 @@ jobs:
           generateSarif: "true"
 
       - name: Initialize CodeQL
+        # continue-on-error kept intentionally (here and on Autobuild/Analyze
+        # below): CodeQL scans 3 languages incl. autobuild of Java/JS, which
+        # can fail on environments it cannot build; results still land in the
+        # Security tab when they succeed. Trivy is the blocking gate.
         continue-on-error: true
         uses: github/codeql-action/init@v4
         with:

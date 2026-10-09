@@ -1,4 +1,5 @@
 import asyncio
+import hmac
 import logging
 from contextlib import asynccontextmanager
 from typing import Any
@@ -46,7 +47,9 @@ def create_app(
 
     def verify_internal_token(request: Request) -> None:
         expected = app_settings.internal_token
-        if expected and request.headers.get("X-Internal-Token", "") != expected:
+        if not expected or not hmac.compare_digest(
+            request.headers.get("X-Internal-Token", ""), expected
+        ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized"
             )
@@ -167,6 +170,12 @@ def create_app(
 
     @app.websocket("/ws/agent/{job_id}")
     async def agent_jobs_ws(websocket: WebSocket, job_id: str):
+        expected = app_settings.internal_token
+        if not expected or not hmac.compare_digest(
+            websocket.headers.get("X-Internal-Token", ""), expected
+        ):
+            await websocket.close(code=1008)
+            return
         """Stream job status cho client tới khi done/failed."""
         from . import jobs
         await websocket.accept()

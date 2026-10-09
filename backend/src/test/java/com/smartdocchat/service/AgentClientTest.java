@@ -6,6 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.MDC;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.client.MockRestServiceServer;
@@ -15,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -25,6 +27,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 /**
@@ -135,5 +138,100 @@ class AgentClientTest {
                         new IllegalStateException("boom")));
 
         assertTrue(ex.getMessage().contains("circuit open"), ex.getMessage());
+    }
+
+    // ------------------------------------------------------------------
+    // HITL approvals
+    // ------------------------------------------------------------------
+    @Test
+    void invokeAgent_mapsHitlPendingFields() {
+        String json = "{"
+                + "\"answer\":\"⏸ approval needed\","
+                + "\"agent_type\":\"action\","
+                + "\"hitl_pending\":true,"
+                + "\"hitl_approval_id\":\"hitl-abc123\""
+                + "}";
+        mockServer.expect(requestTo("http://localhost:9000/v1/agent/invoke"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess(json, MediaType.APPLICATION_JSON));
+
+        AgentClient.AgentResponse resp = agentClient.invokeAgent(
+                "owner-1", "sess-1", "send email", "trace-1");
+
+        assertTrue(resp.hitlPending());
+        assertEquals("hitl-abc123", resp.approvalId());
+        mockServer.verify();
+    }
+
+    @Test
+    void invokeAgent_defaultsHitlFieldsToFalseWhenAbsent() {
+        mockServer.expect(requestTo("http://localhost:9000/v1/agent/invoke"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess("{\"answer\":\"ok\"}", MediaType.APPLICATION_JSON));
+
+        AgentClient.AgentResponse resp = agentClient.invokeAgent(
+                "owner-1", "sess-1", "hello", "trace-1");
+
+        assertFalse(resp.hitlPending());
+        assertNull(resp.approvalId());
+        mockServer.verify();
+    }
+
+    @Test
+    void listApprovals_hitsEndpoint_andReturnsPayload() {
+        String json = "{\"status\":\"ok\","
+                + "\"pending\":[{\"request_id\":\"hitl-1\"}],\"count\":1}";
+        mockServer.expect(requestTo("http://localhost:9000/v1/agent/approvals"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(json, MediaType.APPLICATION_JSON));
+
+        Map<String, Object> resp = agentClient.listApprovals();
+
+        assertEquals("ok", resp.get("status"));
+        assertEquals(1, resp.get("count"));
+        mockServer.verify();
+    }
+
+    @Test
+    void getApproval_upstream404_throwsAgentUpstreamException() {
+        mockServer.expect(requestTo("http://localhost:9000/v1/agent/approvals/hitl-nope"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withStatus(HttpStatus.NOT_FOUND));
+
+        AgentClient.AgentUpstreamException ex = assertThrows(
+                AgentClient.AgentUpstreamException.class,
+                () -> agentClient.getApproval("hitl-nope"));
+
+        assertEquals(404, ex.getStatusCode());
+        mockServer.verify();
+    }
+
+    @Test
+    void approveAction_postsApproverAndNote() {
+        String json = "{\"status\":\"ok\",\"decision\":\"approved\"}";
+        mockServer.expect(requestTo("http://localhost:9000/v1/agent/approvals/hitl-1/approve"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(jsonPath("$.approver").value("boss"))
+                .andExpect(jsonPath("$.note").value("looks good"))
+                .andRespond(withSuccess(json, MediaType.APPLICATION_JSON));
+
+        Map<String, Object> resp = agentClient.approveAction("hitl-1", "boss", "looks good");
+
+        assertEquals("approved", resp.get("decision"));
+        mockServer.verify();
+    }
+
+    @Test
+    void rejectAction_upstream503_throwsAgentUpstreamException() {
+        mockServer.expect(requestTo("http://localhost:9000/v1/agent/approvals/hitl-1/reject"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withStatus(HttpStatus.SERVICE_UNAVAILABLE));
+
+        AgentClient.AgentUpstreamException ex = assertThrows(
+                AgentClient.AgentUpstreamException.class,
+                () -> agentClient.rejectAction("hitl-1", "boss", null));
+
+        assertEquals(503, ex.getStatusCode());
+        mockServer.verify();
     }
 }

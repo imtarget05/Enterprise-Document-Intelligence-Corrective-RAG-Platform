@@ -6,12 +6,15 @@ import { useAuditLogs } from "../hooks/useAuditLogs";
 import AppBar from "../components/AppBar";
 import AdminSidebar from "../components/AdminSidebar";
 import AuditLogTable from "../components/AuditLogTable";
+import ApprovalsTable from "../components/ApprovalsTable";
 
 export default function AdminPage() {
-  const { isAdmin, username, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState("overview");
+  const { isAdmin, isEngineer, token, username, logout } = useAuth();
+  // ENGINEER may only touch the HITL approvals queue — never admin tabs.
+  const canApprove = isAdmin || isEngineer;
+  const [activeTab, setActiveTab] = useState(isAdmin ? "overview" : "approvals");
 
-  if (!isAdmin) {
+  if (!canApprove) {
     return (
       <div className="flex-1 flex items-center justify-center bg-surface-dim">
         <div className="text-center">
@@ -26,10 +29,11 @@ export default function AdminPage() {
     <div className="flex flex-col h-screen bg-surface-dim">
       <AppBar onMenuClick={() => {}} username={username} onLogout={logout} />
       <div className="flex flex-1 overflow-hidden">
-        <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+        <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} canAdmin={isAdmin} />
         <main className="flex-1 flex flex-col overflow-hidden bg-surface-dim">
-          {activeTab === "overview" && <AdminOverview />}
-          {activeTab === "audit" && <AuditLogTable />}
+          {activeTab === "overview" && isAdmin && <AdminOverview />}
+          {activeTab === "approvals" && <ApprovalsTable token={token} />}
+          {activeTab === "audit" && isAdmin && <AuditLogTable />}
         </main>
       </div>
     </div>

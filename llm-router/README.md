@@ -78,7 +78,7 @@ Use `.env.example` at the repository root. Cloudflare credentials:
 - `CLOUDFLARE_EMBED_MODEL` — embedding model (default `@cf/baai/bge-base-en-v1.5`).
 - `CLOUDFLARE_TIMEOUT_SECONDS` — request timeout (default 60s).
 - `ROUTER_CONFIDENCE_THRESHOLD` — confidence threshold for task classification (default 0.7).
-- `ROUTER_INTERNAL_TOKEN` — if set, callers must send it in `X-Internal-Token` for `/api/*` routes.
+- `ROUTER_INTERNAL_TOKEN` — required; all protected HTTP routes and the agent WebSocket fail closed when it is unset. Callers must send it in `X-Internal-Token`.
 
 Run tests from this directory:
 

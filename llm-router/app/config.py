@@ -25,6 +25,7 @@ def _bool_env(name: str, default: bool) -> bool:
 
 @dataclass(frozen=True)
 class Settings:
+    app_env: str = os.getenv("APP_ENV", "development")
     cloudflare_account_id: str = os.getenv("CLOUDFLARE_ACCOUNT_ID", "")
     cloudflare_api_token: str = os.getenv("CLOUDFLARE_API_TOKEN", "")
     cloudflare_api_base: str = os.getenv(
@@ -102,6 +103,12 @@ class Settings:
     # Response cache: Redis-backed LLM response caching.
     response_cache_enabled: bool = _bool_env("RESPONSE_CACHE_ENABLED", True)
     response_cache_ttl_seconds: int = _int_env("RESPONSE_CACHE_TTL_SECONDS", 300)
+
+    def __post_init__(self) -> None:
+        if self.app_env.strip().lower() not in {"local", "dev", "development", "test", "testing"} and not self.internal_token.strip():
+            raise ValueError(
+                "ROUTER_INTERNAL_TOKEN must be set in non-local environments."
+            )
 
 
 settings = Settings()

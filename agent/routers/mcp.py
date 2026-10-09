@@ -3,13 +3,17 @@ Model Context Protocol (MCP) tool server endpoints.
 """
 
 import logging
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 import state
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/mcp", tags=["mcp"])
+router = APIRouter(
+    prefix="/mcp",
+    tags=["mcp"],
+    dependencies=[Depends(state.verify_and_rate_limit)],
+)
 
 
 @router.get("/info")

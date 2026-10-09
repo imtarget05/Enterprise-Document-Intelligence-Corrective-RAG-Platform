@@ -28,4 +28,8 @@ public class ChatResponse {
     private String ragStrategy;
     /** Structured citations: documentId, content, score, sourceType. */
     private List<Map<String, Object>> sources;
+    /** True when the agent paused an action awaiting human approval (HITL). */
+    private Boolean hitlPending;
+    /** Approval request id for /api/agent/approvals/{id} (null unless hitlPending). */
+    private String hitlApprovalId;
 }

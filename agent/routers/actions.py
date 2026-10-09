@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/agent", tags=["actions"])
 
 
-@router.post("/adk/demo")
+@router.post("/adk/demo", dependencies=[Depends(state.verify_and_rate_limit)])
 async def adk_demo(request: Request):
     payload = await request.json()
     user_request = payload.get("user_request", "")
@@ -38,13 +38,8 @@ async def generate_report(req: ReportRequest):
     agent = ReportAgent()
     path = await agent.generate_pdf_report(
         title=req.title,
-        summary=req.summary,
-        key_findings=req.key_findings,
-        recommendations=req.recommendations,
-        sources=req.sources,
-        generated_by=req.generated_by,
+        content=req.content,
         user_id=req.user_id,
-        session_id=req.session_id,
     )
     return {"status": "ok", "report_path": path}
 

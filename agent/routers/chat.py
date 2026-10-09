@@ -39,7 +39,9 @@ async def stream_answer_tokens(answer: str) -> AsyncIterator[str]:
         yield token
 
 
-@router.websocket("/ws/{session_id}")
+@router.websocket(
+    "/ws/{session_id}", dependencies=[Depends(state.verify_websocket_and_rate_limit)]
+)
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
     await websocket.accept()
     logger.info(f"WebSocket connected: session={session_id}")
@@ -184,6 +186,8 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                     "data": {
                         "agent_type": result.get("agent_type", "rag"),
                         "confidence_score": result.get("confidence_score", 0.0),
+                        "hitl_pending": bool(result.get("hitl_pending", False)),
+                        "hitl_approval_id": result.get("hitl_approval_id"),
                     },
                 }
             )
@@ -296,6 +300,16 @@ async def invoke_agent(req: AgentRequest, request: Request):
 
         latency_ms = (time.monotonic() - start_time) * 1000
 
+        action_result = result.get("action_result") or {}
+        if action_result.get("status") == "store_unavailable":
+            # Fail-closed: the approval store is down, so the action was NOT
+            # executed. Surface HTTP 503 (not 200) so upstream callers and
+            # circuit breakers treat this as an infra outage, not an answer.
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=result.get("final_answer", "Approval store unavailable"),
+            )
+
         if ab_config:
             try:
                 ab_manager.log_result(
@@ -361,6 +375,8 @@ async def invoke_agent(req: AgentRequest, request: Request):
             sources=result.get("sources", []),
             confidence_score=confidence,
             action_result=result.get("action_result"),
+            hitl_pending=bool(result.get("hitl_pending", False)),
+            hitl_approval_id=result.get("hitl_approval_id"),
             report_path=result.get("report_path"),
             trace_id=eff_trace or None,
             tokens_used=(prompt_tokens + completion_tokens),
@@ -476,7 +492,7 @@ async def stream_events(req: AgentRequest):
         if sources:
             yield f"event: source\ndata: {json.dumps({'sources': sources})}\n\n"
 
-        yield f"event: complete\ndata: {json.dumps({'agent_type': result.get('agent_type', 'rag'), 'confidence_score': result.get('confidence_score', 0.0)})}\n\n"
+        yield f"event: complete\ndata: {json.dumps({'agent_type': result.get('agent_type', 'rag'), 'confidence_score': result.get('confidence_score', 0.0), 'hitl_pending': bool(result.get('hitl_pending', False)), 'hitl_approval_id': result.get('hitl_approval_id')})}\n\n"
 
     except Exception as exc:
         logger.exception("Agent stream failed: %s", exc)

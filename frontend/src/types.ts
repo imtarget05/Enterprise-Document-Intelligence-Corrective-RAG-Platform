@@ -42,6 +42,30 @@ export interface ChatMessage {
   documentId?: number | null;
   isStreaming?: boolean;
   agentType?: string | null;
+  /** HITL: true when the agent paused an action awaiting human approval. */
+  hitlPending?: boolean | null;
+  /** HITL: approval request id for GET /agent/approvals/{id} (context-path /api). */
+  hitlApprovalId?: string | null;
+}
+
+/** Pending human-approval request from the agent-service HITL queue. */
+export interface ApprovalRequest {
+  request_id: string;
+  query: string;
+  session_id: string;
+  user_id: string;
+  agent_plan?: string | null;
+  document_ids?: string[] | null;
+  status: "pending" | "approved" | "rejected" | "expired";
+  approver?: string | null;
+  note?: string | null;
+  created_at?: number | null;
+}
+
+export interface ApprovalsQueue {
+  status: string;
+  pending: ApprovalRequest[];
+  count: number;
 }
 
 export interface LegalChunkDTO {

@@ -19,6 +19,8 @@ services:
   auto_stop: false
   autoDeploy: true
   envVars:
+  - key: APP_ENV
+    value: production
   - key: CLOUDFLARE_ACCOUNT_ID
     sync: false
   - key: CLOUDFLARE_API_TOKEN
@@ -172,6 +174,13 @@ services:
     value: '{"@cf/meta/llama-3.3-70b-instruct-fp8-fast":0.0003,"@cf/baai/bge-base-en-v1.5":0.0001,"default":0.0003}'
   - key: CHAT_SSE_THREADS
     value: '20'
+  # Main chat flow -> agent service (agentic path + HITL approvals).
+  # Render routes 443 to the agent's $PORT; no port suffix needed.
+  - key: AGENT_BASE_URL
+    fromService:
+      name: smart-doc-agent
+      type: web
+      property: host
 - type: web
   name: smart-doc-agent
   runtime: python
@@ -186,6 +195,21 @@ services:
   envVars:
   - key: AGENT_PORT
     value: '9000'
+  - key: APP_ENV
+    value: production
+  - key: INTERNAL_SERVICE_TOKEN
+    sync: false
+  # HITL approval store on Render: managed Redis (Upstash rediss://... with
+  # TLS), set REDIS_URL in the dashboard. Fail-closed so governance never
+  # silently degrades when Redis is unreachable.
+  - key: REDIS_URL
+    sync: false
+  - key: HITL_STORE_BACKEND
+    value: redis
+  - key: HITL_FAIL_CLOSED
+    value: 'true'
+  - key: HITL_REQUIRE_APPROVAL
+    value: 'true'
   - key: COST_PER_1K_TOKENS
     value: '{"@cf/meta/llama-3.3-70b-instruct-fp8-fast":0.0003,"@cf/baai/bge-base-en-v1.5":0.0001,"default":0.0003}'
   - key: RERANKER_MODEL

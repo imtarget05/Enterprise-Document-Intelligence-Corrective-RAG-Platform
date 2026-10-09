@@ -63,6 +63,8 @@ spec:
           value: "6333"
         - name: LLM_BASE_URL
           value: "http://smartdoc-llm-router:8000"
+        - name: AGENT_BASE_URL
+          value: "http://smartdoc-agent:9000"
         - name: SPRING_PROFILES_ACTIVE
           value: "prod"
         - name: SPRING_FLYWAY_OUT_OF_ORDER

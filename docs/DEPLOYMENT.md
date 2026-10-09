@@ -48,18 +48,30 @@ Render Dashboard → **New → Blueprint** → chọn repo. Render đọc `rende
 ```
 CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN        # Workers AI (llm-router)
 ROUTER_INTERNAL_TOKEN                              # random 32+ chars
-REDIS_URL                                          # Upstash rediss://... (llm-router)
+REDIS_URL                                          # Upstash rediss://... (llm-router + agent HITL store)
 LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY           # opt-in
 SPRING_DATASOURCE_URL/USERNAME/PASSWORD            # Neon (backend)
 R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY
 QDRANT_HOST, QDRANT_API_KEY
 JWT_SECRET                                         # random 64+ chars
-INTERNAL_SERVICE_TOKEN                             # random
+INTERNAL_SERVICE_TOKEN                             # random (backend + agent shared)
 REDIS_HOST, REDIS_PASSWORD                         # Upstash (backend; SSL đã bật)
+# HITL governance (agent): REDIS_URL ở trên là bắt buộc; thêm 3 vars sau
+# (đã có sẵn trong render.yaml — chỉ cần điền REDIS_URL trong dashboard).
+# docker compose prod: xem REDIS_URL/HITL_* trong .env + service redis.
+# k8s: thêm REDIS_PASSWORD + INTERNAL_SERVICE_TOKEN vào portfolio-secrets.
+#   HITL_STORE_BACKEND=redis, HITL_FAIL_CLOSED=true, HITL_REQUIRE_APPROVAL=true
+# Frontend approvals: ADMIN + ENGINEER duyệt tại tab "Phê duyệt" (admin view)
+# hoặc card ngay dưới message chat khi agent tạm dừng (hitlPending).
 KEYCLOAK_ADMIN_PASSWORD                            # Keycloak
 GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_API_KEY   # nếu dùng Google OAuth
 SSO_OIDC_ISSUER_URI/CLIENT_ID/CLIENT_SECRET/ADMIN_USERNAMES  # sau khi Keycloak healthy
 ```
+Agent and LLM-router rate limits use the ASGI peer address. The agent does not
+trust raw `X-Forwarded-For` values because they may be client-supplied. If
+forwarded-IP normalization is later enabled, restrict Uvicorn's trust to a
+verified ingress and add proxy-boundary tests before deploying it.
+headers from arbitrary peers.
 
 Backend tự chạy Flyway V1→V17 lúc start (`application-prod.yml`: Flyway enabled,
 `ddl-auto=validate`). Sau khi `smartdoc-keycloak` healthy:

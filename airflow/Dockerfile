@@ -1,4 +1,4 @@
-# Airflow multi-project platform image for SmartDocument, CreditFlow, and SupportDesk.
+# Dedicated Airflow platform image for Smart-Document-Chatbot.
 FROM apache/airflow:2.9.3-python3.11
 
 USER root

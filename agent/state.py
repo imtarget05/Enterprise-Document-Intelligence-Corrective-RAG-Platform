@@ -4,10 +4,11 @@ Maintains singletons initialized during the FastAPI lifespan.
 """
 
 import contextvars
+import hmac
 import logging
 from typing import Any, Optional
 
-from fastapi import HTTPException, Request, status
+from fastapi import HTTPException, Request, WebSocket, WebSocketException, status
 
 from security.prompt_injection import detect_prompt_injection, sanitize_query
 from settings import settings
@@ -42,7 +43,9 @@ def verify_internal_token(request: Request) -> None:
     if getattr(settings, "app_env", "local").lower() in ("test", "testing"):
         return
     token = request.headers.get("X-Internal-Token", "")
-    if settings.internal_service_token and token != settings.internal_service_token:
+    if not settings.internal_service_token or not hmac.compare_digest(
+        token, settings.internal_service_token
+    ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized"
         )
@@ -75,12 +78,37 @@ def check_prompt_injection(query: str) -> str:
 
 def verify_and_rate_limit(request: Request) -> None:
     verify_internal_token(request)
-    client_ip = request.headers.get("X-Forwarded-For", "").split(",")[0].strip() or (
-        request.client.host if request.client else "unknown"
+    enforce_rate_limit(
+        request.client.host if request.client else "unknown",
+        request.url.path,
     )
-    if not check_rate_limit(client_ip):
+
+
+def verify_websocket_and_rate_limit(websocket: WebSocket) -> None:
+    if getattr(settings, "app_env", "local").lower() in ("test", "testing"):
+        return
+    token = websocket.headers.get("X-Internal-Token", "")
+    if not settings.internal_service_token or not hmac.compare_digest(
+        token, settings.internal_service_token
+    ):
+        raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
+    client_host = websocket.client.host if websocket.client else "unknown"
+    if not check_rate_limit(client_host):
         logger.warning(
-            "Agent rate limit exceeded for IP: %s path: %s", client_ip, request.url.path
+            "Agent rate limit exceeded for IP: %s path: %s",
+            client_host,
+            websocket.url.path,
+        )
+        raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
+
+
+def enforce_rate_limit(client_host: str, path: str) -> None:
+    # The app is behind Render's public ingress. Do not trust a raw forwarded
+    # header; use the ASGI peer address unless trusted-proxy normalization is
+    # explicitly configured and verified for this deployment.
+    if not check_rate_limit(client_host):
+        logger.warning(
+            "Agent rate limit exceeded for IP: %s path: %s", client_host, path
         )
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
