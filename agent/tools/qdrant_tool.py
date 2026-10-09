@@ -126,6 +126,45 @@ def _cache_key(query: str, collection_id: str, top_k: int) -> str:
     return f"rag_cache:{h}"
 
 
+def _cache_index_key(collection_id: str) -> str:
+    """Reverse index of the cache keys written for a collection.
+
+    Cache keys are hashes of (query, collection, top_k), so a document delete
+    cannot recompute them. Every write registers its key here, which makes a
+    document's cache entries discoverable — and therefore invalidatable.
+    """
+    return f"rag_cache_idx:{collection_id}"
+
+
+def invalidate_rag_cache(collection_id: str) -> int:
+    """Drop every cached retrieval result for a document/collection.
+
+    Returns the number of cache entries removed (0 when Redis is disabled or
+    nothing was cached). Best-effort: a Redis failure leaves a stale entry that
+    is still bounded by its TTL, so it is logged and reported as 0 instead of
+    failing the caller.
+    """
+    if not _redis_client or not collection_id:
+        return 0
+    try:
+        index_key = _cache_index_key(collection_id)
+        keys = list(_redis_client.smembers(index_key) or [])
+        deleted = int(_redis_client.delete(*keys)) if keys else 0
+        _redis_client.delete(index_key)
+        if deleted:
+            logger.info(
+                "Invalidated %d RAG cache entries for collection %s",
+                deleted,
+                collection_id,
+            )
+        return deleted
+    except Exception as exc:
+        logger.warning(
+            "RAG cache invalidation failed for collection %s: %s", collection_id, exc
+        )
+        return 0
+
+
 def _tokenize(text: str) -> List[str]:
     """Simple whitespace + lower-case tokeniser for BM25."""
     return text.lower().split()
@@ -237,6 +276,9 @@ class QdrantHybridSearch:
             try:
                 ck = _cache_key(query, collection_id, top_k)
                 _redis_client.setex(ck, cache_ttl, json.dumps(final))
+                # Phase 2: register the key so a document delete can find it.
+                _redis_client.sadd(_cache_index_key(collection_id), ck)
+                _redis_client.expire(_cache_index_key(collection_id), cache_ttl)
             except Exception as exc:
                 logger.warning("RAG cache write failed: %s", exc)
 
@@ -307,6 +349,113 @@ class QdrantHybridSearch:
                 )
             )
         return results
+
+    # ------------------------------------------------------------------
+    # Delete — best-effort: failures are reported, never raised
+    # ------------------------------------------------------------------
+    async def _request(
+        self, method: str, url: str, payload: Optional[Dict[str, Any]] = None
+    ) -> httpx.Response:
+        headers = {"Content-Type": "application/json"}
+        if self._api_key:
+            headers["api-key"] = self._api_key
+        return await self._http.request(method, url, json=payload, headers=headers)
+
+    async def aclose(self) -> None:
+        """Close the shared HTTP connection pool."""
+        await self._http.aclose()
+
+    async def delete_document(
+        self,
+        document_id: str,
+        collection_ids: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """Remove a deleted document's chunks and embeddings from Qdrant.
+
+        Two shapes exist in this service:
+          * the per-document collection named after the document id (agent
+            retrieval uses document ids as collection names) — dropped whole,
+            because it holds nothing but that document;
+          * shared collections carrying the document in the point payload
+            (connector ingestion writes source/external_id/document_name) —
+            only this document's points are deleted (tombstone), leaving the
+            other documents' points in place.
+
+        Never raises: a missing collection (404) is not an error, and a failure
+        is reported in the "errors" list so the purge of the remaining stores
+        can continue. Returns a report dict.
+        """
+        report: Dict[str, Any] = {
+            "document_id": document_id,
+            "collections_deleted": [],
+            "points_deleted": [],
+            "errors": [],
+        }
+        if not document_id:
+            report["errors"].append("document_id is required")
+            return report
+
+        shared = [c for c in (collection_ids or []) if c != document_id]
+
+        try:
+            resp = await self._request(
+                "DELETE", f"{self._base_url}/collections/{document_id}"
+            )
+            if resp.status_code == 404:
+                logger.info("Qdrant collection %s already absent", document_id)
+            else:
+                resp.raise_for_status()
+                report["collections_deleted"].append(document_id)
+        except Exception as exc:
+            report["errors"].append(f"collection {document_id}: {exc}")
+            logger.warning(
+                "Qdrant collection delete failed for document %s: %s", document_id, exc
+            )
+
+        for collection_id in shared:
+            try:
+                status = await self._delete_points_by_document(
+                    collection_id, document_id
+                )
+                report["points_deleted"].append(
+                    {"collection_id": collection_id, "status": status}
+                )
+            except Exception as exc:
+                report["errors"].append(f"points {collection_id}: {exc}")
+                logger.warning(
+                    "Qdrant point delete failed for document %s in %s: %s",
+                    document_id,
+                    collection_id,
+                    exc,
+                )
+
+        return report
+
+    async def _delete_points_by_document(
+        self, collection_id: str, document_id: str
+    ) -> str:
+        """Delete only the points belonging to a document (match on payload).
+
+        Returns Qdrant's acknowledgement status; a 404 (collection absent) is
+        reported as "not_found" rather than raised.
+        """
+        payload = {
+            "filter": {
+                "should": [
+                    {"key": "document_id", "match": {"value": document_id}},
+                    {"key": "external_id", "match": {"value": document_id}},
+                    {"key": "document_name", "match": {"value": document_id}},
+                ]
+            }
+        }
+        url = f"{self._base_url}/collections/{collection_id}/points/delete"
+        resp = await self._request("POST", f"{url}?wait=true", payload)
+        if resp.status_code == 404:
+            return "not_found"
+        resp.raise_for_status()
+        data = resp.json()
+        result = data.get("result", {}) if isinstance(data, dict) else {}
+        return str((result or {}).get("status", "unknown"))
 
     # ------------------------------------------------------------------
     # Embedding — with retry + circuit breaker

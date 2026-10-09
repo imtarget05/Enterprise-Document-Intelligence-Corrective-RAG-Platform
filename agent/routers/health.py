@@ -3,6 +3,7 @@ Health check and Prometheus metrics endpoints.
 """
 
 import logging
+import os
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
@@ -32,25 +33,37 @@ def _component_status() -> tuple[dict[str, str], list[str]]:
     else:
         components["workflow"] = "ok"
 
-    # 2. Long-term memory (in-memory fallback = degraded)
+    allow_memory_fallback = os.getenv("ALLOW_MEMORY_FALLBACK", "").strip().lower() in (
+        "true",
+        "1",
+        "yes",
+    )
+
+    # 2. Long-term memory (in-memory fallback = degraded unless explicitly allowed)
     ltm = state._long_term_memory
     if ltm is None:
         components["long_term_memory"] = "unavailable"
         errors.append("long_term_memory: not initialized")
     elif getattr(ltm, "_pool", None) is False or getattr(ltm, "_pool", None) is None:
-        components["long_term_memory"] = "degraded_in_memory_fallback"
-        errors.append("long_term_memory: using in-memory fallback (PostgreSQL unavailable)")
+        if allow_memory_fallback:
+            components["long_term_memory"] = "healthy_local_fallback"
+        else:
+            components["long_term_memory"] = "degraded_in_memory_fallback"
+            errors.append("long_term_memory: using in-memory fallback (PostgreSQL unavailable)")
     else:
         components["long_term_memory"] = "ok"
 
-    # 2b. Graph memory (in-memory fallback = degraded)
+    # 2b. Graph memory (in-memory fallback = degraded unless explicitly allowed)
     gm = state._graph_memory
     if gm is None:
         components["graph_memory"] = "unavailable"
         errors.append("graph_memory: not initialized")
     elif getattr(gm, "_pool", None) is False or getattr(gm, "_pool", None) is None:
-        components["graph_memory"] = "degraded_in_memory_fallback"
-        errors.append("graph_memory: using in-memory fallback (PostgreSQL unavailable)")
+        if allow_memory_fallback:
+            components["graph_memory"] = "healthy_local_fallback"
+        else:
+            components["graph_memory"] = "degraded_in_memory_fallback"
+            errors.append("graph_memory: using in-memory fallback (PostgreSQL unavailable)")
     else:
         components["graph_memory"] = "ok"
 

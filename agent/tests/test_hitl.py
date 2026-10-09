@@ -8,6 +8,7 @@ endpoints (list → approve → execute / reject).
 
 import asyncio
 import builtins
+import json as _json
 import time
 
 import pytest
@@ -22,6 +23,8 @@ from hitl import (
     RedisHITLStore,
     _resolve_fail_closed,
     build_hitl_store,
+    decode_workflow_snapshot,
+    encode_workflow_snapshot,
 )
 
 
@@ -519,6 +522,9 @@ class _DownStore:
     async def list_pending(self, *a, **k):
         raise HITLStoreUnavailable("redis down (fake)")
 
+    async def get_snapshot(self, *a, **k):
+        raise HITLStoreUnavailable("redis down (fake)")
+
 
 def test_hitl_gate_blocks_action_when_store_unavailable(monkeypatch):
     import graph.workflow as workflow_module
@@ -548,3 +554,184 @@ def test_approvals_api_returns_503_when_store_unavailable(monkeypatch):
     assert client.post(
         "/v1/agent/approvals/hitl-x/reject", json={"approver": "a"}
     ).status_code == 503
+
+
+# ---------------------------------------------------------------------------
+# Risk 1 fix — pause-time snapshots: APPROVE resumes instead of restarting
+# ---------------------------------------------------------------------------
+def test_encode_snapshot_round_trip_with_messages():
+    lc = pytest.importorskip("langchain_core.messages")
+    state = {
+        "query": "send email",
+        "session_id": "s",
+        "user_id": "u",
+        "messages": [lc.HumanMessage(content="hi"), lc.AIMessage(content="ok")],
+        "retrieved_chunks": [{"chunk": "c1", "score": 0.9}],
+        "agent_plan": "plan",
+        "agent_type": "action",
+        "use_web_search": True,
+        "final_answer": "⏸ paused",
+        "action_result": {"hitl": True},
+        "hitl_pending": True,
+        "hitl_approval_id": "hitl-x",
+    }
+    payload = encode_workflow_snapshot(state)
+    assert isinstance(payload, str)
+
+    restored = decode_workflow_snapshot(payload)
+    assert restored["query"] == "send email"
+    assert restored["retrieved_chunks"] == [{"chunk": "c1", "score": 0.9}]
+    assert restored["use_web_search"] is True
+    assert [type(m).__name__ for m in restored["messages"]] == ["HumanMessage", "AIMessage"]
+    assert restored["messages"][0].content == "hi"
+    # Pause artifacts are rebuilt on resume — never restored
+    assert "final_answer" not in restored
+    assert "action_result" not in restored
+    assert "hitl_pending" not in restored
+    assert "hitl_approval_id" not in restored
+
+
+def test_encode_snapshot_skips_unserializable_state():
+    assert encode_workflow_snapshot({"query": "q", "ab_config": {"fn": object()}}) is None
+    assert encode_workflow_snapshot(None) is None
+
+
+def test_encode_snapshot_enforces_size_cap(monkeypatch):
+    monkeypatch.setattr(hitl_module, "SNAPSHOT_MAX_BYTES", 32)
+    assert encode_workflow_snapshot({"query": "a much longer query than 32 bytes"}) is None
+
+
+def test_decode_snapshot_invalid_returns_none():
+    assert decode_workflow_snapshot(None) is None
+    assert decode_workflow_snapshot("") is None
+    assert decode_workflow_snapshot("{not json") is None
+    assert decode_workflow_snapshot("[1,2]") is None
+
+
+def test_memory_store_snapshot_lifecycle():
+    store = HITLStore(ttl_seconds=60)
+    payload = _json.dumps({"retrieved_chunks": [{"chunk": "c"}]})
+    record = asyncio.run(
+        store.create(query="q", session_id="s", user_id="u", snapshot=payload)
+    )
+    assert record["has_snapshot"] is True
+    assert asyncio.run(store.get_snapshot(record["request_id"])) == payload
+    # Queue listings stay light — snapshot lives outside the record
+    pending = asyncio.run(store.list_pending())
+    assert pending[0]["has_snapshot"] is True
+    assert "payload" not in pending[0]
+    # Decide drops the snapshot
+    asyncio.run(store.decide(record["request_id"], "approved", "boss"))
+    assert asyncio.run(store.get_snapshot(record["request_id"])) is None
+
+
+def test_memory_store_without_snapshot():
+    store = HITLStore(ttl_seconds=60)
+    record = asyncio.run(store.create(query="q", session_id="s", user_id="u"))
+    assert record["has_snapshot"] is False
+    assert asyncio.run(store.get_snapshot(record["request_id"])) is None
+
+
+def test_redis_store_snapshot_lifecycle():
+    store = _redis_store()
+    payload = _json.dumps({"retrieved_chunks": [{"chunk": "c"}]})
+    record = asyncio.run(
+        store.create(query="q", session_id="s", user_id="u", snapshot=payload)
+    )
+    assert record["has_snapshot"] is True
+    assert asyncio.run(store.get_snapshot(record["request_id"])) == payload
+    asyncio.run(store.decide(record["request_id"], "approved", "boss"))
+    assert asyncio.run(store.get_snapshot(record["request_id"])) is None
+
+
+def test_gate_captures_pause_snapshot(monkeypatch):
+    import graph.workflow as workflow_module
+    from graph.workflow import hitl_gate_node
+
+    captured = {}
+
+    class _SpyStore(HITLStore):
+        async def create(self, *a, **k):
+            captured.update(k)
+            return await super().create(*a, **k)
+
+    monkeypatch.setattr(workflow_module, "hitl_store", _SpyStore(ttl_seconds=60))
+    state = {"query": "send email", "session_id": "s", "user_id": "u",
+             "agent_plan": "do it", "document_ids": [], "hitl_auto_approved": False}
+    result = asyncio.run(hitl_gate_node(state))
+    assert result["hitl_pending"] is True
+    assert isinstance(captured.get("snapshot"), str)
+    restored = decode_workflow_snapshot(captured["snapshot"])
+    assert restored["query"] == "send email"
+    assert restored["agent_plan"] == "do it"
+
+
+class _CapturingWorkflow:
+    """Stub workflow that records its invoke input."""
+
+    def __init__(self, result):
+        self._result = result
+        self.inputs = []
+
+    async def ainvoke(self, inputs):
+        self.inputs.append(dict(inputs))
+        return dict(self._result)
+
+
+def test_approve_resumes_from_snapshot(monkeypatch):
+    import state as agent_state
+    from main import app
+
+    snapshot = _json.dumps({
+        "retrieved_chunks": [{"chunk": "snap-chunk", "score": 0.99}],
+        "use_web_search": True,
+        "agent_plan": "snap plan",
+    })
+    record = asyncio.run(
+        hitl_module.hitl_store.create(
+            query="q", session_id="s", user_id="u", agent_plan="snap plan",
+            snapshot=snapshot,
+        )
+    )
+    workflow = _CapturingWorkflow({"final_answer": "executed"})
+    monkeypatch.setattr(agent_state, "_workflow", workflow)
+
+    client = TestClient(app)
+    resp = client.post(
+        f"/v1/agent/approvals/{record['request_id']}/approve",
+        json={"approver": "boss"},
+    )
+    assert resp.status_code == 200
+    assert len(workflow.inputs) == 1
+    resumed = workflow.inputs[0]
+    # Pause-time state survived instead of restarting blank
+    assert resumed["retrieved_chunks"] == [{"chunk": "snap-chunk", "score": 0.99}]
+    assert resumed["use_web_search"] is True
+    assert resumed["agent_plan"] == "snap plan"
+    # Routing overrides are still enforced
+    assert resumed["agent_type"] == "action"
+    assert resumed["intent_override"] == "action"
+    assert resumed["hitl_auto_approved"] is True
+
+
+def test_approve_without_snapshot_resumes_fresh(monkeypatch):
+    import state as agent_state
+    from main import app
+
+    record = asyncio.run(
+        hitl_module.hitl_store.create(query="q", session_id="s", user_id="u")
+    )
+    assert record["has_snapshot"] is False
+    workflow = _CapturingWorkflow({"final_answer": "executed"})
+    monkeypatch.setattr(agent_state, "_workflow", workflow)
+
+    client = TestClient(app)
+    resp = client.post(
+        f"/v1/agent/approvals/{record['request_id']}/approve",
+        json={"approver": "boss"},
+    )
+    assert resp.status_code == 200
+    resumed = workflow.inputs[0]
+    assert resumed["retrieved_chunks"] == []
+    assert resumed["messages"] == []
+    assert resumed["hitl_auto_approved"] is True

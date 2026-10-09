@@ -39,6 +39,19 @@ public class DocumentController {
     private final DocumentVersionService documentVersionService;
     private com.smartdocchat.repository.DocumentIngestionJobRepository jobRepository;
 
+    /**
+     * Phase 2: optional so existing wiring/tests keep constructing the controller
+     * without it (same pattern as {@link #setJobRepository}). When present, every
+     * document delete also purges the agent-service stores (vector store,
+     * retrieval cache, memory) that hold a copy of the document's content.
+     */
+    private com.smartdocchat.service.DocumentPurgeClient documentPurgeClient;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setDocumentPurgeClient(com.smartdocchat.service.DocumentPurgeClient documentPurgeClient) {
+        this.documentPurgeClient = documentPurgeClient;
+    }
+
     @org.springframework.beans.factory.annotation.Autowired
     public void setJobRepository(com.smartdocchat.repository.DocumentIngestionJobRepository jobRepository) {
         this.jobRepository = jobRepository;
@@ -73,6 +86,42 @@ public class DocumentController {
             MDC.remove("documentId");
             MDC.remove("owner");
             MDC.remove("granted");
+        }
+    }
+
+    /**
+     * Phase 2: after the backend rows and blob are gone, drop the document's
+     * chunks/embeddings, retrieval cache entries and memory entries from the
+     * agent service. Never fails the caller — the delete already succeeded and a
+     * stale cache entry is bounded by its TTL.
+     */
+    private void purgeDocumentArtifacts(Document document) {
+        if (documentPurgeClient == null || document == null || document.getId() == null) {
+            return;
+        }
+        try {
+            boolean purged = documentPurgeClient.purgeDocument(
+                    document.getId(), document.getOwnerUsername(), document.getFileName());
+            if (!purged) {
+                log.warn("Agent-side purge incomplete for document {} — replay if the "
+                        + "document must stay unretrievable", document.getId());
+            }
+        } catch (RuntimeException e) {
+            log.warn("Agent-side purge failed for document {}: {}",
+                    document.getId(), e.getMessage());
+        }
+    }
+
+    private void purgeDocumentArtifacts(List<Long> ids, String ownerUsername) {
+        if (documentPurgeClient == null || ids == null) {
+            return;
+        }
+        for (Long id : ids) {
+            try {
+                documentPurgeClient.purgeDocument(id, ownerUsername, null);
+            } catch (RuntimeException e) {
+                log.warn("Agent-side purge failed for document {}: {}", id, e.getMessage());
+            }
         }
     }
 
@@ -217,6 +266,10 @@ public class DocumentController {
             return ResponseEntity.badRequest().body(Map.of("success", false, "message", "No document IDs provided"));
         }
         int deletedCount = documentService.deleteDocumentsBatch(ids, principal.getName(), currentRole());
+        // Phase 2: purge the agent-side artefacts of every requested id. Ids the
+        // batch could not delete are a no-op there (nothing indexed), so the
+        // whole list is purged instead of re-reading each document.
+        purgeDocumentArtifacts(ids, principal.getName());
         audit("document.batch_delete", principal.getName(), "document",
                 ids.toString(), "count=" + deletedCount);
         return ResponseEntity.ok(Map.of(
@@ -233,6 +286,7 @@ public class DocumentController {
                     documentService.getDocumentByIdForRole(id, principal.getName(), currentRole());
             documentAccessService.checkDelete(currentRole(), document.getOwnerUsername(), principal.getName());
             documentService.deleteDocument(id, principal.getName());
+            purgeDocumentArtifacts(document);
             audit("document.delete", principal.getName(), "document", String.valueOf(id), "granted=true");
             return ResponseEntity.ok("Document deleted successfully");
         } catch (RuntimeException e) {

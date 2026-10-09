@@ -14,9 +14,14 @@ import os
 import time
 import re
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from settings import settings
+from memory.document_reference import (
+    document_needles,
+    postgres_reference_pattern,
+    references_document,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -404,6 +409,123 @@ class LongTermMemory:
             except Exception as exc:
                 logger.warning("Delete failed (%s)", exc)
         self._local.pop(user_id, None)
+
+    async def delete_document_memories(
+        self,
+        document_id: str,
+        user_id: str = "",
+        document_name: str = "",
+    ) -> Dict[str, Any]:
+        """Tombstone the durable memory entries that reference a document.
+
+        Phase 2: after a document is deleted, its text must stop reaching an
+        answer through memory. Facts and conversation turns are stored without a
+        document foreign key, so entries are matched on the document reference
+        (id, or the document name when the caller supplies it) — see
+        memory.document_reference. An entry that cannot be attributed is left in
+        place rather than risking a wrong delete.
+
+        Returns per-table delete counts and which backend served them.
+        """
+        report: Dict[str, Any] = {
+            "facts_deleted": 0,
+            "turns_deleted": 0,
+            "backend": "memory",
+        }
+        needles = document_needles(document_id, document_name)
+        if not needles:
+            return report
+
+        pool = await self._get_pool()
+        if pool:
+            try:
+                async with pool.acquire() as conn:
+                    report["facts_deleted"] = await self._delete_referencing(
+                        conn, "long_term_memory", "fact_text", needles, user_id
+                    )
+                    report["turns_deleted"] = await self._delete_referencing(
+                        conn, "conversation_turns", "content", needles, user_id
+                    )
+                report["backend"] = "postgres"
+                return report
+            except Exception as exc:
+                logger.warning(
+                    "Document memory purge failed (%s), in-memory fallback", exc
+                )
+
+        facts_deleted, turns_deleted = self._delete_local_document_memories(
+            needles, user_id
+        )
+        report["facts_deleted"] = facts_deleted
+        report["turns_deleted"] = turns_deleted
+        return report
+
+    @staticmethod
+    async def _delete_referencing(
+        conn: Any,
+        table: str,
+        column: str,
+        needles: List[str],
+        user_id: str,
+    ) -> int:
+        """DELETE rows of `table` whose `column` references the document."""
+        clauses: List[str] = []
+        params: List[Any] = []
+        for needle in needles:
+            params.append(postgres_reference_pattern(needle))
+            clauses.append(f"{column} ~* ${len(params)}")
+        if user_id:
+            params.append(user_id)
+            clauses.append(f"user_id = ${len(params)}")
+        result = await conn.execute(
+            f"DELETE FROM {table} WHERE " + " AND ".join(clauses), *params
+        )
+        # asyncpg returns a command tag such as "DELETE 3".
+        try:
+            return int(str(result).split()[-1])
+        except (IndexError, ValueError):
+            return 0
+
+    def _delete_local_document_memories(
+        self, needles: List[str], user_id: str
+    ) -> Tuple[int, int]:
+        """In-memory fallback for delete_document_memories."""
+        facts_deleted = 0
+        for stored_user in list(self._local.keys()):
+            if user_id and stored_user != user_id:
+                continue
+            facts = self._local[stored_user]
+            kept = [
+                f for f in facts if not references_document(f.fact_text, needles)
+            ]
+            facts_deleted += len(facts) - len(kept)
+            if kept:
+                self._local[stored_user] = kept
+            else:
+                self._local.pop(stored_user, None)
+
+        turns_deleted = 0
+        for stored_user in list(self._local_turns.keys()):
+            if user_id and stored_user != user_id:
+                continue
+            turns = self._local_turns[stored_user]
+            kept = [
+                t for t in turns if not references_document(t.get("content", ""), needles)
+            ]
+            turns_deleted += len(turns) - len(kept)
+            if kept:
+                self._local_turns[stored_user] = kept
+            else:
+                self._local_turns.pop(stored_user, None)
+
+        if facts_deleted or turns_deleted:
+            logger.info(
+                "LongTermMemory: purged %d fact(s) and %d turn(s) referencing a "
+                "deleted document",
+                facts_deleted,
+                turns_deleted,
+            )
+        return facts_deleted, turns_deleted
 
     async def close(self):
         if self._pool and hasattr(self._pool, "close"):

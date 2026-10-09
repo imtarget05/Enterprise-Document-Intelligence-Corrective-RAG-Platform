@@ -94,3 +94,19 @@ def test_readiness_ok_when_all_components_ready(monkeypatch):
         assert all(
             v == "ok" for k, v in body["components"].items() if k != "llm"
         )
+
+
+def test_readiness_healthy_with_allowed_memory_fallback(monkeypatch):
+    _set_ready_state(monkeypatch)
+    monkeypatch.setattr(state, "_long_term_memory", _FallbackMemory())
+    monkeypatch.setattr(state, "_graph_memory", _FallbackMemory())
+    monkeypatch.setenv("ALLOW_MEMORY_FALLBACK", "true")
+
+    response = TestClient(app, raise_server_exceptions=False).get("/ready")
+    body = response.json()
+    assert body["components"]["long_term_memory"] == "healthy_local_fallback"
+    assert body["components"]["graph_memory"] == "healthy_local_fallback"
+    if body["components"].get("llm") == "ok":
+        assert response.status_code == 200
+        assert body["status"] == "ok"
+

@@ -11,6 +11,7 @@ from .actions import router as actions_router
 from .memory import router as memory_router
 from .admin import router as admin_router
 from .training_jobs import router as training_jobs_router
+from .documents import router as documents_router
 
 __all__ = [
     "health_router",
@@ -22,4 +23,5 @@ __all__ = [
     "memory_router",
     "admin_router",
     "training_jobs_router",
+    "documents_router",
 ]

@@ -28,6 +28,7 @@ from routers import (
     memory_router,
     admin_router,
     training_jobs_router,
+    documents_router,
 )
 
 logging.basicConfig(
@@ -237,6 +238,7 @@ v1_router.include_router(actions_router)
 v1_router.include_router(memory_router)
 v1_router.include_router(admin_router)
 v1_router.include_router(training_jobs_router)
+v1_router.include_router(documents_router)
 
 app.include_router(v1_router)
 

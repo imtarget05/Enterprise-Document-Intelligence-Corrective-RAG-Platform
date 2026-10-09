@@ -27,7 +27,7 @@ from agents.action_agent import ActionAgent
 from agents.engineering_analysis_agent import EngineeringAnalysisAgent
 
 from graph.state import AgentState
-from hitl import HITLStoreUnavailable, hitl_store
+from hitl import HITLStoreUnavailable, encode_workflow_snapshot, hitl_store
 from settings import settings
 
 logger = logging.getLogger(__name__)
@@ -343,6 +343,9 @@ async def hitl_gate_node(state: AgentState) -> AgentState:
         state["hitl_approval_id"] = None
         return state
 
+    # Capture pause-time state so APPROVE resumes instead of restarting from
+    # scratch (retrieval results, history and flags survive the pause).
+    snapshot = encode_workflow_snapshot(state)
     try:
         record = await hitl_store.create(
             query=state.get("query", ""),
@@ -350,6 +353,7 @@ async def hitl_gate_node(state: AgentState) -> AgentState:
             user_id=state.get("user_id", ""),
             agent_plan=state.get("agent_plan", ""),
             document_ids=state.get("document_ids"),
+            snapshot=snapshot,
         )
     except HITLStoreUnavailable as store_exc:
         # Fail-closed governance: the approval store is unreachable, so the

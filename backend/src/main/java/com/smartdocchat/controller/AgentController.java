@@ -9,7 +9,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/agent")
+@RequestMapping("/agent")
 @RequiredArgsConstructor
 public class AgentController {
 
@@ -32,9 +32,14 @@ public class AgentController {
                     message,
                     traceId != null ? traceId : UUID.randomUUID().toString()
             );
+            String effectiveTraceId = resp.traceId() != null ? resp.traceId()
+                    : (traceId != null ? traceId : "");
             return ResponseEntity.ok(Map.of(
                     "answer", resp.answer(),
-                    "trace_id", resp.traceId() != null ? resp.traceId() : traceId
+                    "trace_id", effectiveTraceId,
+                    "agent_type", resp.agentType() != null ? resp.agentType() : "rag",
+                    "hitl_pending", resp.hitlPending(),
+                    "hitl_approval_id", resp.approvalId() != null ? resp.approvalId() : ""
             ));
         } catch (Exception e) {
             return ResponseEntity.status(502).body(Map.of("error", "agent unavailable: " + e.getMessage()));

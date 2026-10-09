@@ -6,7 +6,7 @@ import functools
 import logging
 from fastapi import APIRouter, Depends, HTTPException
 
-from hitl import HITLStoreUnavailable, hitl_store
+from hitl import HITLStoreUnavailable, decode_workflow_snapshot, hitl_store
 from models import ApprovalDecisionRequest
 import state
 
@@ -53,6 +53,10 @@ async def get_approval(request_id: str):
 @_map_store_errors
 async def approve_action(request_id: str, req: ApprovalDecisionRequest):
     """Human approves the paused action -> execute it immediately."""
+    # Load the pause-time snapshot BEFORE decide: decide() drops the snapshot,
+    # and decide itself is the atomic claim (a concurrent second approve gets
+    # 404 and never executes).
+    snapshot_payload = await hitl_store.get_snapshot(request_id)
     record = await hitl_store.decide(request_id, "approved", req.approver, req.note)
     if record is None:
         raise HTTPException(status_code=404, detail="Approval request not found, already decided, or expired")
@@ -60,28 +64,45 @@ async def approve_action(request_id: str, req: ApprovalDecisionRequest):
     if state._workflow is None:
         raise HTTPException(status_code=503, detail="LangGraph workflow unavailable")
 
-    result = await state._workflow.ainvoke(
-        {
-            "query": record["query"],
-            "session_id": record["session_id"],
-            "user_id": record["user_id"],
-            "document_ids": record.get("document_ids") or [],
-            "messages": [],
-            "long_term_history": [],
-            "retrieved_chunks": [],
-            "confidence_score": 0.0,
-            "agent_plan": record.get("agent_plan", ""),
-            "agent_type": "action",
-            "intent_override": "action",
-            "final_answer": "",
-            "sources": [],
-            "action_result": None,
-            "report_path": None,
-            "use_web_search": False,
-            "hybrid_search_enabled": True,
-            "hitl_auto_approved": True,
-        }
+    # Resume from the pause-time snapshot when available (retrieval results,
+    # history and flags survive the pause); otherwise fall back to a fresh
+    # state — identical to the pre-snapshot behavior.
+    workflow_input = {
+        "query": record["query"],
+        "session_id": record["session_id"],
+        "user_id": record["user_id"],
+        "document_ids": record.get("document_ids") or [],
+        "messages": [],
+        "long_term_history": [],
+        "retrieved_chunks": [],
+        "confidence_score": 0.0,
+        "agent_plan": record.get("agent_plan", ""),
+        "agent_type": "action",
+        "intent_override": "action",
+        "final_answer": "",
+        "sources": [],
+        "action_result": None,
+        "report_path": None,
+        "use_web_search": False,
+        "hybrid_search_enabled": True,
+        "hitl_auto_approved": True,
+    }
+    if snapshot_payload is not None:
+        restored = decode_workflow_snapshot(snapshot_payload)
+        if restored is not None:
+            for key in workflow_input:
+                if key in restored:
+                    workflow_input[key] = restored[key]
+            logger.info("HITL approve %s: resumed from pause-time snapshot", request_id)
+        else:
+            logger.warning("HITL approve %s: snapshot undecodable — resuming fresh", request_id)
+
+    # Re-enforce routing after the merge (a stale snapshot must never change
+    # where the resumed run goes).
+    workflow_input.update(
+        {"agent_type": "action", "intent_override": "action", "hitl_auto_approved": True}
     )
+    result = await state._workflow.ainvoke(workflow_input)
     return {
         "status": "ok",
         "decision": "approved",

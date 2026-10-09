@@ -36,7 +36,7 @@ chứng — mỗi câu trả lời quy về được đoạn nguồn cụ thể,
 |---|---|---|---|---|
 | SPA | React 18 + TypeScript (Vite) | — | chat UI, SSE progressive rendering, upload | **Prod: Cloudflare Pages** `https://smart-doc-chatbot.pages.dev` (workflow `pages.yml`) |
 | `smartdoc-backend` | **Spring Boot 3.2 / Java 17** | **8080** | auth (HttpOnly cookie), document CRUD, job queue, chat CRAG + SSE, audit | **Render (canonical)** `https://smartdoc-backend-2hhz.onrender.com`, health `/api/actuator/health`; `h4mt` là legacy unresolved — không tham chiếu mới |
-| `smart-doc-agent` | Python FastAPI + **LangGraph** | **9000** | multi-agent: `/v1/*` và root — `/agent/invoke`, `/agent/invoke-stream`, `/agent/approvals` (HITL Redis-backed, fail-closed), `/a2a/*`, `/mcp/*`, `/agent/memory/graph`, `/training-jobs`, `/health`, `/ready`, `/metrics` — **đã nối vào luồng chat chính**: backend `ChatService` (mode `agent`, mặc định) gọi `/v1/agent/invoke` qua `AgentClient`, HITL pause (`hitl_pending`/`hitl_approval_id`) propagate qua `ChatResponse`/SSE metadata, duyệt tại `/agent/approvals/**` (ADMIN/ENGINEER) | Render `smart-doc-agent` (+ `AGENT_BASE_URL` trỏ từ backend); compose `agent` + `redis`; k8s `25-smartdoc-agent` + `16-redis` |
+| `smart-doc-agent` | Python FastAPI + **LangGraph** | **9000** | multi-agent: `/v1/*` và root — `/agent/invoke`, `/agent/invoke-stream`, `/agent/approvals` (HITL Redis-backed, fail-closed, snapshot resume — approve khôi phục đúng state lúc pause, không chạy lại từ đầu), `/a2a/*`, `/mcp/*`, `/agent/memory/graph`, `/training-jobs`, `/health`, `/ready`, `/metrics` — **đã nối vào luồng chat chính**: backend `ChatService` (mode `agent`, mặc định) gọi `/v1/agent/invoke` qua `AgentClient`, HITL pause (`hitl_pending`/`hitl_approval_id`) propagate qua `ChatResponse`/SSE metadata, duyệt tại `/agent/approvals/**` (ADMIN/ENGINEER) | Render `smart-doc-agent` (+ `AGENT_BASE_URL` trỏ từ backend); compose `agent` + `redis`; k8s `25-smartdoc-agent` + `16-redis` |
 | `smart-doc-llm-router` | FastAPI | — | `POST /api/chat`, `POST /api/embeddings` → **Cloudflare Workers AI exclusively** (service này không fallback Ollama), `GET /health/live` | Render `smart-doc-llm-router` |
 | `smartdoc-keycloak` | Docker | 8080 | OIDC (optional) | Render |
 | DB | **Neon PostgreSQL** | 5432 | Flyway `V1..V21`: users/permissions, document metadata, legal chunks, **ingestion jobs** (`FOR UPDATE SKIP LOCKED`, DLQ) | managed |
@@ -113,7 +113,10 @@ flowchart LR
 Agent service (FastAPI `:9000`, mount hai lần: `/v1/*` và root): `POST /agent/invoke` ·
 `POST /agent/invoke-stream` · `/agent/approvals` (HITL: GET list, POST `/{id}/approve|reject`) ·
 `/a2a/agents|delegate|stats` · `/mcp/info|tools|call|stats` · `/agent/memory/graph/*` ·
-`/agent/connector/ingest` (internal token) · `/training-jobs*` (internal token) · `/health`, `/ready`, `/metrics`.
+`/agent/connector/ingest` (internal token) · `/training-jobs*` (internal token) ·
+`POST /agent/documents/{id}/purge` (internal token, Phase 2 — backend gọi sau khi xóa tài
+liệu: dưới collection/points Qdrant của document, xóa cache retrieval trong Redis và
+tombstone memory trỏ tới document) · `/health`, `/ready`, `/metrics`.
 
 ### Sequence A — nạp tài liệu (async, durable — ADR-0004)
 

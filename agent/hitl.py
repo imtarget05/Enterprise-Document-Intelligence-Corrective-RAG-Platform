@@ -22,6 +22,14 @@ except local/dev/development/test, same convention as rate_limiter.py):
     Governance must never silently degrade in production.
   * fail-open → degrade to a per-process in-memory store with a loud error
     log (dev convenience only).
+
+Pause-time snapshots — so APPROVE resumes instead of restarting from
+scratch: the gate captures the workflow state via
+:func:`encode_workflow_snapshot` and stores it next to the approval
+(``hitl:snap:{id}`` in Redis, sidecar dict in memory, same TTL). The
+approve endpoint restores whitelisted keys (retrieval results, history,
+flags) and only enforces the routing overrides. Missing/undecodable/
+oversize snapshots degrade gracefully to the previous fresh-state resume.
 """
 
 from __future__ import annotations
@@ -50,6 +58,36 @@ except ImportError:  # pragma: no cover - exercised when redis is missing
 # ---------------------------------------------------------------------------
 _REQUEST_KEY_PREFIX = "hitl:req:"
 _PENDING_SET_KEY = "hitl:pending"
+_SNAPSHOT_KEY_PREFIX = "hitl:snap:"
+
+# Pause-time snapshots larger than this are skipped (resume falls back to a
+# fresh state). Bounds Redis memory when retrieved_chunks are huge.
+SNAPSHOT_MAX_BYTES = 256 * 1024
+
+# State keys carried into a resume. Deliberately excludes outputs
+# (final_answer/action_result/report_path), governance flags (hitl_*) and
+# run metrics — those are rebuilt on the resume path.
+_SNAPSHOT_FIELDS = (
+    "query",
+    "session_id",
+    "user_id",
+    "document_ids",
+    "messages",
+    "long_term_history",
+    "detected_language",
+    "language_instruction",
+    "retrieved_chunks",
+    "confidence_score",
+    "hybrid_search_enabled",
+    "agent_plan",
+    "agent_type",
+    "intent_override",
+    "use_web_search",
+    "context_summary",
+    "ab_config",
+    "sources",
+    "report_path",
+)
 
 # Envs where degrading (fail-open) is acceptable. Mirrors rate_limiter.py.
 _PERMISSIVE_ENVS = {"local", "dev", "development", "test"}
@@ -90,8 +128,88 @@ def _new_record(
         "status": "pending",  # pending | approved | rejected | expired
         "approver": None,
         "note": None,
+        "has_snapshot": False,
         "created_at": time.time(),
     }
+
+
+def _messages_to_dicts(messages: Any) -> Optional[List[Dict[str, Any]]]:
+    """Serialize LangChain messages; None when unavailable/unserializable."""
+    try:
+        from langchain_core.messages import messages_to_dict
+    except ImportError:
+        return None
+    try:
+        return messages_to_dict(messages)
+    except Exception:
+        return None
+
+
+def encode_workflow_snapshot(state: Any) -> Optional[str]:
+    """Serialize pause-time workflow state for approve-time resume.
+
+    Returns a JSON string, or None when the state is not serializable /
+    oversize — callers then resume from a fresh state (previous behavior).
+    """
+    try:
+        raw = {k: state[k] for k in _SNAPSHOT_FIELDS if k in state and state[k] is not None}
+    except Exception:
+        return None
+    messages = raw.get("messages")
+    if messages:
+        try:
+            json.dumps(messages)
+        except (TypeError, ValueError):
+            converted = _messages_to_dicts(messages)
+            if converted is None:
+                logger.warning("HITL snapshot skipped: messages not serializable")
+                return None
+            raw["messages"] = converted
+    try:
+        payload = json.dumps(raw, ensure_ascii=False)
+    except (TypeError, ValueError):
+        logger.warning("HITL snapshot skipped: state not JSON-serializable")
+        return None
+    if len(payload.encode("utf-8")) > SNAPSHOT_MAX_BYTES:
+        logger.warning(
+            "HITL snapshot skipped: %d bytes exceeds %d cap",
+            len(payload.encode("utf-8")),
+            SNAPSHOT_MAX_BYTES,
+        )
+        return None
+    return payload
+
+
+def _looks_langchain_serialized(messages: Any) -> bool:
+    return (
+        isinstance(messages, list)
+        and len(messages) > 0
+        and isinstance(messages[0], dict)
+        and "type" in messages[0]
+        and "data" in messages[0]
+    )
+
+
+def decode_workflow_snapshot(payload: Any) -> Optional[Dict[str, Any]]:
+    """Restore a snapshot dict; None when missing/corrupt (resume fresh)."""
+    if not payload or not isinstance(payload, str):
+        return None
+    try:
+        raw = json.loads(payload)
+    except (TypeError, json.JSONDecodeError):
+        logger.warning("HITL snapshot undecodable — resuming from fresh state")
+        return None
+    if not isinstance(raw, dict):
+        return None
+    if _looks_langchain_serialized(raw.get("messages")):
+        try:
+            from langchain_core.messages import messages_from_dict
+
+            raw["messages"] = messages_from_dict(raw["messages"])
+        except Exception:
+            logger.warning("HITL snapshot messages unrestorable — dropping messages")
+            raw["messages"] = []
+    return raw
 
 
 class HITLStore:
@@ -101,6 +219,7 @@ class HITLStore:
         self._ttl = ttl_seconds if ttl_seconds is not None else settings.hitl_approval_ttl_seconds
         self._lock = asyncio.Lock()
         self._requests: Dict[str, Dict[str, Any]] = {}
+        self._snapshots: Dict[str, Dict[str, Any]] = {}  # rid -> {payload, created_at}
 
     # ------------------------------------------------------------------
     def _evict_expired(self) -> None:
@@ -113,6 +232,13 @@ class HITLStore:
         for rid in expired:
             self._requests[rid]["status"] = "expired"
             logger.info("HITL request %s expired after %ss", rid, self._ttl)
+        stale_snaps = [
+            rid
+            for rid, s in self._snapshots.items()
+            if now - s["created_at"] > self._ttl
+        ]
+        for rid in stale_snaps:
+            del self._snapshots[rid]
 
     # ------------------------------------------------------------------
     async def create(
@@ -122,11 +248,18 @@ class HITLStore:
         user_id: str,
         agent_plan: str = "",
         document_ids: Optional[List[str]] = None,
+        snapshot: Optional[str] = None,
     ) -> Dict[str, Any]:
         async with self._lock:
             self._evict_expired()
             record = _new_record(query, session_id, user_id, agent_plan, document_ids)
+            record["has_snapshot"] = snapshot is not None
             self._requests[record["request_id"]] = record
+            if snapshot is not None:
+                self._snapshots[record["request_id"]] = {
+                    "payload": snapshot,
+                    "created_at": time.time(),
+                }
             logger.info("HITL request created: %s (query=%s)", record["request_id"], query[:80])
             return dict(record)
 
@@ -136,6 +269,18 @@ class HITLStore:
             self._evict_expired()
             record = self._requests.get(request_id)
             return dict(record) if record else None
+
+    # ------------------------------------------------------------------
+    async def get_snapshot(self, request_id: str) -> Optional[str]:
+        """Return the pause-time snapshot payload, or None (resume fresh)."""
+        async with self._lock:
+            entry = self._snapshots.get(request_id)
+            if entry is None:
+                return None
+            if time.time() - entry["created_at"] > self._ttl:
+                del self._snapshots[request_id]
+                return None
+            return entry["payload"]
 
     # ------------------------------------------------------------------
     async def decide(
@@ -152,6 +297,7 @@ class HITLStore:
             record["status"] = decision
             record["approver"] = approver
             record["note"] = note
+            self._snapshots.pop(request_id, None)
             logger.info(
                 "HITL request %s %s by %s", request_id, decision, approver
             )
@@ -195,6 +341,10 @@ class RedisHITLStore:
     def _key(request_id: str) -> str:
         return f"{_REQUEST_KEY_PREFIX}{request_id}"
 
+    @staticmethod
+    def _snap_key(request_id: str) -> str:
+        return f"{_SNAPSHOT_KEY_PREFIX}{request_id}"
+
     async def ping(self) -> bool:
         """Health-check helper for /health and startup probes."""
         await self._redis.ping()
@@ -230,9 +380,18 @@ class RedisHITLStore:
         user_id: str,
         agent_plan: str = "",
         document_ids: Optional[List[str]] = None,
+        snapshot: Optional[str] = None,
     ) -> Dict[str, Any]:
         record = _new_record(query, session_id, user_id, agent_plan, document_ids)
+        record["has_snapshot"] = snapshot is not None
         try:
+            # Snapshot first: if this write fails nothing observable exists yet
+            # (fail-closed raise); a later record-write failure leaves an
+            # orphan snapshot that self-expires with the same TTL.
+            if snapshot is not None:
+                await self._redis.set(
+                    self._snap_key(record["request_id"]), snapshot, ex=self._ttl
+                )
             await self._redis.set(
                 self._key(record["request_id"]),
                 json.dumps(record, ensure_ascii=False),
@@ -244,7 +403,7 @@ class RedisHITLStore:
         except RedisError as exc:
             return await self._degraded(
                 "create", exc,
-                lambda: self._fallback.create(query, session_id, user_id, agent_plan, document_ids),
+                lambda: self._fallback.create(query, session_id, user_id, agent_plan, document_ids, snapshot=snapshot),
             )
 
     # ------------------------------------------------------------------
@@ -260,6 +419,16 @@ class RedisHITLStore:
                 return None
         except RedisError as exc:
             return await self._degraded("get", exc, lambda: self._fallback.get(request_id))
+
+    # ------------------------------------------------------------------
+    async def get_snapshot(self, request_id: str) -> Optional[str]:
+        """Return the pause-time snapshot payload, or None (resume fresh)."""
+        try:
+            return await self._redis.get(self._snap_key(request_id))
+        except RedisError as exc:
+            return await self._degraded(
+                "get_snapshot", exc, lambda: self._fallback.get_snapshot(request_id)
+            )
 
     # ------------------------------------------------------------------
     async def decide(
@@ -293,6 +462,15 @@ class RedisHITLStore:
                 ex=remaining if remaining else self._ttl,
             )
             await self._redis.srem(_PENDING_SET_KEY, request_id)
+            # Snapshot cleanup is best-effort: the decision already succeeded,
+            # and an orphan snapshot self-expires with its TTL.
+            try:
+                await self._redis.delete(self._snap_key(request_id))
+            except RedisError as snap_exc:
+                logger.warning(
+                    "HITL snapshot orphan %s (self-expires in %ss): %s",
+                    request_id, self._ttl, snap_exc,
+                )
             logger.info("HITL request %s %s by %s", request_id, decision, approver)
             return dict(record)
         except RedisError as exc:

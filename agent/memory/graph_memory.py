@@ -17,6 +17,11 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from settings import settings
 from prompts import render_prompt, PromptNotFoundError
+from memory.document_reference import (
+    document_needles,
+    postgres_reference_pattern,
+    references_document,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -824,6 +829,65 @@ class GraphMemory:
             "mentions": len(self._local_mentions),
             "storage": "in-memory",
         }
+
+    async def delete_document_mentions(
+        self,
+        document_id: str,
+        document_name: str = "",
+        user_id: str = "",
+    ) -> Dict[str, Any]:
+        """Tombstone the graph mentions that quote a deleted document.
+
+        Phase 2: a mention stores the conversation text it was extracted from,
+        so it is the only graph row that can leak a deleted document's content
+        back into an answer. Entities and relationships are cross-session
+        knowledge and are deliberately left in place — only the provenance rows
+        referencing the document are removed.
+        """
+        report: Dict[str, Any] = {
+            "mentions_deleted": 0,
+            "backend": "memory",
+        }
+        needles = document_needles(document_id, document_name)
+        if not needles:
+            return report
+
+        pool = await self._get_pool()
+        if pool:
+            try:
+                async with pool.acquire() as conn:
+                    clauses = []
+                    params: List[Any] = []
+                    for needle in needles:
+                        params.append(postgres_reference_pattern(needle))
+                        clauses.append(f"context_text ~* ${len(params)}")
+                    result = await conn.execute(
+                        "DELETE FROM entity_mentions WHERE " + " OR ".join(clauses),
+                        *params,
+                    )
+                    try:
+                        report["mentions_deleted"] = int(str(result).split()[-1])
+                    except (IndexError, ValueError):
+                        pass
+                report["backend"] = "postgresql"
+                return report
+            except Exception as exc:
+                logger.warning(
+                    "Document mention purge failed (%s), in-memory fallback", exc
+                )
+
+        kept = [
+            m for m in self._local_mentions
+            if not references_document(m.context_text, needles)
+        ]
+        report["mentions_deleted"] = len(self._local_mentions) - len(kept)
+        self._local_mentions[:] = kept
+        if report["mentions_deleted"]:
+            logger.info(
+                "GraphMemory: purged %d mention(s) referencing a deleted document",
+                report["mentions_deleted"],
+            )
+        return report
 
     async def close(self):
         """Close the database pool."""
