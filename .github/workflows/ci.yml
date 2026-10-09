@@ -196,12 +196,13 @@ jobs:
     name: Agent Tests
     runs-on: ubuntu-latest
     env:
-      # The agent Settings model treats an unset APP_ENV as "production" and
-      # then enforces strict secrets (INTERNAL_SERVICE_TOKEN / POSTGRES_PASSWORD
-      # / AGENT_ALLOWED_ORIGINS). These unit tests don't need real creds, so run
-      # them in the permissive "local" mode. Credentials are validated at deploy
-      # time in production where the real secrets are injected.
-      APP_ENV: local
+      # APP_ENV must be "test": conftest.py setdefaults APP_ENV=test, the API
+      # auth deps accept the unit-test tokens only in test mode, and
+      # test_workflow_checkpointer asserts APP_ENV == "test". Any other
+      # permissive value (e.g. "local") still fail-closes auth on unconfigured
+      # tokens → 401 across the HITL/adk/report endpoint tests. Real credentials
+      # are validated at deploy time in production, not in these unit tests.
+      APP_ENV: test
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
