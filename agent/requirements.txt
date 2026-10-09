@@ -14,7 +14,11 @@ python-multipart==0.0.9
 # (3.x needs langgraph-checkpoint>=4.1 → ResolutionImpossible in CI/Render).
 langgraph==0.2.76
 langgraph-checkpoint-sqlite==2.0.11
-aiosqlite==0.22.1
+# aiosqlite 0.22+ REMOVED Connection.is_alive(), which
+# langgraph-checkpoint-sqlite 2.0.11 AsyncSqliteSaver.setup() still calls —
+# the durable SQLite checkpointer then crashes on every put/get
+# (`AttributeError: 'Connection' object has no attribute 'is_alive'`).
+aiosqlite==0.21.0
 langchain==0.2.16
 langchain-core==0.2.43
 langchain-community==0.2.16
