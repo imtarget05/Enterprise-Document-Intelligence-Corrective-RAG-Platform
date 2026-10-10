@@ -2,6 +2,7 @@
 # Deploy: npx wrangler pages deploy dist --project-name=smart-doc-chatbot
 # Or connect via Cloudflare dashboard: Framework preset Vite, build `npm run build`, output `dist`
 name = "smart-doc-chatbot"
+pages_build_output_dir = "./dist"
 type = "javascript"
 compatibility_date = "2024-11-01"
 account_id = "8788242370433563100da7c3623e1b3c"

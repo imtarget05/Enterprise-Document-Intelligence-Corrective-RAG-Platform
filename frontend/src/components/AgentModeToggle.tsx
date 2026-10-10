@@ -36,13 +36,13 @@ export default function AgentModeToggle({ agentMode, onToggle }: AgentModeToggle
         </button>
         {/* Tooltip */}
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-onsurface text-white text-[11px] rounded-material shadow-material-2 opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-50">
-          Multi-agent mode đang thử nghiệm. Sẵn sàng trong phiên bản sắp tới.
+          Agent BETA đang thử nghiệm; khi agent không sẵn sàng, hệ thống chuyển về RAG.
           <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-onsurface" />
         </div>
       </div>
       {agentMode && (
         <span className="text-[11px] text-google-blue font-medium ml-1">
-          Multi-agent orchestrator đang bật
+          Đã chọn Agent BETA (có thể chuyển về RAG)
         </span>
       )}
     </div>
