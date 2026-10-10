@@ -1,18 +1,14 @@
 # Cloudflare Pages — frontend SPA (React + Vite)
 # Deploy: npx wrangler pages deploy dist --project-name=smart-doc-chatbot
 # Or connect via Cloudflare dashboard: Framework preset Vite, build `npm run build`, output `dist`
+#
+# Pages config files only accept Pages fields — `account_id`, `type`, and
+# `[build]` make `wrangler pages deploy` fail config validation (run
+# 38047082661). The deploy workflow passes the account via the wrangler-action
+# `accountId` input and runs `npm run build` itself, so neither is needed here.
 name = "smart-doc-chatbot"
 pages_build_output_dir = "./dist"
-type = "javascript"
 compatibility_date = "2024-11-01"
-account_id = "8788242370433563100da7c3623e1b3c"
-
-[build]
-command = "npm run build"
-cwd = "frontend"
-
-[build.environment]
-NODE_VERSION = "20"
 
 # SPA fallback — all routes serve index.html (React Router)
 # Cloudflare Pages handles this via _redirects (see public/_redirects)
