@@ -2,20 +2,42 @@ name: Deploy Frontend to Cloudflare Pages
 
 on:
   workflow_dispatch:
-  push:
+  workflow_run:
+    workflows: [Deploy SmartDoc RAG API to Azure]
+    types: [completed]
     branches: [main]
-    paths:
-      - 'frontend/**'
-      - '.github/workflows/pages.yml'
 
 jobs:
   deploy-pages:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       deployments: write
+      actions: read
     steps:
+      - uses: actions/download-artifact@v4
+        if: github.event_name == 'workflow_run'
+        with:
+          name: smartdoc-source
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Resolve deployed source revision
+        id: source
+        run: |
+          if [ -f source_sha.txt ]; then
+            SHA=$(cat source_sha.txt)
+          else
+            SHA="${{ github.sha }}"
+          fi
+          if ! [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Invalid source SHA from Azure deployment" >&2
+            exit 1
+          fi
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.source.outputs.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -26,10 +48,22 @@ jobs:
       - run: npm run build
         working-directory: frontend
         env:
-          # Single source: repo variable SMARTDOC_API_URL (fallback = current
-          # canonical backend). Mirrors cd.yml GHCR frontend build-arg so the
-          # Pages deploy and the container image can never drift apart.
-          VITE_API_URL: ${{ vars.SMARTDOC_API_URL || 'https://smartdoc-backend-2hhz.onrender.com/api' }}
+          # Keep this URL identical to the frontend image build arg in cd.yml.
+          VITE_API_URL: https://smartdoc-api.blackisland-5a3f0246.southeastasia.azurecontainerapps.io/api
+      - name: Stamp source revision
+        env:
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          Path('frontend/dist/release.json').write_text(
+              json.dumps({'source_sha': os.environ['SOURCE_SHA']}) + '\n',
+              encoding='utf-8',
+          )
+          PY
       - name: Ensure Pages project exists
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -45,3 +79,36 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: frontend
           command: "pages deploy dist --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT || 'smart-doc-chatbot' }} --branch=main"
+      - name: Verify deployed frontend revision
+        env:
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import time
+          import urllib.request
+
+          base = 'https://smart-doc-chatbot.pages.dev/'
+          for attempt in range(10):
+              try:
+                  with urllib.request.urlopen(base + 'release.json', timeout=30) as response:
+                      release = json.load(response)
+                  if release.get('source_sha') == os.environ['SOURCE_SHA']:
+                      print(f'SmartDoc {os.environ["SOURCE_SHA"]} verified at {base}')
+                      break
+              except (OSError, ValueError):
+                  pass
+              if attempt == 9:
+                  raise SystemExit('Cloudflare Pages did not serve the deployed source revision')
+              time.sleep(10)
+          PY
+
+      - name: Verify browser cookie auth across Pages and Azure
+        working-directory: frontend
+        env:
+          E2E_BASE_URL: https://smart-doc-chatbot.pages.dev
+          E2E_API_URL: https://smartdoc-api.blackisland-5a3f0246.southeastasia.azurecontainerapps.io/api
+        run: |
+          npx playwright install --with-deps chromium
+          npx playwright test e2e/browser-auth-live.spec.ts --project=chromium
