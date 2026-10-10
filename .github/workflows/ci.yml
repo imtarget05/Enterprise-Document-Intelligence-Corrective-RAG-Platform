@@ -326,7 +326,13 @@ jobs:
 
     steps:
       - name: Checkout code
+        # fetch-depth 0: trufflehog scans the BASE..HEAD commit range, and a
+        # shallow checkout cannot resolve those objects. With depth 1 it logged
+        # 'unable to resolve commit: object not found' and reported
+        # chunks: 0, bytes: 0 — the gate scanned nothing and always passed.
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       # ── Secrets scan runs FIRST: TruffleHog never resolves Maven artifacts,
       # so it can never be skipped by the Maven Central 429 below.
@@ -509,6 +515,24 @@ jobs:
   # ═══════════════════════════════════════════════════════════════
   # Canary Smoke (preview URL if available)
   # ═══════════════════════════════════════════════════════════════
+  gitleaks:
+    # Secret scanning — pattern gate, authoritative for hardcoded secrets.
+    # TruffleHog is the verified-credential scan; gitleaks is what catches a
+    # fake or scrubbed key, which is exactly what an intentional-leak test
+    # uses (verified as failing on one before this was added).
+    name: Secret scanning (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run gitleaks
+        # SHA-pinned: a mutable tag lets the upstream repo choose what runs in
+        # this job. v3 because v2 runs on Node 20, removed from hosted runners.
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   canary-smoke:
     name: Canary Smoke (preview)
     runs-on: ubuntu-latest
