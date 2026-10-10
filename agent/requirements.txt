@@ -73,7 +73,7 @@ pydantic==2.7.4
 pydantic-settings==2.3.4
 python-dotenv==1.0.1
 tenacity==8.5.0
-sentence-transformers==3.0.1
+sentence-transformers==6.0.1
 
 # MLOps — Experiment Tracking
 mlflow==2.15.0
