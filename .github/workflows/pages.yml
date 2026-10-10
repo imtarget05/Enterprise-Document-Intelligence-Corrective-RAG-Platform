@@ -90,18 +90,25 @@ jobs:
           import urllib.request
 
           base = 'https://smart-doc-chatbot.pages.dev/'
-          for attempt in range(10):
+          # release.json is a tiny static file Cloudflare caches at the edge;
+          # poll with a cache-busting query for up to 6 minutes before failing
+          # (run 38049853792 failed at 100s while the deploy was already live).
+          deadline = time.time() + 360
+          attempt = 0
+          while True:
+              attempt += 1
               try:
-                  with urllib.request.urlopen(base + 'release.json', timeout=30) as response:
+                  url = f'{base}release.json?cb={attempt}&t={int(time.time())}'
+                  with urllib.request.urlopen(url, timeout=30) as response:
                       release = json.load(response)
                   if release.get('source_sha') == os.environ['SOURCE_SHA']:
-                      print(f'SmartDoc {os.environ["SOURCE_SHA"]} verified at {base}')
+                      print(f'SmartDoc {os.environ["SOURCE_SHA"]} verified at {base} (attempt {attempt})')
                       break
               except (OSError, ValueError):
                   pass
-              if attempt == 9:
+              if time.time() > deadline:
                   raise SystemExit('Cloudflare Pages did not serve the deployed source revision')
-              time.sleep(10)
+              time.sleep(15)
           PY
 
       - name: Verify browser cookie auth across Pages and Azure
