@@ -90,22 +90,29 @@ jobs:
           import urllib.request
 
           base = 'https://smart-doc-chatbot.pages.dev/'
-          # release.json is a tiny static file Cloudflare caches at the edge;
-          # poll with a cache-busting query for up to 6 minutes before failing
-          # (run 38049853792 failed at 100s while the deploy was already live).
-          deadline = time.time() + 360
+          # Cloudflare Pages ignores query strings when keying its edge cache,
+          # so `?cb=` busting does not work — send Cache-Control: no-cache to
+          # force revalidation instead. Poll up to 10 minutes: run
+          # 38050602124 timed out at 6 minutes on a stale edge while the
+          # deployment was already live worldwide.
+          deadline = time.time() + 600
           attempt = 0
           while True:
               attempt += 1
               try:
-                  url = f'{base}release.json?cb={attempt}&t={int(time.time())}'
-                  with urllib.request.urlopen(url, timeout=30) as response:
+                  req = urllib.request.Request(
+                      base + 'release.json',
+                      headers={'Cache-Control': 'no-cache', 'Pragma': 'no-cache'},
+                  )
+                  with urllib.request.urlopen(req, timeout=30) as response:
                       release = json.load(response)
-                  if release.get('source_sha') == os.environ['SOURCE_SHA']:
+                  sha = release.get('source_sha')
+                  if sha == os.environ['SOURCE_SHA']:
                       print(f'SmartDoc {os.environ["SOURCE_SHA"]} verified at {base} (attempt {attempt})')
                       break
-              except (OSError, ValueError):
-                  pass
+                  print(f'attempt {attempt}: release.json still serves {sha!r}')
+              except (OSError, ValueError) as exc:
+                  print(f'attempt {attempt}: {exc}')
               if time.time() > deadline:
                   raise SystemExit('Cloudflare Pages did not serve the deployed source revision')
               time.sleep(15)
