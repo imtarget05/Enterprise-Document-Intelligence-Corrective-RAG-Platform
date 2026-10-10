@@ -165,7 +165,7 @@ services:
     value: https://accounts.google.com
   # Must exactly match an Authorized redirect URI in Google Cloud Console
   - key: OAUTH2_REDIRECT_URI
-    value: https://smart-doc-backend-h4mt.onrender.com/api/login/oauth2/code/google
+    value: https://smartdoc-backend-2hhz.onrender.com/api/login/oauth2/code/google
   - key: LOGGING_LEVEL_ROOT
     value: WARN
   - key: LOGGING_LEVEL_COM_SMARTDOCCHAT
@@ -209,6 +209,18 @@ services:
   - key: HITL_FAIL_CLOSED
     value: 'true'
   - key: HITL_REQUIRE_APPROVAL
+    value: 'true'
+  # Shared LangGraph checkpoints (Sprint 2: SQLite -> managed Postgres).
+  # Set DATABASE_URL in the dashboard to the Render Postgres / Neon connection
+  # string; until then checkpoints stay in the agent's local SQLite file, which
+  # is single-process and lives on ephemeral disk (a redeploy drops paused
+  # runs). NEON_DATABASE_URL is accepted as an alias by the agent.
+  - key: DATABASE_URL
+    sync: false
+  # Fail closed when a shared store IS configured but cannot be opened:
+  # silently downgrading to local SQLite would drop paused HITL approvals on
+  # the next restart, which is worse than refusing to boot.
+  - key: LANGGRAPH_CHECKPOINT_SHARED_REQUIRED
     value: 'true'
   - key: COST_PER_1K_TOKENS
     value: '{"@cf/meta/llama-3.3-70b-instruct-fp8-fast":0.0003,"@cf/baai/bge-base-en-v1.5":0.0001,"default":0.0003}'

@@ -19,6 +19,13 @@ langgraph-checkpoint-sqlite==2.0.11
 # the durable SQLite checkpointer then crashes on every put/get
 # (`AttributeError: 'Connection' object has no attribute 'is_alive'`).
 aiosqlite==0.21.0
+# Durable workflow checkpoints in shared Postgres/Neon — Sprint 2 (SQLite -> PG).
+# Without these the agent keeps checkpoints in the local SQLite file, which is
+# single-process and lives on the container's ephemeral disk. psycopg[binary]
+# ships its own libpq, so the driver builds on macOS, Linux and Render without
+# a system Postgres client.
+langgraph-checkpoint-postgres==2.0.11
+psycopg[binary]==3.3.6
 langchain==0.2.16
 langchain-core==0.2.43
 langchain-community==0.2.16

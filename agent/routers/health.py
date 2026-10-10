@@ -33,6 +33,34 @@ def _component_status() -> tuple[dict[str, str], list[str]]:
     else:
         components["workflow"] = "ok"
 
+    # 1b. Checkpointer backend. Makes a failed DATABASE_URL switch visible
+    # right after a restart instead of silently degrading to local storage
+    # (which a redeploy would wipe, taking paused HITL approvals with it).
+    try:
+        from graph.workflow import checkpointer_status
+
+        cs = checkpointer_status()
+        if cs["test_env"] == "true":
+            components["checkpointer"] = "ok"
+        elif cs["configured"] == "postgres" and cs["backend"] != "postgres":
+            components["checkpointer"] = f"degraded_{cs['backend']}_fallback"
+            errors.append(
+                "checkpointer: DATABASE_URL is set but checkpoints are on local "
+                f"storage ({cs['backend']}) — the Postgres checkpointer failed "
+                "to open"
+            )
+        elif cs["backend"] == "memory":
+            components["checkpointer"] = "degraded_memory_fallback"
+            errors.append(
+                "checkpointer: no durable storage — checkpoints live in memory "
+                "and are lost on restart"
+            )
+        else:
+            components["checkpointer"] = cs["backend"]
+    except Exception as exc:
+        components["checkpointer"] = "unavailable"
+        errors.append(f"checkpointer: {exc}")
+
     allow_memory_fallback = os.getenv("ALLOW_MEMORY_FALLBACK", "").strip().lower() in (
         "true",
         "1",

@@ -36,6 +36,7 @@ def durable_checkpoint_env(tmp_path, monkeypatch):
     monkeypatch.setenv("LANGGRAPH_CHECKPOINT_DB", str(db_path))
     from graph import workflow
 
+    workflow.checkpointer_db_path_used = db_path
     try:
         yield workflow
     finally:
@@ -112,3 +113,37 @@ def test_missing_sqlite_falls_back_to_memory(durable_checkpoint_env, monkeypatch
     monkeypatch.setattr(builtins, "__import__", _no_sqlite)
     saver = durable_checkpoint_env._build_checkpointer()
     assert isinstance(saver, MemorySaver)
+
+
+async def test_sqlite_checkpointer_usable_from_async_lifespan(durable_checkpoint_env):
+    """Building the saver inside a running loop (FastAPI lifespan) must work.
+
+    aiosqlite's ``Connection`` *is* the worker thread, and it is only started
+    when the connection is awaited. The async branch of the open path touches
+    the thread object, so it must be exercised from async code — a sync test
+    never runs it and silently keeps a broken fallback.
+    """
+    from langgraph.checkpoint.base import Checkpoint, CheckpointMetadata
+    from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+
+    saver = durable_checkpoint_env._build_checkpointer()
+    assert isinstance(saver, AsyncSqliteSaver), "async path fell back to memory"
+    assert (durable_checkpoint_env.checkpointer_db_path_used).exists()
+
+    config = {"configurable": {"thread_id": "lifespan-1", "checkpoint_ns": ""}}
+    checkpoint: Checkpoint = {
+        "v": 1,
+        "id": "00000000-0000-4000-8000-000000000002",
+        "ts": "2026-01-01T00:00:00+00:00",
+        "channel_values": {"query": "async lifespan"},
+        "channel_versions": {"query": 1},
+        "versions_seen": {},
+        "updated_channels": ["query"],
+    }
+    metadata: CheckpointMetadata = {"step": 1, "source": "input"}
+
+    await saver.aput(config, checkpoint, metadata, {"query": 1})
+    stored = await saver.aget_tuple(config)
+
+    assert stored is not None
+    assert stored.checkpoint["channel_values"]["query"] == "async lifespan"

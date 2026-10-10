@@ -110,3 +110,60 @@ def test_readiness_healthy_with_allowed_memory_fallback(monkeypatch):
         assert response.status_code == 200
         assert body["status"] == "ok"
 
+
+
+def test_readiness_reports_checkpointer_component(monkeypatch):
+    _set_ready_state(monkeypatch)
+
+    response = TestClient(app, raise_server_exceptions=False).get("/ready")
+
+    # APP_ENV=test -> MemorySaver is fine, so the component is "ok" and the
+    # existing all-ok assertions elsewhere in this file keep holding.
+    assert response.json()["components"].get("checkpointer") == "ok"
+
+
+def test_readiness_degraded_when_shared_checkpointer_falls_back(monkeypatch):
+    """DATABASE_URL set but the saver is not Postgres -> readiness says so."""
+    import graph.workflow as workflow_module
+
+    _set_ready_state(monkeypatch)
+    monkeypatch.setattr(
+        workflow_module,
+        "checkpointer_status",
+        lambda: {
+            "backend": "memory",
+            "target": "",
+            "configured": "postgres",
+            "required": "true",
+            "test_env": "false",
+        },
+    )
+
+    response = TestClient(app, raise_server_exceptions=False).get("/ready")
+
+    assert response.status_code == 503
+    body = response.json()
+    assert body["components"]["checkpointer"] == "degraded_memory_fallback"
+    assert any("checkpointer" in e for e in body["errors"])
+
+
+def test_readiness_reports_postgres_checkpointer_healthy(monkeypatch):
+    import graph.workflow as workflow_module
+
+    _set_ready_state(monkeypatch)
+    monkeypatch.setattr(
+        workflow_module,
+        "checkpointer_status",
+        lambda: {
+            "backend": "postgres",
+            "target": "postgresql://***@db.example/x",
+            "configured": "postgres",
+            "required": "true",
+            "test_env": "false",
+        },
+    )
+
+    body = TestClient(app, raise_server_exceptions=False).get("/ready").json()
+
+    assert body["components"]["checkpointer"] == "postgres"
+    assert not any("checkpointer" in e for e in body.get("errors", []))
