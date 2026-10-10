@@ -23,20 +23,20 @@
 
 Core workflow: `Upload → Retrieve → Verify → Cite → Answer`
 
-## 🚦 Production status (audited 2026-10-06)
+## 🚦 Production status (audited 2026-10-10)
 
 | Component | URL | State |
 |---|---|---|
-| Frontend (Cloudflare Pages) | https://smart-doc-chatbot.pages.dev | Serving; **built against the retired Express backend** (`smart-doc-backend.onrender.com`) — business API calls fail in the browser |
-| Spring backend (Render, operational) | https://smartdoc-backend-2hhz.onrender.com | Currently verified production API — used by Cloudflare Pages `pages.yml`, the CD frontend build, and production smoke tests |
+| Frontend (Cloudflare Pages) | https://smart-doc-chatbot.pages.dev | Live bundle still points to Render. The revised Pages workflow builds against Azure after CI, but has not been published. A Playwright test opened this Pages origin and successfully completed Azure registration, login, and `/auth/me` with a cross-site cookie on 2026-10-10. |
+| Spring backend (Azure, canonical demo API) | https://smartdoc-api.blackisland-5a3f0246.southeastasia.azurecontainerapps.io | Revision `smartdoc-api--deploy1791607168` receives 100% traffic, retains all 21 runtime variables, and passed live CSRF, browser cookie, upload, owner isolation, and RAG chat smoke on 2026-10-10. Agent mode still falls back to RAG (`ragStrategy=direct`). |
+| Spring backend (Render mirror) | https://smartdoc-backend-2hhz.onrender.com | Health and full chat intermittently returned 502 on 2026-10-09; not the frontend target until stable. |
 | Spring backend (Render, legacy) | https://smart-doc-backend-h4mt.onrender.com | Legacy/alternate endpoint — **status unresolved** (last known Down with `x-render-routing: no-server`); **not canonical** until re-verified via Render dashboard. Not to be referenced in new deploy config |
 | LLM router / Keycloak (Render free) | — | **Down** — Keycloak had the same `$PORT` binding issue (fixed here); router requires Cloudflare credentials in the Render dashboard |
-| Python agent | — | Alive (separate service) |
+| Python agent (Azure) | https://smartdoc-agent.blackisland-5a3f0246.southeastasia.azurecontainerapps.io | Container revision is provisioned but public `/health` and `/ready` timed out on 2026-10-09; agent workflows are not yet verified live. |
 
 The `fix/pages-api-h4mt` branch (repoints Pages + Docker build-args to h4mt) must **not** be
 merged until Render dashboard/OAuth console evidence confirms `h4mt` is a valid backend for
-this project; today `h4mt` is legacy/unresolved and `2hhz` is canonical. The CI deploy job failing on missing Render credentials is
-intentional honesty, not a regression.
+this project; today `h4mt` is legacy/unresolved, `2hhz` is a Render mirror, and Azure is the verified RAG demo API. CI runs tests and scans; Azure deployment and Pages publication run afterward with their own readiness gates.
 
 ## ✨ Key Features & Engineering Decisions
 

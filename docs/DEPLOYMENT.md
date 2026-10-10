@@ -81,14 +81,14 @@ Backend tự chạy Flyway V1→V17 lúc start (`application-prod.yml`: Flyway e
 
 ### 3. Deploy frontend lên Cloudflare Pages
 
-Tự động qua GitHub Actions (`.github/workflows/pages.yml`) trên mỗi push `main`
-đụng `frontend/**`. Cần set repo secrets/vars:
+Tự động qua GitHub Actions (`.github/workflows/pages.yml`) sau khi workflow CI
+hoàn tất thành công trên `main`; có thể dispatch thủ công. Cần set repo secrets/vars:
 
 | Tên | Loại | Giá trị |
 |---|---|---|
 | `CLOUDFLARE_API_TOKEN` | secret | Pages edit + Workers AI token |
 | `CLOUDFLARE_ACCOUNT_ID` | secret | Cloudflare Account ID |
-| `VITE_API_URL` | var | `https://<backend>.onrender.com/api` |
+| `VITE_API_URL` | build env | `https://smartdoc-api.blackisland-5a3f0246.southeastasia.azurecontainerapps.io/api` |
 
 Workflow tự tạo Pages project (`smart-doc-chatbot`) và deploy `frontend/dist`.
 SPA fallback (`public/_redirects`) + security headers (`public/_headers`) đã có sẵn.
@@ -134,23 +134,23 @@ Chi tiết smoke test: `docs/render-smoke-test.md`.
 Mọi component đều nằm trong free tier vĩnh viễn. Nếu tăng traffic, điểm nâng cấp
 đầu tiên là Render paid plan (tắt spin-down) — mọi cấu hình khác giữ nguyên.
 
-## Render production recovery checklist (2026-10-06)
+## Render production recovery checklist (updated 2026-10-09)
 
 Ordered steps to bring the production chain back (dashboard work + this repo's code):
 
-1. **Backend `smart-doc-backend-h4mt`**: Docker runtime — no startCommand override.
+1. **Backend `smartdoc-backend-2hhz`**: Docker runtime — no startCommand override.
    The app now binds `${SERVER_PORT:${PORT:8080}}`, so Render's `$PORT` is honored.
    Fill `sync:false` env: `SPRING_DATASOURCE_*` (Neon), `QDRANT_*`, `R2_*`,
    `JWT_SECRET`, `INTERNAL_SERVICE_TOKEN`, Langfuse keys.
-2. **Gate 1**: `curl https://smart-doc-backend-h4mt.onrender.com/api/actuator/health`
+2. **Gate 1**: `curl https://smartdoc-backend-2hhz.onrender.com/api/actuator/health`
    → `200` with `"status":"UP"`.
 3. **llm-router**: set `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_API_TOKEN` (+ optional
    `ROUTER_INTERNAL_TOKEN`, Langfuse). Gate: `GET /health/live` → 200.
 4. **Keycloak**: container now passes `--http-port=${PORT:-8080}`. Gate:
    `GET /realms/master` → 200. Then flip `SSO_OIDC_ENABLED=true` + issuer URI.
-5. **GitHub secrets**: `RENDER_API_KEY` + `RENDER_SERVICE_ID` (backend service) so
-   `ci.yml` can redeploy and poll readiness — the job fails loudly until they exist.
-6. **Frontend**: merge `fix/pages-api-h4mt` (Pages + Docker build-args →
-   `smart-doc-backend-h4mt`), push, then `python scripts/production_smoke.py`
+5. **GitHub secrets**: `AZURE_CREDENTIALS` for the canonical RAG API workflow;
+   `RENDER_API_KEY` + `RENDER_SERVICE_ID` for the separate Render mirror check.
+6. **Frontend**: Pages and Docker build-args target the Azure API after CI;
+   after a successful CI-gated Pages deployment, run `python scripts/production_smoke.py`
    (health → register/login → upload → chat) must pass.
 

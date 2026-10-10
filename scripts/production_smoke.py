@@ -24,7 +24,7 @@ import time
 
 import requests
 
-DEFAULT_BASE_URL = "https://smart-doc-backend-h4mt.onrender.com/api"
+DEFAULT_BASE_URL = "https://smartdoc-api.blackisland-5a3f0246.southeastasia.azurecontainerapps.io/api"
 SMOKE_PASSWORD = "SmokeTest123!"  # throwaway test-user password only
 
 
@@ -37,22 +37,45 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Production smoke test")
     ap.add_argument("--base-url", default=DEFAULT_BASE_URL,
                     help="Backend API base URL (includes /api context path)")
+    ap.add_argument("--mode", choices=("agent", "rag"), default="agent",
+                    help="Chat path to test; use rag to isolate retrieval from the agent service")
+    ap.add_argument("--browser-origin", default="",
+                    help="Check credentialed CORS and JWT cookie for this Pages origin")
     args = ap.parse_args()
     b = args.base_url.rstrip("/")
 
     results = []
     s = requests.Session()
+    if args.browser_origin:
+        s.headers["Origin"] = args.browser_origin
 
-    # --- 0. Backend health first (fail fast with a clear message)
-    try:
-        h = s.get(f"{b}/actuator/health", timeout=60)
-        results.append(check("BACKEND HEALTH  ", h.status_code == 200, f"({h.status_code})"))
-        if h.status_code != 200:
-            print("Backend is not healthy — aborting remaining checks.", file=sys.stderr)
+    # --- 0. Render free-tier cold starts can outlast a single 60s request.
+    health_error = "no response"
+    for attempt in range(3):
+        try:
+            h = s.get(f"{b}/actuator/health", timeout=60)
+            if h.status_code == 200 and h.json().get("status") == "UP":
+                results.append(check("BACKEND HEALTH  ", True, f"(attempt {attempt + 1})"))
+                break
+            health_error = f"HTTP {h.status_code}"
+        except Exception as exc:
+            health_error = str(exc)[:80]
+        if attempt == 2:
+            check("BACKEND HEALTH  ", False, health_error)
             return 1
-    except Exception as e:
-        check("BACKEND HEALTH  ", False, str(e)[:80])
-        return 1
+        time.sleep(5)
+
+    if args.browser_origin:
+        preflight = s.options(f"{b}/auth/login", headers={
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type,x-xsrf-token",
+        }, timeout=30)
+        cors_ok = (preflight.headers.get("Access-Control-Allow-Origin") == args.browser_origin
+                   and preflight.headers.get("Access-Control-Allow-Credentials", "").lower() == "true")
+        results.append(check("BROWSER CORS     ", cors_ok,
+                             f"(HTTP {preflight.status_code}, origin={preflight.headers.get('Access-Control-Allow-Origin', 'missing')})"))
+        if not cors_ok:
+            return 1
 
     # --- 1. CSRF endpoint
     try:
@@ -83,6 +106,15 @@ def main() -> int:
                          r.status_code == 200 and (jwt or cookie_jwt), auth_detail))
     if not (jwt or cookie_jwt):
         return 1
+    if args.browser_origin:
+        jwt_headers = [value.lower() for value in r.raw.headers.getlist("Set-Cookie")
+                       if value.lower().startswith("jwt_token=")]
+        cookie_ok = any("samesite=none" in value and "secure" in value
+                        for value in jwt_headers)
+        results.append(check("BROWSER COOKIE   ", cookie_ok,
+                             "(JWT requires SameSite=None; Secure for cross-site Pages)"))
+        if not cookie_ok:
+            return 1
     # Cookie auth: the session already carries jwt_token — send no Authorization
     # header. Bearer auth: attach the token from the JSON body.
     ah = {} if cookie_jwt else {"Authorization": f"Bearer {jwt}"}
@@ -112,19 +144,28 @@ def main() -> int:
 
     # --- 5-7. Full chain: eval -> backend -> router -> LLM
     t0 = time.time()
-    r = s.post(f"{b}/chat/ask",
-               headers={**ah, "X-XSRF-TOKEN": fresh_csrf(),
-                        "Content-Type": "application/json"},
-               json={"sessionId": "smoke-e2e", "documentId": doc,
-                     "message": "Where is the Eiffel Tower located?"}, timeout=600)
+    try:
+        r = s.post(f"{b}/chat/ask",
+                   headers={**ah, "X-XSRF-TOKEN": fresh_csrf(),
+                            "Content-Type": "application/json"},
+                   json={"sessionId": "smoke-e2e", "documentId": doc,
+                         "message": "Where is the Eiffel Tower located?",
+                         "mode": args.mode}, timeout=180)
+    except requests.RequestException as exc:
+        results.append(check("CHAT             ", False,
+                             f"({args.mode}, {round(time.time() - t0, 1)}s, {str(exc)[:80]})"))
+        return 1
     lat = round(time.time() - t0, 1)
     if r.status_code != 200:
-        results.append(check("CHAT             ", False, f"(HTTP {r.status_code})"))
+        results.append(check("CHAT             ", False,
+                             f"({args.mode}, HTTP {r.status_code}, {lat}s, body={r.text[:120]!r})"))
         results.append(False)
         return 1
-    ans = r.json().get("aiResponse", "")
+    response = r.json()
+    ans = response.get("aiResponse", "")
+    strategy = response.get("ragStrategy", "")
     unavailable = "temporarily unavailable" in ans.lower()
-    results.append(check("CHAT             ", not unavailable, f"({lat}s)"))
+    results.append(check("CHAT             ", not unavailable, f"({lat}s, strategy={strategy})"))
     if unavailable:
         results.append(check("ROUTER AUTH      ", False,
                              'router rejected backend ("temporarily unavailable")'))
@@ -132,6 +173,9 @@ def main() -> int:
         return 1
     results.append(check("ROUTER AUTH      ", True))
     results.append(check("LLM RESPONSE     ", True))
+    if args.mode == "agent":
+        results.append(check("AGENT PATH       ", strategy == "agentic",
+                             f"(strategy={strategy}; fallback RAG is not agent success)"))
     print(f"   answer[:160]: {ans[:160].replace(chr(10), ' ')}")
 
     overall = all(results)

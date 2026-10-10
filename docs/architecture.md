@@ -35,7 +35,7 @@ chứng — mỗi câu trả lời quy về được đoạn nguồn cụ thể,
 | Service | Tech | Port | Vai trò | Chạy ở đâu |
 |---|---|---|---|---|
 | SPA | React 18 + TypeScript (Vite) | — | chat UI, SSE progressive rendering, upload | **Prod: Cloudflare Pages** `https://smart-doc-chatbot.pages.dev` (workflow `pages.yml`) |
-| `smartdoc-backend` | **Spring Boot 3.2 / Java 17** | **8080** | auth (HttpOnly cookie), document CRUD, job queue, chat CRAG + SSE, audit | **Render (canonical)** `https://smartdoc-backend-2hhz.onrender.com`, health `/api/actuator/health`; `h4mt` là legacy unresolved — không tham chiếu mới |
+| `smartdoc-backend` | **Spring Boot 3.2 / Java 17** | **8080** | auth (HttpOnly cookie), document CRUD, job queue, chat CRAG + SSE, audit | **Azure demo API** `https://smartdoc-api.blackisland-5a3f0246.southeastasia.azurecontainerapps.io`, RAG live smoke pass 2026-10-09; Render `2hhz` là mirror đang trả 502 gián đoạn |
 | `smart-doc-agent` | Python FastAPI + **LangGraph** | **9000** | multi-agent: `/v1/*` và root — `/agent/invoke`, `/agent/invoke-stream`, `/agent/approvals` (HITL Redis-backed, fail-closed, snapshot resume — approve khôi phục đúng state lúc pause, không chạy lại từ đầu), `/a2a/*`, `/mcp/*`, `/agent/memory/graph`, `/training-jobs`, `/health`, `/ready`, `/metrics` — **đã nối vào luồng chat chính**: backend `ChatService` (mode `agent`, mặc định) gọi `/v1/agent/invoke` qua `AgentClient`, HITL pause (`hitl_pending`/`hitl_approval_id`) propagate qua `ChatResponse`/SSE metadata, duyệt tại `/agent/approvals/**` (ADMIN/ENGINEER) | Render `smart-doc-agent` (+ `AGENT_BASE_URL` trỏ từ backend); compose `agent` + `redis`; k8s `25-smartdoc-agent` + `16-redis` |
 | `smart-doc-llm-router` | FastAPI | — | `POST /api/chat`, `POST /api/embeddings` → **Cloudflare Workers AI exclusively** (service này không fallback Ollama), `GET /health/live` | Render `smart-doc-llm-router` |
 | `smartdoc-keycloak` | Docker | 8080 | OIDC (optional) | Render |
@@ -49,8 +49,8 @@ chứng — mỗi câu trả lời quy về được đoạn nguồn cụ thể,
 ```mermaid
 flowchart LR
     U["Browser"] -->|HTTPS| CF["Cloudflare Pages<br/>smart-doc-chatbot.pages.dev<br/>(SSE progressive rendering)"]
-    CF -->|"POST /chat/stream · /documents<br/>HttpOnly SameSite cookie"| SVC["Render boundary (multi-service)"]
-    SVC --> SB["smartdoc-backend · Spring Boot :8080<br/>/api/actuator/health<br/>canonical smartdoc-backend-2hhz"]
+    CF -->|"POST /chat/stream · /documents<br/>HttpOnly SameSite cookie"| SVC["Azure Container Apps (demo API)"]
+    SVC --> SB["smartdoc-api · Spring Boot :8080<br/>/api/actuator/health"]
     SVC --> AG["smart-doc-agent · FastAPI :9000<br/>LangGraph (experimental, chưa nối chat chính)"]
     SVC --> LR["smart-doc-llm-router<br/>POST /api/chat · /api/embeddings<br/>→ Cloudflare Workers AI (exclusive)"]
     SB --> NEON[("Neon PostgreSQL<br/>Flyway V1..V21 · job queue<br/>FOR UPDATE SKIP LOCKED")]
@@ -63,8 +63,8 @@ flowchart LR
     K8 -->|"pages.yml → wrangler"| CF
 ```
 
-**Trạng thái trung thực (README → Production status):** SPA đang sống trên Pages; backend canonical là
-`2hhz` trên Render; `h4mt` legacy chưa xác nhận (không tham chiếu mới); LLM router/Keycloak từng down do
+**Trạng thái trung thực (README → Production status):** SPA đang sống trên Pages; backend Azure đã qua RAG smoke;
+`2hhz` Render đang 502 gián đoạn; `h4mt` legacy chưa xác nhận; LLM router/Keycloak từng down do
 free-tier — đúng sự thật thay vì trích link chết. Repo variable/secrets: `RENDER_API_KEY`,
 `RENDER_SERVICE_ID`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`.
 
@@ -75,8 +75,8 @@ free-tier — đúng sự thật thay vì trích link chết. Repo variable/secr
 | `ci.yml` | push, PR | `backend-test` · `frontend-test` · `frontend-e2e` · `agent-test` · `eval-grader` · `eval-llm-judge-mock` · `chaos-test` · `security-scan` · `canary-smoke` | 9 gate: unit Java/TS/Python, e2e, eval regression, chaos, scan, smoke |
 | `eval.yml` | push, PR, dispatch | `fixture-smoke` · `live-benchmark` · `e2e-fullstack` | benchmark Hit@K/Recall@K/MRR — regression là fail |
 | `cd.yml` | push `main` (+ tag) | `build-and-push` → **`verify-readiness`** (`render-readiness.yml`, health `/api/actuator/health`, 10×15s) → `release` (tag `v*` → GitHub Release, environment `production`) | readiness không qua = chưa release |
-| `pages.yml` | push, dispatch | `deploy-pages` → Cloudflare Pages | frontend lên Pages |
-| `deploy-azure.yml` | push `main/master` paths `backend/**`, dispatch | `test-and-deploy` | `mvn package` → `scripts/deploy-azure.sh`; thiếu credential → cảnh báo trung thực |
+| `pages.yml` | Azure RAG deploy success, dispatch | `deploy-pages` → Cloudflare Pages | tải artifact SHA từ Azure run; frontend lên Pages và xác minh đúng revision |
+| `deploy-azure.yml` | CI success trên `main`, dispatch | `test-and-deploy` | ACR build cùng source SHA → Azure API → readiness + browser CORS/cookie + RAG smoke; thiếu credential → FAIL; agent readiness báo riêng |
 | `compliance.yml` | `workflow_run`, schedule, dispatch | `verify-staging` | kiểm tra định kỳ |
 | `load-test.yml` | schedule (nightly), dispatch | `load-test` | tải đêm |
 | `local-llm-eval.yml` | schedule, dispatch | `ollama-eval` | eval LLM local trong CI |
@@ -85,14 +85,14 @@ free-tier — đúng sự thật thay vì trích link chết. Repo variable/secr
 ```mermaid
 flowchart LR
     P["git push main"] --> CI["ci.yml — 9 jobs<br/>backend · frontend · e2e · agent · eval-grader<br/>· eval-judge-mock · chaos · security-scan · canary"]
-    CI --> CD["cd.yml"]
+    CI --> AZ["deploy-azure.yml<br/>ACR build → Azure RAG smoke"]
+    AZ --> PG["pages.yml<br/>deploy same SHA → Cloudflare Pages"]
+    P --> CD["cd.yml (Render mirror images)"]
     CD --> BP["build-and-push (image → GHCR)"]
     BP --> VR["verify-readiness<br/>GET /api/actuator/health ×10 / 15s trên Render"]
     VR --> OK{"ready?"}
     OK -->|yes| REL["tag v* → GitHub Release (env: production)"]
     OK -->|no| BLOCK["run fail — không release"]
-    P --> PG["pages.yml → wrangler pages deploy"]
-    P -->|"backend/**"| AZ["deploy-azure.yml (path thay thế)"]
     SUB["eval.yml · load-test.yml · local-llm-eval.yml · compliance.yml"] -.lựa chọn khi cần.-> P
 ```
 
