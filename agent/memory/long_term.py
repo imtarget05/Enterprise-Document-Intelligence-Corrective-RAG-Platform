@@ -46,10 +46,23 @@ except ImportError:
 
 
 def _pg_dsn() -> str:
-    return (
+    """Build the DSN for the shared Postgres memory store.
+
+    ``POSTGRES_SSLMODE`` (unset by default) is appended when present: managed
+    Postgres — Neon in particular — refuses plaintext connections, and without
+    this the whole memory layer silently fell back to in-process RAM, losing
+    every fact on restart. ``sslmode=require`` enables TLS without requiring a
+    CA bundle, which is exactly what a pooled endpoint expects.
+    """
+    dsn = (
         f"postgresql://{settings.postgres_user}:{settings.postgres_password}"
         f"@{settings.postgres_host}:{settings.postgres_port}/{settings.postgres_db}"
     )
+    sslmode = os.getenv("POSTGRES_SSLMODE", "").strip()
+    if sslmode:
+        sep = "&" if "?" in dsn else "?"
+        dsn = f"{dsn}{sep}sslmode={sslmode}"
+    return dsn
 
 
 @dataclass

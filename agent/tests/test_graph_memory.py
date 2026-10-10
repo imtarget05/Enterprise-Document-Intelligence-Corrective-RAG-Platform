@@ -313,3 +313,17 @@ async def test_case_insensitive_lookup(graph):
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+def test_pg_dsn_requests_tls_when_sslmode_is_configured(monkeypatch):
+    """Managed Postgres (Neon) refuses plaintext: the DSN must carry sslmode."""
+    from memory.graph_memory import _pg_dsn
+    from memory.long_term import _pg_dsn as _long_term_dsn
+
+    monkeypatch.delenv("POSTGRES_SSLMODE", raising=False)
+    assert "sslmode" not in _pg_dsn()
+    assert "sslmode" not in _long_term_dsn()
+
+    monkeypatch.setenv("POSTGRES_SSLMODE", "require")
+    assert "sslmode=require" in _pg_dsn()
+    assert "sslmode=require" in _long_term_dsn()
