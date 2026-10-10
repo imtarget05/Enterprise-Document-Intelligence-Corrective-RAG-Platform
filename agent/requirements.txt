@@ -56,7 +56,7 @@ tavily-python==0.3.4
 
 # Database (Long-term memory)
 asyncpg==0.29.0
-sqlalchemy[asyncio]==2.0.31
+sqlalchemy[asyncio]==2.0.52
 psycopg2-binary==2.9.9
 
 # Redis (rate limiting + short-term memory persistence)
