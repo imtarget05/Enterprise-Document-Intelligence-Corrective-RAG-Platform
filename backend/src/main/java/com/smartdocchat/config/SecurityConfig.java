@@ -37,6 +37,9 @@ public class SecurityConfig {
     @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:3001,http://localhost:8080,http://127.0.0.1:3000}")
     private String allowedOrigins;
 
+    @Value("${spring.profiles.active:}")
+    private String activeProfile;
+
     @Value("${oauth2.issuer-uri:}")
     private String oauth2IssuerUri;
 
@@ -47,7 +50,13 @@ public class SecurityConfig {
         csrfTokenRepository.setCookiePath("/");
         csrfTokenRepository.setCookieName("XSRF-TOKEN");
         csrfTokenRepository.setHeaderName("X-XSRF-TOKEN");
-        csrfTokenRepository.setCookieCustomizer(c -> c.sameSite("None"));
+        csrfTokenRepository.setCookieCustomizer(c -> {
+            if ("prod".equalsIgnoreCase(activeProfile)) {
+                c.sameSite("None").secure(true);
+            } else {
+                c.sameSite("Lax");
+            }
+        });
 
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))

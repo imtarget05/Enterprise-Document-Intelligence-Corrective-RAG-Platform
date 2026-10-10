@@ -53,9 +53,9 @@ public class OidcLoginSuccessHandler implements AuthenticationSuccessHandler {
         jwtCookie.setHttpOnly(true);
         jwtCookie.setPath("/");
         jwtCookie.setMaxAge(JWT_COOKIE_MAX_AGE_SECONDS);
-        jwtCookie.setAttribute("SameSite", "Lax");
-        jwtCookie.setSecure("https".equalsIgnoreCase(
+        jwtCookie.setSecure(request.isSecure() || "https".equalsIgnoreCase(
                 Optional.ofNullable(request.getHeader("X-Forwarded-Proto")).orElse("http")));
+        jwtCookie.setAttribute("SameSite", jwtCookie.getSecure() ? "None" : "Lax");
         response.addCookie(jwtCookie);
 
         auditLogService.record(username, "auth.login.sso", "user", username,

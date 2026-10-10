@@ -1,0 +1,65 @@
+# ============================================
+# Smart Document Chatbot - Backend Dockerfile
+# Multi-stage build for production
+# ============================================
+
+# --- Stage 1: Build ---
+FROM maven:3.9-eclipse-temurin-17 AS build
+
+WORKDIR /app
+
+# Copy pom.xml first to cache dependencies
+COPY pom.xml .
+
+# Download dependencies (cached layer)
+RUN mvn dependency:go-offline -B
+
+# Copy source code
+COPY src ./src
+
+# Build the application
+RUN mvn clean package -DskipTests -B
+
+# --- Stage 2: Runtime ---
+# NOTE: eclipse-temurin alpine variants were removed from Docker Hub; use the
+# Debian-based 17-jre image and apt-get instead of apk.
+FROM eclipse-temurin:17-jre AS runtime
+
+# Add labels for container metadata
+LABEL maintainer="Smart Doc Chatbot Team"
+LABEL description="Smart Document Chatbot - Spring Boot Backend"
+LABEL version="1.0.0"
+
+# Create non-root user for security
+RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
+
+WORKDIR /app
+
+# Install curl for health checks + tesseract-ocr for PDF OCR fallback
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl tesseract-ocr tesseract-ocr-eng tesseract-ocr-vie \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy the built JAR from build stage (version-agnostic)
+COPY --from=build /app/target/*.jar app.jar
+
+# Create uploads directory
+RUN mkdir -p /app/uploads && chown -R appuser:appgroup /app
+
+# Switch to non-root user
+USER appuser
+
+# Expose port
+EXPOSE 8080
+
+# Health check (shell form so $PORT expands — must match the port Spring binds).
+# start-period 300s: Spring Boot + Flyway against remote Neon can exceed the old
+# 60s window on constrained containers; give the JVM room before counting
+# failures.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=300s --retries=5 \
+  CMD curl -f http://localhost:${PORT:-8080}/api/actuator/health || exit 1
+
+# JVM tuning for constrained memory containers (512MB RAM cap on Render free tier)
+ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:+UseSerialGC -Xms128m -Xmx320m -XX:MaxMetaspaceSize=128m -Djava.security.egd=file:/dev/./urandom"
+
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

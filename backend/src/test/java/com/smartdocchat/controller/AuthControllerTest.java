@@ -121,6 +121,24 @@ class AuthControllerTest {
         verify(loginAuditService).recordSuccess("bob", "10.0.0.9");
         assertEquals("jwt-cookie", servletResponse.getCookie("jwt_token").getValue());
         assertTrue(servletResponse.getCookie("jwt_token").isHttpOnly());
+        assertEquals("Lax", servletResponse.getCookie("jwt_token").getAttribute("SameSite"));
+    }
+
+    @Test
+    void productionLoginSetsCrossSiteSecureCookieForPages() {
+        when(userRepository.findByUsername("bob")).thenReturn(Optional.of(enabledUser("bob", "encoded")));
+        when(passwordEncoder.matches("password123456", "encoded")).thenReturn(true);
+        when(tokenProvider.generateToken("bob", "ROLE_USER")).thenReturn("jwt-cookie");
+        when(env.getActiveProfiles()).thenReturn(new String[]{"prod"});
+
+        MockHttpServletRequest servletRequest = new MockHttpServletRequest();
+        MockHttpServletResponse servletResponse = new MockHttpServletResponse();
+        ResponseEntity<?> response = controller.authenticateUser(
+                request("bob", "password123456"), servletRequest, servletResponse);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertTrue(servletResponse.getCookie("jwt_token").getSecure());
+        assertEquals("None", servletResponse.getCookie("jwt_token").getAttribute("SameSite"));
     }
 
     @Test

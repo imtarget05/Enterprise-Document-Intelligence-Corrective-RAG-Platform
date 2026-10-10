@@ -126,8 +126,8 @@ public class AuthController {
         jwtCookie.setHttpOnly(true);
         jwtCookie.setPath("/");
         jwtCookie.setMaxAge(JWT_COOKIE_MAX_AGE_SECONDS);
-        jwtCookie.setAttribute("SameSite", "Lax");
         jwtCookie.setSecure(isSecureCookie(request));
+        jwtCookie.setAttribute("SameSite", jwtCookie.getSecure() ? "None" : "Lax");
         response.addCookie(jwtCookie);
 
         return ResponseEntity.ok(AuthResponse.builder()
@@ -195,8 +195,8 @@ public class AuthController {
                     jwtCookie.setHttpOnly(true);
                     jwtCookie.setPath("/");
                     jwtCookie.setMaxAge(JWT_COOKIE_MAX_AGE_SECONDS);
-                    jwtCookie.setAttribute("SameSite", "Lax");
                     jwtCookie.setSecure(isSecureCookie(request));
+                    jwtCookie.setAttribute("SameSite", jwtCookie.getSecure() ? "None" : "Lax");
                     response.addCookie(jwtCookie);
 
                     return ResponseEntity.ok(AuthResponse.builder()
@@ -220,8 +220,8 @@ public class AuthController {
         jwtCookie.setHttpOnly(true);
         jwtCookie.setPath("/");
         jwtCookie.setMaxAge(0);
-        jwtCookie.setAttribute("SameSite", "Lax");
         jwtCookie.setSecure(isSecureCookie(request));
+        jwtCookie.setAttribute("SameSite", jwtCookie.getSecure() ? "None" : "Lax");
         response.addCookie(jwtCookie);
         return ResponseEntity.ok("Logged out successfully");
     }
