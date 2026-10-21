@@ -23,7 +23,7 @@ RUN mvn clean package -DskipTests -B
 # --- Stage 2: Runtime ---
 # NOTE: eclipse-temurin alpine variants were removed from Docker Hub; use the
 # Debian-based 17-jre image and apt-get instead of apk.
-FROM eclipse-temurin:17-jre AS runtime
+FROM eclipse-temurin:25-jre AS runtime
 
 # Add labels for container metadata
 LABEL maintainer="Smart Doc Chatbot Team"
