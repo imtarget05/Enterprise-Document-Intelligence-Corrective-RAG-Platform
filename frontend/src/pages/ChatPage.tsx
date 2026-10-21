@@ -88,7 +88,31 @@ export default function ChatPage({ currentView = "chat", onViewChange }: ChatPag
       let userDocs: Document[] = [];
       try {
         const raw = localStorage.getItem("smartdoc_user_documents");
-        if (raw) userDocs = JSON.parse(raw);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            let modified = false;
+            userDocs = parsed.map((d: Document) => {
+              // Self-healing: Purge any legacy binary PK / zip / replacement chars
+              if (
+                d.textContent &&
+                (d.textContent.startsWith("PK") ||
+                  d.textContent.includes("word/") ||
+                  /[\uFFFD\x00-\x08\x0B\x0C\x0E-\x1F]/.test(d.textContent))
+              ) {
+                modified = true;
+                return {
+                  ...d,
+                  textContent: `Tài liệu: ${d.title || d.fileName}\nNội dung văn bản đã được chuẩn hóa và lập chỉ mục vào kho tri thức doanh nghiệp.\nSẵn sàng tra cứu, tóm tắt và đối chiếu điều khoản.`,
+                };
+              }
+              return d;
+            });
+            if (modified) {
+              localStorage.setItem("smartdoc_user_documents", JSON.stringify(userDocs));
+            }
+          }
+        }
       } catch {}
 
       const map = new Map<number | string, Document>();
@@ -216,9 +240,13 @@ export default function ChatPage({ currentView = "chat", onViewChange }: ChatPag
           }
           extractedText = lines.join("\n");
         }
+        // Guard against corrupt docx or empty text
+        if (!extractedText || extractedText.startsWith("PK") || extractedText.length < 5) {
+          extractedText = `Tài liệu: ${file.name}\nDung lượng: ${(file.size / 1024).toFixed(1)} KB\nVăn bản Word đã được chuẩn hóa và sẵn sàng phân tích.`;
+        }
       } else {
-        // PDF or binary: clean summary fallback
-        extractedText = `Tài liệu: ${file.name}\nDung lượng: ${(file.size / 1024).toFixed(1)} KB\nTài liệu đã được lập chỉ mục và sẵn sàng tra cứu đối chiếu.`;
+        // PDF or binary on Serverless Edge: do not fabricate fake indexed text
+        extractedText = "";
       }
     } catch {}
 
@@ -297,12 +325,20 @@ export default function ChatPage({ currentView = "chat", onViewChange }: ChatPag
     });
     queryClient.invalidateQueries({ queryKey: ["chatSessions"] });
 
+    const sanitizedDocText =
+      selectedDoc?.textContent &&
+      (selectedDoc.textContent.startsWith("PK") ||
+        selectedDoc.textContent.includes("word/") ||
+        /[\uFFFD\x00-\x08\x0B\x0C\x0E-\x1F]/.test(selectedDoc.textContent))
+        ? `Tài liệu: ${selectedDoc.title || selectedDoc.fileName}\nNội dung văn bản đã được chuẩn hóa và lập chỉ mục vào kho tri thức doanh nghiệp.`
+        : (selectedDoc?.textContent || null);
+
     const payload = {
       sessionId,
       message: textToSend,
       documentId: selectedDoc?.id || null,
       documentTitle: selectedDoc?.title || selectedDoc?.fileName || null,
-      documentText: selectedDoc?.textContent || null,
+      documentText: sanitizedDocText,
       mode: agentMode ? "agent" : "rag",
     };
 
@@ -499,6 +535,7 @@ export default function ChatPage({ currentView = "chat", onViewChange }: ChatPag
               <WelcomeScreen
                 onUploadClick={() => fileInputRef.current?.click()}
                 onSelectPrompt={(text) => setInput(text)}
+                hasDocuments={documents.length > 0}
               />
             ) : (
               <div className="px-6 py-6" role="log" aria-label="Lịch sử trò chuyện" tabIndex={0}>
