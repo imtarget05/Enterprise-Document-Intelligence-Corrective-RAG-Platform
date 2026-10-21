@@ -18,6 +18,7 @@ import RenameDialog from "../components/RenameDialog";
 import DeleteConfirmDialog from "../components/DeleteConfirmDialog";
 import VersionHistory from "../components/VersionHistory";
 import { useRenameDocument, useDeleteDocument, useDeleteDocumentsBatch } from "../hooks/useDocumentMutations";
+import { saveLocalSession, deleteLocalSession } from "../hooks/useChatSessions";
 
 export default function ChatPage() {
   const { token, username, logout } = useAuth();
@@ -173,6 +174,20 @@ export default function ChatPage() {
         throw new Error(data.message || "Upload failed");
       }
 
+      if (data.document) {
+        const newDoc: Document = {
+          id: typeof data.document.id === "number" ? data.document.id : Date.now(),
+          fileName: data.document.filename || data.document.fileName || file.name,
+          title: data.document.filename || file.name,
+          fileSize: data.document.fileSize || file.size,
+          fileType: "PDF",
+          chunkCount: data.document.chunkCount || 28,
+          createdAt: new Date().toISOString(),
+          sourceType: "USER",
+        };
+        setSelectedDoc(newDoc);
+      }
+
       queryClient.invalidateQueries({ queryKey: ["documents"] });
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
@@ -188,6 +203,13 @@ export default function ChatPage() {
 
     setInput("");
     setLoading(true);
+
+    saveLocalSession({
+      sessionId,
+      lastMessage: textToSend.substring(0, 36),
+      messageCount: messages.length + 1,
+    });
+    queryClient.invalidateQueries({ queryKey: ["chatSessions"] });
 
     const payload = {
       sessionId,
@@ -325,6 +347,7 @@ export default function ChatPage() {
   };
 
   const handleClearChat = async () => {
+    deleteLocalSession(sessionId);
     try {
       await fetch(`${API_BASE_URL}/chat/history/${sessionId}`, {
         method: "DELETE",
@@ -465,10 +488,44 @@ export default function ChatPage() {
           {/* Input — always visible */}
           <div className="border-t border-outline px-6 py-4 bg-surface">
             <div className="max-w-3xl mx-auto">
+              {/* Active Selected Document Pill */}
+              {selectedDoc && (
+                <div className="mb-2.5 flex items-center gap-2 text-[12px] bg-blue-50 text-google-blue px-3 py-1.5 rounded-material-full border border-google-blue/30 w-fit animate-fade-in shadow-xs">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                  </svg>
+                  <span className="font-medium truncate max-w-sm">
+                    Đang hỏi theo tài liệu: <strong>{selectedDoc.title || selectedDoc.fileName}</strong>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDoc(null)}
+                    className="hover:bg-blue-100 rounded-full p-0.5 ml-1 text-slate-500 hover:text-slate-900 transition cursor-pointer font-bold"
+                    title="Bỏ chọn tài liệu này để hỏi toàn bộ hệ thống"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
               {/* Mode toggle: RAG vs Agent */}
               <AgentModeToggle agentMode={agentMode} onToggle={setAgentMode} />
 
-              <div className="flex gap-3 items-end">
+              <div className="flex gap-2.5 items-end">
+                {/* Document attachment / upload button */}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-11 h-11 flex items-center justify-center rounded-material-full border border-outline hover:bg-surface-container text-onsurface-variant hover:text-google-blue transition-colors cursor-pointer shrink-0"
+                  title="Tải lên và đính kèm tài liệu PDF / DOCX / TXT"
+                  aria-label="Đính kèm tài liệu"
+                >
+                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                  </svg>
+                </button>
+
                 <textarea
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
@@ -482,10 +539,10 @@ export default function ChatPage() {
                 <button
                   onClick={handleSendMessage}
                   disabled={loading || !input.trim()}
-                  className="w-12 h-12 bg-google-blue hover:bg-google-blueDark disabled:bg-on-surface-disabled text-white rounded-material-full flex items-center justify-center transition-all duration-200 shadow-material-btn hover:shadow-material-btn-hover disabled:shadow-none"
+                  className="w-11 h-11 bg-google-blue hover:bg-google-blueDark disabled:bg-on-surface-disabled text-white rounded-material-full flex items-center justify-center transition-all duration-200 shadow-material-btn hover:shadow-material-btn-hover disabled:shadow-none shrink-0"
                   aria-label="Gửi tin nhắn"
                 >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                     <line x1="22" y1="2" x2="11" y2="13" />
                     <polygon points="22 2 15 22 11 13 2 9 22 2" />
                   </svg>

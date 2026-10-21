@@ -86,7 +86,7 @@ export default function SourceCitations({
   onViewSource,
 }: {
   sources?: SourceCitation[] | null;
-  sourceChunks?: string | null;
+  sourceChunks?: string | string[] | null;
   onViewSource?: (s: SourceCitation) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -117,8 +117,14 @@ export default function SourceCitations({
     );
   }
 
-  // Legacy fallback: raw chunk text only (older persisted messages).
-  if (sourceChunks) {
+  // Legacy fallback: raw chunk text or array of chunks (older persisted messages).
+  const rawChunks: string[] = Array.isArray(sourceChunks)
+    ? sourceChunks.map((c) => (typeof c === "string" ? c : JSON.stringify(c)))
+    : typeof sourceChunks === "string" && sourceChunks.trim().length > 0
+      ? sourceChunks.split("---").map((c) => c.trim()).filter(Boolean)
+      : [];
+
+  if (rawChunks.length > 0) {
     return (
       <details className="mt-3 group">
         <summary className="cursor-pointer text-xs text-onsurface-muted hover:text-onsurface transition-colors duration-200 flex items-center gap-1.5 select-none">
@@ -126,10 +132,10 @@ export default function SourceCitations({
             <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
             <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
           </svg>
-          Sources
+          Trích dẫn nguồn cơ sở tri thức ({rawChunks.length})
         </summary>
         <div className="mt-2 space-y-2 max-h-48 overflow-y-auto pr-1">
-          {sourceChunks.split("---").map((chunk, i) => {
+          {rawChunks.map((chunk, i) => {
             const match = chunk.trim().match(/^\[(.*?)\] (.*)$/s);
             const textContent = match ? match[2] : chunk;
             return (

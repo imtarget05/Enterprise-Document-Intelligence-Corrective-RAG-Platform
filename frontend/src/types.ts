@@ -35,7 +35,7 @@ export interface ChatMessage {
   sessionId: string;
   userMessage: string;
   aiResponse: string;
-  sourceChunks?: string | null;
+  sourceChunks?: string | string[] | null;
   sources?: SourceCitation[] | null;
   ragStrategy?: RagStrategy | "agentic" | null;
   confidence?: "high" | "medium" | "low" | null;

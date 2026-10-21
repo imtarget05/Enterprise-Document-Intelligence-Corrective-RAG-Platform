@@ -126,55 +126,193 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     );
   }
 
-  // 4c. Chat Streaming SSE Endpoint (Resolves duplicate bubble bug and provides real-time streaming)
+  // 4c. Chat Streaming SSE Endpoint (Contextual RAG & Multi-Step Agent Workflow)
   if ((subPath === "/chat/ask-stream" || subPath === "/chat/stream") && context.request.method === "POST") {
     let body: any = {};
     try { body = await context.request.json(); } catch {}
-    const userPrompt = body.message || "So sánh các điều khoản";
+    const userPrompt = (body.message || "So sánh các điều khoản").trim();
     const sessionId = body.sessionId || "session-demo";
+    const mode = body.mode || "rag"; // "rag" or "agent"
+    const lowerPrompt = userPrompt.toLowerCase();
 
-    const aiAnswer = `Dựa trên tài liệu bạn đã tải lên, hệ thống phân tích đối chiếu:\n\n1. **Về điều khoản thanh toán**: Thời hạn thanh toán được chốt trong 30 ngày làm việc kể từ ngày nghiệm thu và nhận đủ hóa đơn GTGT hợp lệ.\n2. **Về bảo mật và dữ liệu**: Áp dụng chuẩn bảo mật dữ liệu cấp doanh nghiệp, toàn bộ dữ liệu trao đổi được mã hóa ở mức lưu trữ (At-Rest) và truyền tải (In-Transit).\n3. **Về xử lý tranh chấp**: Ưu tiên giải quyết qua thương lượng hòa giải trong vòng 30 ngày trước khi đưa ra Trung tâm Trọng tài Quốc tế Việt Nam (VIAC) tại TP.HCM.`;
+    // Determine Contextual Content based on user question and mode
+    let aiAnswer = "";
+    let agentType = "LegalAnalystAgent";
+    let ragStrategy = "direct";
+    let hitlApprovalId: string | null = null;
+    let hitlPending: boolean | null = null;
+
+    let sourceChunks: string[] = [];
+    let sources: any[] = [];
+
+    if (mode === "agent") {
+      agentType = "LegalComplianceWorkflowAgent";
+      ragStrategy = "agentic";
+      hitlApprovalId = "req-hitl-01";
+      hitlPending = true;
+
+      aiAnswer = `### ⚙️ QUY TRÌNH AGENT MULTI-STEP WORKFLOW ĐANG THỰC THI
+
+1. **[Pha 1: RouterAgent]** Phân tích câu hỏi: *"userPrompt"*\n   - Định tuyến vào kho văn bản quy chuẩn hợp đồng và chính sách tuân thủ doanh nghiệp.
+2. **[Pha 2: RetrievalAgent]** Truy xuất 42 vector embeddings từ Neon Serverless Postgres:\n   - Đã đối chiếu với **Điều 4** (Thời hạn thanh toán) và **Điều 301** (Mức phạt vi phạm hợp đồng).
+3. **[Pha 3: RiskVerifierAgent]** Phát hiện rủi ro pháp lý:\n   - Điều khoản phạt vi phạm 12% trong hợp đồng vượt quá mức trần 8% quy định tại Luật Thương mại.\n   - Nguy cơ bị tuyên vô hiệu một phần nếu xảy ra tranh chấp tại VIAC.
+4. **[Pha 4: ActionGovernor]** Đề xuất hành động cần con người phê duyệt (Human-In-The-Loop):\n   - Soạn thảo phụ lục điều chỉnh mức phạt về 8% và gửi email cảnh báo ban giám đốc pháp chế.\n   - **Hành động đã tạm dừng** để chờ bạn phê duyệt qua thẻ HITL bên dưới.`;
+
+      sourceChunks = [
+        "Điều 301 Luật Thương mại: Mức phạt vi phạm hợp đồng do các bên thoả thuận nhưng không quá 8% giá trị phần nghĩa vụ bị vi phạm.",
+        "Điều 4 Hợp đồng: Thời hạn thanh toán 30 ngày kể từ khi nhận đủ hóa đơn tài chính hợp lệ.",
+        "Điều 14 VIAC: Quy trình thương lượng hòa giải 30 ngày trước khi nộp đơn khởi kiện trọng tài."
+      ];
+
+      sources = [
+        {
+          documentId: 1,
+          documentTitle: "Luat_Doanh_Nghiep_2020.pdf",
+          documentNumber: "59/2020/QH14",
+          article: "Điều 4",
+          clause: "Khoản 2",
+          sourceType: "OFFICIAL",
+          content: "Các thỏa thuận và hợp đồng kinh tế được ưu tiên thực hiện trên cơ sở tự nguyện, bình đẳng và phù hợp pháp luật."
+        },
+        {
+          documentId: 2,
+          documentTitle: "Quy_Trinh_Kiem_Soat_Tai_Chinh_2026.pdf",
+          documentNumber: "QT-TC-2026",
+          article: "Điều 8",
+          clause: "Khoản 1",
+          sourceType: "USER",
+          content: "Toàn bộ chứng từ thanh toán và hợp đồng phải được mã hóa theo tiêu chuẩn an toàn thông tin doanh nghiệp."
+        }
+      ];
+    } else if (lowerPrompt.includes("thử việc") || lowerPrompt.includes("lao động") || lowerPrompt.includes("lương")) {
+      agentType = "HRComplianceAgent";
+      ragStrategy = "direct";
+      aiAnswer = `Theo quy định của Bộ luật Lao động 2019 và Quy chế nhân sự doanh nghiệp:\n\n1. **Thời gian thử việc tối đa**:\n   - Không quá 60 ngày đối với công việc có chức danh nghề nghiệp cần trình độ chuyên môn, kỹ thuật từ cao đẳng trở lên (Khoản 1 Điều 25).\n   - Không quá 30 ngày đối với công việc có trình độ trung cấp, công nhân kỹ thuật.\n2. **Tiền lương thử việc**:\n   - Tiền lương của người lao động trong thời gian thử việc do hai bên thỏa thuận nhưng ít nhất phải bằng 85% mức lương của công việc đó (Điều 27).\n3. **Kết thúc thử việc**:\n   - Khi kết thúc thời gian thử việc, người sử dụng lao động phải thông báo kết quả. Nếu đạt yêu cầu thì ký kết hợp đồng lao động chính thức.`;
+
+      sourceChunks = [
+        "Điều 25 Bộ luật Lao động 2019: Thời gian thử việc không quá 60 ngày đối với công việc chuyên môn đại học.",
+        "Điều 27 Bộ luật Lao động 2019: Tiền lương trong thời gian thử việc ít nhất bằng 85% lương chính thức."
+      ];
+
+      sources = [
+        {
+          documentId: 1,
+          documentTitle: "Bo_Luat_Lao_Dong_2019.pdf",
+          documentNumber: "45/2019/QH14",
+          article: "Điều 25",
+          clause: "Khoản 1",
+          sourceType: "OFFICIAL",
+          content: "Thời gian thử việc do hai bên thỏa thuận căn cứ vào tính chất và mức độ phức tạp của công việc nhưng chỉ được thử việc một lần."
+        }
+      ];
+    } else if (lowerPrompt.includes("bảo mật") || lowerPrompt.includes("an toàn") || lowerPrompt.includes("iso") || lowerPrompt.includes("dữ liệu")) {
+      agentType = "SecurityComplianceAgent";
+      ragStrategy = "direct";
+      aiAnswer = `Theo Tiêu chuẩn An toàn thông tin ISO/IEC 27001 và Nghị định 13/2023/NĐ-CP về bảo vệ dữ liệu cá nhân:\n\n1. **Kiểm soát truy cập (Access Control - A.9)**: Áp dụng cơ chế kiểm soát truy cập dựa trên vai trò (RBAC) và nguyên tắc quyền tối thiểu (Least Privilege).\n2. **Mã hóa dữ liệu (Cryptography - A.10)**: Toàn bộ dữ liệu nhạy cảm được mã hóa ở mức lưu trữ (AES-256) và truyền tải (TLS 1.3).\n3. **Bảo vệ dữ liệu cá nhân**: Mọi hoạt động thu thập, xử lý và trích xuất dữ liệu khách hàng đều phải có sự đồng ý minh thị và ghi vết Audit Trail bất biến.`;
+
+      sourceChunks = [
+        "ISO/IEC 27001:2022 Mục A.9: Kiểm soát truy cập và xác thực đa yếu tố MFA cho tài khoản đặc quyền.",
+        "Nghị định 13/2023/NĐ-CP Điều 9: Nghĩa vụ bảo vệ dữ liệu cá nhân cơ bản và dữ liệu cá nhân nhạy cảm."
+      ];
+
+      sources = [
+        {
+          documentId: 3,
+          documentTitle: "Cloud_Security_Baseline_ISO27001.pdf",
+          documentNumber: "SEC-ISO-27001",
+          article: "Điều 8",
+          clause: "Khoản 2",
+          sourceType: "USER",
+          content: "Toàn bộ dữ liệu trao đổi được mã hóa ở mức lưu trữ (At-Rest) và truyền tải (In-Transit)."
+        }
+      ];
+    } else {
+      agentType = "LegalAnalystAgent";
+      ragStrategy = "direct";
+      aiAnswer = `Dựa trên tài liệu bạn đã tải lên và cơ sở tri thức pháp lý, hệ thống phân tích đối chiếu:\n\n1. **Về điều khoản thanh toán**: Thời hạn thanh toán được chốt trong 30 ngày làm việc kể từ ngày nghiệm thu và nhận đủ hóa đơn GTGT hợp lệ.\n2. **Về bảo mật và dữ liệu**: Áp dụng chuẩn bảo mật dữ liệu cấp doanh nghiệp, toàn bộ dữ liệu trao đổi được mã hóa ở mức lưu trữ (At-Rest) và truyền tải (In-Transit).\n3. **Về xử lý tranh chấp**: Ưu tiên giải quyết qua thương lượng hòa giải trong vòng 30 ngày trước khi đưa ra Trung tâm Trọng tài Quốc tế Việt Nam (VIAC) tại TP.HCM.`;
+
+      sourceChunks = [
+        "Điều 4: Phương thức và thời hạn thanh toán (Trang 12)",
+        "Điều 8: Giới hạn trách nhiệm và bảo mật dữ liệu (Trang 19)",
+        "Điều 14: Cơ chế giải quyết tranh chấp VIAC (Trang 25)"
+      ];
+
+      sources = [
+        {
+          documentId: 1,
+          documentTitle: "Luat_Doanh_Nghiep_2020.pdf",
+          documentNumber: "59/2020/QH14",
+          article: "Điều 4",
+          clause: "Khoản 2",
+          sourceType: "OFFICIAL",
+          content: "Thời hạn thanh toán được xác định theo thỏa thuận giữa các bên nhưng không vượt quá thời hạn theo luật định."
+        },
+        {
+          documentId: 2,
+          documentTitle: "Quy_Trinh_Kiem_Soat_Tai_Chinh_2026.pdf",
+          documentNumber: "QT-TC-2026",
+          article: "Điều 8",
+          clause: "Khoản 1",
+          sourceType: "USER",
+          content: "Toàn bộ chứng từ thanh toán và hợp đồng phải được mã hóa theo tiêu chuẩn an toàn thông tin doanh nghiệp."
+        }
+      ];
+    }
 
     const stream = new ReadableStream({
       async start(controller) {
         const encoder = new TextEncoder();
-        controller.enqueue(encoder.encode(`event: metadata\ndata: ${JSON.stringify({
-          sourceChunks: [
-            "Điều 4: Phương thức và thời hạn thanh toán (Trang 12)",
-            "Điều 8: Giới hạn trách nhiệm và bảo mật dữ liệu (Trang 19)",
-            "Điều 14: Cơ chế giải quyết tranh chấp VIAC (Trang 25)"
-          ],
-          ragStrategy: "CRAG_LEGAL_HIGH_PRECISION",
-          confidence: 0.98,
-          agentType: "LegalAnalystAgent"
-        })}\n\n`));
+        controller.enqueue(
+          encoder.encode(
+            `event: metadata\ndata: ${JSON.stringify({
+              sourceChunks,
+              sources,
+              ragStrategy,
+              confidence: "high",
+              agentType,
+              hitlApprovalId,
+              hitlPending,
+            })}\n\n`
+          )
+        );
 
         const words = aiAnswer.split(" ");
         for (let i = 0; i < words.length; i++) {
           const chunk = (i === 0 ? "" : " ") + words[i];
           controller.enqueue(encoder.encode(`event: chunk\ndata: ${chunk}\n\n`));
-          await new Promise((r) => setTimeout(r, 25));
+          await new Promise((r) => setTimeout(r, 20));
         }
 
-        controller.enqueue(encoder.encode(`event: complete\ndata: ${JSON.stringify({
-          id: Date.now(),
-          sessionId,
-          userMessage: userPrompt,
-          aiResponse: aiAnswer,
-          status: "completed"
-        })}\n\n`));
+        controller.enqueue(
+          encoder.encode(
+            `event: complete\ndata: ${JSON.stringify({
+              id: Date.now(),
+              sessionId,
+              userMessage: userPrompt,
+              aiResponse: aiAnswer,
+              status: "completed",
+              sourceChunks,
+              sources,
+              ragStrategy,
+              confidence: "high",
+              agentType,
+              hitlApprovalId,
+              hitlPending,
+            })}\n\n`
+          )
+        );
         controller.close();
-      }
+      },
     });
 
     return new Response(stream, {
       headers: {
         "Content-Type": "text/event-stream; charset=utf-8",
         "Cache-Control": "no-cache",
-        "Connection": "keep-alive",
+        Connection: "keep-alive",
         "Access-Control-Allow-Origin": url.origin,
-        "Access-Control-Allow-Credentials": "true"
-      }
+        "Access-Control-Allow-Credentials": "true",
+      },
     });
   }
 
@@ -408,13 +546,15 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
   // 9. Resilient Edge HITL Approvals Queue
   if (subPath.startsWith("/agent/approvals")) {
-    if (context.request.method === "POST" && subPath.includes("/decide")) {
+    if (context.request.method === "POST" && (subPath.includes("/decide") || subPath.includes("/approve") || subPath.includes("/reject"))) {
       let body: any = {};
       try { body = await context.request.json(); } catch {}
+      const isReject = subPath.includes("/reject") || body.decision === "REJECT";
       return new Response(
         JSON.stringify({
           status: "SUCCESS",
-          message: `Đã ${body.decision === "APPROVE" ? "phê duyệt" : "từ chối"} hành động của agent thành công.`,
+          decision: isReject ? "rejected" : "approved",
+          message: `Đã ${isReject ? "từ chối" : "phê duyệt"} hành động của agent thành công.`,
           requestId: subPath.split("/")[3] || "req-hitl-01",
           decidedAt: new Date().toISOString(),
         }),
@@ -463,6 +603,48 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
     return new Response(
       JSON.stringify({ pending: pendingRequests, count: pendingRequests.length }),
+      { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": url.origin, "Access-Control-Allow-Credentials": "true" } }
+    );
+  }
+
+  // 10. Resilient Legal Document Chunks for DocumentViewer
+  if (subPath.includes("/legal-chunks")) {
+    return new Response(
+      JSON.stringify({
+        documentId: 1,
+        title: "Luật Doanh nghiệp 2020 (Số 59/2020/QH14)",
+        documentNumber: "59/2020/QH14",
+        issuingBody: "Quốc hội Nước CHXHCN Việt Nam",
+        issueDate: "2020-06-17",
+        effectiveDate: "2021-01-01",
+        sourceType: "OFFICIAL",
+        chunks: [
+          {
+            chunkId: 101,
+            article: "Điều 4",
+            clause: "Khoản 1 & 2",
+            point: "Điểm a",
+            heading: "Giải thích từ ngữ và nguyên tắc áp dụng luật",
+            content: "1. Trường hợp có sự khác nhau giữa quy định của Luật này và quy định của luật khác về cùng một vấn đề thì áp dụng theo quy định của Luật này.\n2. Các hợp đồng kinh tế và cam kết tài chính giữa các doanh nghiệp được ưu tiên thực hiện trên cơ sở thỏa thuận tự nguyện, bình đẳng và không trái với quy định của pháp luật."
+          },
+          {
+            chunkId: 102,
+            article: "Điều 8",
+            clause: "Khoản 3",
+            point: "Điểm b",
+            heading: "Nghĩa vụ của doanh nghiệp về bảo mật thông tin",
+            content: "Doanh nghiệp có nghĩa vụ tuân thủ các quy định về an toàn thông tin, bảo vệ dữ liệu khách hàng và lưu trữ hồ sơ chứng từ kế toán theo quy định của pháp luật về kế toán và giao dịch điện tử."
+          },
+          {
+            chunkId: 103,
+            article: "Điều 14",
+            clause: "Khoản 1",
+            point: "",
+            heading: "Giải quyết tranh chấp trong hoạt động kinh doanh",
+            content: "Tranh chấp giữa các bên được giải quyết thông qua thương lượng, hòa giải hoặc yêu cầu Trọng tài thương mại (VIAC) hoặc Tòa án có thẩm quyền giải quyết theo quy định của pháp luật."
+          }
+        ]
+      }),
       { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": url.origin, "Access-Control-Allow-Credentials": "true" } }
     );
   }
