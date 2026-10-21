@@ -125,11 +125,14 @@ def _new_record(
         "user_id": user_id,
         "agent_plan": agent_plan,
         "document_ids": list(document_ids or []),
-        "status": "pending",  # pending | approved | rejected | expired
+        "status": "pending",  # pending | approved | rejected | expired | executed | execution_failed
         "approver": None,
         "note": None,
         "has_snapshot": False,
         "created_at": time.time(),
+        "workflow_result": None,
+        "error": None,
+        "executed_at": None,
     }
 
 
@@ -292,15 +295,48 @@ class HITLStore:
         async with self._lock:
             self._evict_expired()
             record = self._requests.get(request_id)
-            if record is None or record["status"] != "pending":
+            if record is None or record["status"] not in {"pending", "execution_failed"}:
                 return None
             record["status"] = decision
             record["approver"] = approver
             record["note"] = note
-            self._snapshots.pop(request_id, None)
+            if decision == "rejected":
+                self._snapshots.pop(request_id, None)
             logger.info(
                 "HITL request %s %s by %s", request_id, decision, approver
             )
+            return dict(record)
+
+    # ------------------------------------------------------------------
+    async def complete(
+        self, request_id: str, workflow_result: Any
+    ) -> Optional[Dict[str, Any]]:
+        """Mark an approved request executed and clean up snapshot."""
+        async with self._lock:
+            self._evict_expired()
+            record = self._requests.get(request_id)
+            if record is None:
+                return None
+            record["status"] = "executed"
+            record["workflow_result"] = workflow_result
+            record["executed_at"] = time.time()
+            self._snapshots.pop(request_id, None)
+            logger.info("HITL request %s executed successfully", request_id)
+            return dict(record)
+
+    # ------------------------------------------------------------------
+    async def fail(
+        self, request_id: str, error: str
+    ) -> Optional[Dict[str, Any]]:
+        """Mark an approved request execution_failed (snapshot retained for retry)."""
+        async with self._lock:
+            self._evict_expired()
+            record = self._requests.get(request_id)
+            if record is None:
+                return None
+            record["status"] = "execution_failed"
+            record["error"] = error
+            logger.warning("HITL request %s execution failed: %s", request_id, error)
             return dict(record)
 
     # ------------------------------------------------------------------
@@ -446,7 +482,7 @@ class RedisHITLStore:
             except (TypeError, json.JSONDecodeError):
                 logger.warning("HITL record %s is not valid JSON — treating as missing", request_id)
                 return None
-            if record.get("status") != "pending":
+            if record.get("status") not in {"pending", "execution_failed"}:
                 return None
             record["status"] = decision
             record["approver"] = approver
@@ -462,21 +498,91 @@ class RedisHITLStore:
                 ex=remaining if remaining else self._ttl,
             )
             await self._redis.srem(_PENDING_SET_KEY, request_id)
-            # Snapshot cleanup is best-effort: the decision already succeeded,
-            # and an orphan snapshot self-expires with its TTL.
-            try:
-                await self._redis.delete(self._snap_key(request_id))
-            except RedisError as snap_exc:
-                logger.warning(
-                    "HITL snapshot orphan %s (self-expires in %ss): %s",
-                    request_id, self._ttl, snap_exc,
-                )
+            # Only clean up snapshot immediately if rejected.
+            # If approved, snapshot is preserved for execution and deleted in complete().
+            if decision == "rejected":
+                try:
+                    await self._redis.delete(self._snap_key(request_id))
+                except RedisError as snap_exc:
+                    logger.warning(
+                        "HITL snapshot orphan %s (self-expires in %ss): %s",
+                        request_id, self._ttl, snap_exc,
+                    )
             logger.info("HITL request %s %s by %s", request_id, decision, approver)
             return dict(record)
         except RedisError as exc:
             return await self._degraded(
                 "decide", exc,
                 lambda: self._fallback.decide(request_id, decision, approver, note),
+            )
+
+    # ------------------------------------------------------------------
+    async def complete(
+        self, request_id: str, workflow_result: Any
+    ) -> Optional[Dict[str, Any]]:
+        """Mark an approved request executed and clean up snapshot."""
+        try:
+            raw = await self._redis.get(self._key(request_id))
+            if raw is None:
+                return None
+            try:
+                record = json.loads(raw)
+            except (TypeError, json.JSONDecodeError):
+                logger.warning("HITL record %s is not valid JSON", request_id)
+                return None
+            record["status"] = "executed"
+            record["workflow_result"] = workflow_result
+            record["executed_at"] = time.time()
+            remaining = await self._redis.ttl(self._key(request_id))
+            if remaining is not None and remaining <= 0:
+                return None
+            await self._redis.set(
+                self._key(request_id),
+                json.dumps(record, ensure_ascii=False),
+                ex=remaining if remaining else self._ttl,
+            )
+            try:
+                await self._redis.delete(self._snap_key(request_id))
+            except RedisError as snap_exc:
+                logger.warning("HITL snapshot delete error %s: %s", request_id, snap_exc)
+            logger.info("HITL request %s executed successfully", request_id)
+            return dict(record)
+        except RedisError as exc:
+            return await self._degraded(
+                "complete", exc,
+                lambda: self._fallback.complete(request_id, workflow_result),
+            )
+
+    # ------------------------------------------------------------------
+    async def fail(
+        self, request_id: str, error: str
+    ) -> Optional[Dict[str, Any]]:
+        """Mark an approved request execution_failed (snapshot retained for retry)."""
+        try:
+            raw = await self._redis.get(self._key(request_id))
+            if raw is None:
+                return None
+            try:
+                record = json.loads(raw)
+            except (TypeError, json.JSONDecodeError):
+                logger.warning("HITL record %s is not valid JSON", request_id)
+                return None
+            record["status"] = "execution_failed"
+            record["error"] = error
+            remaining = await self._redis.ttl(self._key(request_id))
+            if remaining is not None and remaining <= 0:
+                return None
+            await self._redis.set(
+                self._key(request_id),
+                json.dumps(record, ensure_ascii=False),
+                ex=remaining if remaining else self._ttl,
+            )
+            logger.warning("HITL request %s execution failed: %s", request_id, error)
+            return dict(record)
+        except RedisError as exc:
+            return await self._degraded(
+                "fail", exc,
+                lambda: self._fallback.fail(request_id, error),
             )
 
     # ------------------------------------------------------------------

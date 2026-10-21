@@ -53,15 +53,34 @@ async def get_approval(request_id: str):
 @_map_store_errors
 async def approve_action(request_id: str, req: ApprovalDecisionRequest):
     """Human approves the paused action -> execute it immediately."""
-    # Load the pause-time snapshot BEFORE decide: decide() drops the snapshot,
-    # and decide itself is the atomic claim (a concurrent second approve gets
-    # 404 and never executes).
+    # Check if already executed (idempotency guard)
+    current = await hitl_store.get(request_id)
+    if current is not None and current.get("status") == "executed":
+        logger.info("HITL approve %s: already executed, returning idempotent result", request_id)
+        return {
+            "status": "already_executed",
+            "decision": "approved",
+            "approver": current.get("approver"),
+            "request_id": request_id,
+            "workflow_result": current.get("workflow_result"),
+        }
+
     snapshot_payload = await hitl_store.get_snapshot(request_id)
     record = await hitl_store.decide(request_id, "approved", req.approver, req.note)
     if record is None:
+        current = await hitl_store.get(request_id)
+        if current is not None and current.get("status") == "executed":
+            return {
+                "status": "already_executed",
+                "decision": "approved",
+                "approver": current.get("approver"),
+                "request_id": request_id,
+                "workflow_result": current.get("workflow_result"),
+            }
         raise HTTPException(status_code=404, detail="Approval request not found, already decided, or expired")
 
     if state._workflow is None:
+        await hitl_store.fail(request_id, "LangGraph workflow unavailable")
         raise HTTPException(status_code=503, detail="LangGraph workflow unavailable")
 
     # Resume from the pause-time snapshot when available (retrieval results,
@@ -102,14 +121,20 @@ async def approve_action(request_id: str, req: ApprovalDecisionRequest):
     workflow_input.update(
         {"agent_type": "action", "intent_override": "action", "hitl_auto_approved": True}
     )
-    result = await state._workflow.ainvoke(workflow_input)
-    return {
-        "status": "ok",
-        "decision": "approved",
-        "approver": req.approver,
-        "request_id": request_id,
-        "workflow_result": result,
-    }
+    try:
+        result = await state._workflow.ainvoke(workflow_input)
+        await hitl_store.complete(request_id, result)
+        return {
+            "status": "ok",
+            "decision": "approved",
+            "approver": req.approver,
+            "request_id": request_id,
+            "workflow_result": result,
+        }
+    except Exception as exc:
+        logger.exception("Error executing approved workflow for %s: %s", request_id, exc)
+        await hitl_store.fail(request_id, str(exc))
+        raise
 
 
 @router.post("/{request_id}/reject", dependencies=[Depends(state.verify_and_rate_limit)])

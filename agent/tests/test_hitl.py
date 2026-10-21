@@ -620,9 +620,19 @@ def test_memory_store_snapshot_lifecycle():
     pending = asyncio.run(store.list_pending())
     assert pending[0]["has_snapshot"] is True
     assert "payload" not in pending[0]
-    # Decide drops the snapshot
-    asyncio.run(store.decide(record["request_id"], "approved", "boss"))
+    # Decide preserves snapshot during execution
+    approved = asyncio.run(store.decide(record["request_id"], "approved", "boss"))
+    assert approved["status"] == "approved"
+    assert asyncio.run(store.get_snapshot(record["request_id"])) == payload
+    # Complete finalizes execution and drops snapshot
+    completed = asyncio.run(store.complete(record["request_id"], {"res": 1}))
+    assert completed["status"] == "executed"
+    assert completed["workflow_result"] == {"res": 1}
     assert asyncio.run(store.get_snapshot(record["request_id"])) is None
+    # Rejection on another record drops snapshot immediately
+    r2 = asyncio.run(store.create(query="q2", session_id="s", user_id="u", snapshot=payload))
+    asyncio.run(store.decide(r2["request_id"], "rejected", "boss"))
+    assert asyncio.run(store.get_snapshot(r2["request_id"])) is None
 
 
 def test_memory_store_without_snapshot():
@@ -640,7 +650,12 @@ def test_redis_store_snapshot_lifecycle():
     )
     assert record["has_snapshot"] is True
     assert asyncio.run(store.get_snapshot(record["request_id"])) == payload
-    asyncio.run(store.decide(record["request_id"], "approved", "boss"))
+    approved = asyncio.run(store.decide(record["request_id"], "approved", "boss"))
+    assert approved["status"] == "approved"
+    assert asyncio.run(store.get_snapshot(record["request_id"])) == payload
+    completed = asyncio.run(store.complete(record["request_id"], {"res": 1}))
+    assert completed["status"] == "executed"
+    assert completed["workflow_result"] == {"res": 1}
     assert asyncio.run(store.get_snapshot(record["request_id"])) is None
 
 
@@ -735,3 +750,33 @@ def test_approve_without_snapshot_resumes_fresh(monkeypatch):
     assert resumed["retrieved_chunks"] == []
     assert resumed["messages"] == []
     assert resumed["hitl_auto_approved"] is True
+
+
+def test_approve_repeated_returns_already_executed(monkeypatch):
+    import state as agent_state
+    from main import app
+
+    record = asyncio.run(
+        hitl_module.hitl_store.create(query="q", session_id="s", user_id="u")
+    )
+    workflow = _CapturingWorkflow({"final_answer": "executed-once"})
+    monkeypatch.setattr(agent_state, "_workflow", workflow)
+
+    client = TestClient(app)
+    resp1 = client.post(
+        f"/v1/agent/approvals/{record['request_id']}/approve",
+        json={"approver": "boss"},
+    )
+    assert resp1.status_code == 200
+    assert resp1.json()["status"] == "ok"
+    assert len(workflow.inputs) == 1
+
+    # Second approve call returns already_executed idempotently without re-invoking workflow
+    resp2 = client.post(
+        f"/v1/agent/approvals/{record['request_id']}/approve",
+        json={"approver": "boss"},
+    )
+    assert resp2.status_code == 200
+    assert resp2.json()["status"] == "already_executed"
+    assert resp2.json()["workflow_result"] == {"final_answer": "executed-once"}
+    assert len(workflow.inputs) == 1  # did not run twice!

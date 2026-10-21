@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useChatSessions, relativeTime } from "../hooks/useChatSessions";
 import { API_BASE_URL } from "../context/apiConfig";
 import { csrfHeaders } from "../csrf";
-import { useAuth } from "../context/AuthContext";
+import { AuthContext } from "../context/AuthContext";
 
 interface SessionListProps {
   activeSessionId: string;
@@ -13,7 +13,8 @@ interface SessionListProps {
 export default function SessionList({ activeSessionId, onSelectSession }: SessionListProps) {
   const { data: sessions = [], isLoading } = useChatSessions();
   const queryClient = useQueryClient();
-  const { token } = useAuth();
+  const authCtx = React.useContext(AuthContext);
+  const token = authCtx?.token ?? null;
 
   const handleDeleteSession = async (e: React.MouseEvent, sessionId: string) => {
     e.stopPropagation();
@@ -58,7 +59,7 @@ export default function SessionList({ activeSessionId, onSelectSession }: Sessio
           >
             <div className="flex-1 min-w-0 pr-2">
               <p className="text-[12px] truncate font-medium">
-                {session.lastMessage || "Cuộc trò chuyện"}
+                🕐 {session.lastMessage || "Cuộc trò chuyện"}
               </p>
               <p className="text-[11px] text-onsurface-muted">
                 {relativeTime(session.updatedAt)} • {session.messageCount} tin nhắn

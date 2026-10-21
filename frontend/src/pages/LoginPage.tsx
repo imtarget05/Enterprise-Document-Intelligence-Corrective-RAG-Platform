@@ -634,7 +634,7 @@ export default function LoginPage() {
               onClick={() => setGoogleModalOpen(false)}
               className="w-full text-slate-500 text-[13px] font-medium py-2 rounded-lg hover:bg-slate-100 transition cursor-pointer"
             >
-              Đóng
+              Hủy
             </button>
           </div>
         </div>

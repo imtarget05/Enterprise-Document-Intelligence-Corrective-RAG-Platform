@@ -49,13 +49,36 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   if (subPath === "/auth/google" && context.request.method === "POST") {
     let reqBody: any = {};
     try { reqBody = await context.request.json(); } catch {}
-    const email = reqBody.email || reqBody.username || "mainguyenbinhtan2005@gmail.com";
+    let email = "mainguyenbinhtan2005@gmail.com";
+    let name = "Mai Nguyễn Bình Tân";
+
+    if (reqBody.credential && typeof reqBody.credential === "string" && reqBody.credential.includes(".")) {
+      try {
+        const payloadBase64 = reqBody.credential.split(".")[1];
+        const normalized = payloadBase64.replace(/-/g, "+").replace(/_/g, "/");
+        const jsonStr = decodeURIComponent(
+          atob(normalized)
+            .split("")
+            .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+            .join("")
+        );
+        const claims = JSON.parse(jsonStr);
+        if (claims.email) email = claims.email;
+        if (claims.name) name = claims.name;
+      } catch {
+        if (reqBody.email) email = reqBody.email;
+      }
+    } else if (reqBody.email) {
+      email = reqBody.email;
+    }
+
     const role = "ROLE_ADMIN";
-    const demoToken = "jwt-google-verified-" + btoa(JSON.stringify({ sub: email, role, exp: Date.now() + 86400000 }));
+    const demoToken = "jwt-google-verified-" + btoa(JSON.stringify({ sub: email, name, role, exp: Date.now() + 86400000 }));
     return new Response(
       JSON.stringify({
         token: demoToken,
         username: email,
+        name: name,
         role: role,
         message: "Google OAuth account verified successfully.",
       }),
@@ -313,6 +336,134 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     return new Response(
       JSON.stringify(docs),
       { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": url.origin } }
+    );
+  }
+
+  // 8. Resilient Edge Audit Logs
+  if (subPath.startsWith("/admin/audit-logs")) {
+    const logs = [
+      {
+        id: 101,
+        username: "admin",
+        action: "USER_LOGIN",
+        resourceType: "AUTH_SESSION",
+        resourceId: "sess-88912",
+        ipAddress: "118.69.182.45",
+        detail: "Đăng nhập thành công qua Google OAuth (Zero-Trust Session)",
+        createdAt: new Date(Date.now() - 300000).toISOString(),
+      },
+      {
+        id: 102,
+        username: "admin",
+        action: "DOCUMENT_UPLOAD",
+        resourceType: "DOCUMENT",
+        resourceId: "doc-sample-legal-01",
+        ipAddress: "118.69.182.45",
+        detail: "Tải lên tài liệu Luat_Doanh_Nghiep_2020.pdf (1.42 MB) và chunking 42 đoạn",
+        createdAt: new Date(Date.now() - 1800000).toISOString(),
+      },
+      {
+        id: 103,
+        username: "reviewer.legal",
+        action: "RAG_SEARCH_QUERY",
+        resourceType: "VECTOR_INDEX",
+        resourceId: "idx-crag-neon",
+        ipAddress: "14.169.88.12",
+        detail: "Truy vấn CRAG: 'So sánh điều khoản thanh toán và xử lý tranh chấp VIAC'",
+        createdAt: new Date(Date.now() - 3600000).toISOString(),
+      },
+      {
+        id: 104,
+        username: "system.indexer",
+        action: "EMBEDDING_GENERATE",
+        resourceType: "TEXT_EMBEDDING_3",
+        resourceId: "emb-batch-04",
+        ipAddress: "10.0.4.12",
+        detail: "Sinh vector embedding (dim=1536) lưu vào Neon Serverless PGVector",
+        createdAt: new Date(Date.now() - 7200000).toISOString(),
+      },
+      {
+        id: 105,
+        username: "compliance.officer",
+        action: "AUDIT_EXPORT",
+        resourceType: "COMPLIANCE_REPORT",
+        resourceId: "rep-iso27001",
+        ipAddress: "115.79.201.33",
+        detail: "Xuất báo cáo tuân thủ an toàn thông tin ISO 27001 / GDPR",
+        createdAt: new Date(Date.now() - 14400000).toISOString(),
+      },
+    ];
+
+    return new Response(
+      JSON.stringify({
+        page: 0,
+        size: 50,
+        totalElements: logs.length,
+        totalPages: 1,
+        logs: logs,
+      }),
+      { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": url.origin, "Access-Control-Allow-Credentials": "true" } }
+    );
+  }
+
+  // 9. Resilient Edge HITL Approvals Queue
+  if (subPath.startsWith("/agent/approvals")) {
+    if (context.request.method === "POST" && subPath.includes("/decide")) {
+      let body: any = {};
+      try { body = await context.request.json(); } catch {}
+      return new Response(
+        JSON.stringify({
+          status: "SUCCESS",
+          message: `Đã ${body.decision === "APPROVE" ? "phê duyệt" : "từ chối"} hành động của agent thành công.`,
+          requestId: subPath.split("/")[3] || "req-hitl-01",
+          decidedAt: new Date().toISOString(),
+        }),
+        { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": url.origin, "Access-Control-Allow-Credentials": "true" } }
+      );
+    }
+
+    const pendingRequests = [
+      {
+        request_id: "req-hitl-01",
+        agent_type: "LegalAnalystAgent",
+        action_name: "SEND_COMPLIANCE_NOTIFICATION_EMAIL",
+        target: "legal-board@enterprise.com.vn",
+        created_at: Math.floor((Date.now() - 600000) / 1000),
+        status: "PENDING",
+        risk_level: "MEDIUM",
+        summary: "Gửi email cảnh báo vi phạm điều khoản thanh toán vượt quá 30 ngày theo Hợp đồng số 104/2026/HĐKT",
+        plan: {
+          objective: "Thông báo cho ban giám đốc pháp chế về điều khoản bất lợi trong hợp đồng nhà cung cấp",
+          steps: [
+            "1. Phân tích tài liệu Luat_Doanh_Nghiep_2020.pdf Điều 4",
+            "2. So sánh với điều khoản thời hạn 30 ngày",
+            "3. Tạo dự thảo email thông báo và yêu cầu phê duyệt con người (HITL)"
+          ]
+        }
+      },
+      {
+        request_id: "req-hitl-02",
+        agent_type: "ContractAuditAgent",
+        action_name: "EXPORT_VIAC_DISPUTE_DOSSIER",
+        target: "Arbitration_Center_VIAC",
+        created_at: Math.floor((Date.now() - 1800000) / 1000),
+        status: "PENDING",
+        risk_level: "HIGH",
+        summary: "Trích xuất hồ sơ chứng cứ pháp lý và các đoạn đối chiếu hợp đồng sang định dạng PDF ký số",
+        plan: {
+          objective: "Chuẩn bị hồ sơ tranh chấp thương mại nộp Trung tâm Trọng tài Quốc tế Việt Nam",
+          steps: [
+            "1. Tổng hợp các đoạn trích dẫn có độ tin cậy RAG >= 0.95",
+            "2. Đóng dấu thời gian chứng cứ số (Digital Timestamp)",
+            "3. Chờ phê duyệt của Admin / Legal Lead trước khi gửi ra bên ngoài"
+          ]
+        }
+      }
+    ];
+
+    return new Response(
+      JSON.stringify({ pending: pendingRequests, count: pendingRequests.length }),
+      { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": url.origin, "Access-Control-Allow-Credentials": "true" } }
     );
   }
 
