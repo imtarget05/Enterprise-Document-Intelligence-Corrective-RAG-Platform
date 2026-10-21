@@ -115,6 +115,38 @@ describe("Cloudflare Pages Function Live Demo Acceptance Tests", () => {
     expect(complete.aiResponse).toMatch(/không tìm thấy|không chứa|không đề cập/i);
   });
 
+  it("P0: In Agent Mode, respects Labor Code boundary and refuses to hallucinate commercial contract / VIAC", async () => {
+    const request = new Request("https://smart-doc-chatbot.pages.dev/api/chat/ask-stream", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: "Phân tích điều khoản phạt 12% vi phạm hợp đồng thương mại và thủ tục trọng tài VIAC",
+        documentId: 1, // Labor Code selected
+        documentTitle: "Bo_Luat_Lao_Dong_2019.pdf",
+        mode: "agent",
+      }),
+    });
+
+    const response = await onRequest({
+      request,
+      env: {},
+      params: { path: ["chat", "ask-stream"] },
+      waitUntil: () => {},
+      next: () => Promise.resolve(new Response()),
+      data: {},
+      functionPath: "",
+    } as any);
+
+    expect(response.status).toBe(200);
+    const { complete } = await parseSseResponse(response);
+
+    expect(complete.ragStrategy).toBe("no_evidence");
+    expect(complete.sources).toEqual([]);
+    expect(complete.confidence).toBe("low");
+    expect(complete.aiResponse).toContain("Bộ luật Lao động 2019");
+    expect(complete.aiResponse).toMatch(/không tìm thấy|không phù hợp/i);
+  });
+
   it("P0: Grounds financial questions in financial document when selected", async () => {
     const request = new Request("https://smart-doc-chatbot.pages.dev/api/chat/ask-stream", {
       method: "POST",

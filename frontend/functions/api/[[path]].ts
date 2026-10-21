@@ -292,6 +292,20 @@ export const onRequest: PagesFunction<Env> = async (context) => {
           sourceType: "USER",
           content: line.substring(0, 240)
         }));
+      } else if (isLaborDocSelected && (isContract || isSecurity) && !lowerPrompt.includes("thử việc") && !lowerPrompt.includes("lao động") && !lowerPrompt.includes("lương")) {
+        // Strict Grounding in Agent Mode: Labor Code selected but query is commercial contract or security
+        ragStrategy = "no_evidence";
+        hitlPending = false;
+        hitlApprovalId = null;
+        aiAnswer = `### ⚙️ QUY TRÌNH AGENT MULTI-STEP WORKFLOW\n\n` +
+          `1. **[Pha 1: RouterAgent]** Phân tích câu hỏi: *"${userPrompt}"*\n` +
+          `   - Tài liệu đang chọn: **"Bộ luật Lao động 2019"**.\n` +
+          `2. **[Pha 2: RetrievalAgent]** Kiểm tra phạm vi điều chỉnh tài liệu:\n` +
+          `   - Không tìm thấy căn cứ về điều khoản thương mại, thanh toán hóa đơn hoặc an toàn thông tin ISO trong Bộ luật Lao động 2019.\n` +
+          `3. **[Pha 3: ActionGovernor]** Dừng luồng xử lý do tài liệu đang chọn không phù hợp với chủ đề câu hỏi.\n\n` +
+          `👉 **Khuyến nghị**: Vui lòng chuyển sang chọn **"Quy trình Kiểm soát Tài chính 2026"** hoặc **"Cloud Security Baseline ISO 27001"** để đối chiếu.`;
+        sourceChunks = [];
+        sources = [];
       } else if (isSummary) {
         // CASE 1B: Summary requested on built-in doc or general topic
         agentType = "ExecutiveSummaryAgent";
@@ -412,13 +426,13 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         ];
         sources = [
           {
-            documentId: 1,
-            documentTitle: "Bo_Luat_Lao_Dong_2019.pdf",
-            documentNumber: "59/2020/QH14",
+            documentId: 2,
+            documentTitle: "Quy_Trinh_Kiem_Soat_Tai_Chinh_2026.pdf",
+            documentNumber: "QT-TC-2026",
             article: "Điều 4",
             clause: "Khoản 2",
             sourceType: "OFFICIAL",
-            content: "Các thỏa thuận và hợp đồng kinh tế được ưu tiên thực hiện trên cơ sở tự nguyện, bình đẳng và phù hợp pháp luật."
+            content: "Thời hạn thanh toán thương mại tiêu chuẩn 30 ngày. Mức phạt vi phạm hợp đồng tối đa 8% theo quy định tại Điều 301 Luật Thương mại."
           }
         ];
       } else {
