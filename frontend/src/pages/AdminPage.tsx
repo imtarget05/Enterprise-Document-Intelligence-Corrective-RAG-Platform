@@ -21,10 +21,43 @@ export default function AdminPage({ currentView = "admin", onViewChange }: Admin
 
   if (!canApprove) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-surface-dim">
-        <div className="text-center">
-          <span className="text-4xl">🔒</span>
-          <p className="text-[14px] text-onsurface-muted mt-2">Bạn không có quyền truy cập trang quản trị.</p>
+      <div className="flex flex-col h-screen bg-surface-dim">
+        <AppBar
+          onMenuClick={() => {}}
+          username={username}
+          onLogout={logout}
+          currentView={currentView}
+          onViewChange={onViewChange}
+        />
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="max-w-md w-full bg-white border border-rose-200 rounded-2xl p-8 text-center shadow-lg space-y-4">
+            <div className="w-16 h-16 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto text-3xl">
+              🔒
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">403 Access Denied (IAM RBAC Enforced)</h2>
+              <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                Tài khoản của bạn hiện đang có vai trò <span className="font-mono font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded">ROLE_USER</span>.
+                Trang Quản trị, Hàng đợi phê duyệt HITL và Audit Logs được bảo vệ nghiêm ngặt và chỉ cho phép <span className="font-mono font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">ROLE_ADMIN</span> truy cập.
+              </p>
+            </div>
+            <div className="pt-2 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (onViewChange) onViewChange("chat");
+                  const bridge = (window as unknown as { __appView?: ["chat" | "admin", (v: "chat" | "admin") => void] }).__appView;
+                  if (bridge && bridge[1]) bridge[1]("chat");
+                }}
+                className="w-full py-2.5 rounded-xl bg-google-blue hover:bg-google-blueDark text-white text-xs font-semibold shadow-xs transition cursor-pointer"
+              >
+                ← Quay lại Chatbot Tra Cứu RAG
+              </button>
+            </div>
+            <p className="text-[11px] text-slate-400">
+              💡 Để kiểm tra phân quyền: Bấm vào avatar góc trên bên phải &bull; Chọn <b>👑 Admin</b> để mở khóa toàn bộ quyền.
+            </p>
+          </div>
         </div>
       </div>
     );

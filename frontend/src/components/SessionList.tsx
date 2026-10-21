@@ -39,6 +39,13 @@ export default function SessionList({ activeSessionId, onSelectSession, onResetS
   const handleClearAllSessions = async () => {
     if (!window.confirm("Bạn có chắc muốn xóa toàn bộ lịch sử các cuộc trò chuyện?")) return;
     try {
+      const allIds = (sessions || []).map((s) => s.sessionId);
+      allIds.push("session-default-01");
+      const rawDeleted = localStorage.getItem("smartdoc_deleted_sessions");
+      const deletedSet: string[] = rawDeleted ? JSON.parse(rawDeleted) : [];
+      const combined = Array.from(new Set([...deletedSet, ...allIds]));
+      localStorage.setItem("smartdoc_deleted_sessions", JSON.stringify(combined));
+
       localStorage.removeItem("smartdoc_sessions");
       await fetch(`${API_BASE_URL}/chat/history`, {
         method: "DELETE",

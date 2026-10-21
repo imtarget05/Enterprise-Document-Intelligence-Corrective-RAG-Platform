@@ -52,12 +52,21 @@ export interface ChatMessage {
 /** Pending human-approval request from the agent-service HITL queue. */
 export interface ApprovalRequest {
   request_id: string;
-  query: string;
-  session_id: string;
-  user_id: string;
+  query?: string;
+  session_id?: string;
+  user_id?: string;
+  agent_type?: string;
+  action_name?: string;
+  target?: string;
+  summary?: string;
+  risk_level?: "LOW" | "MEDIUM" | "HIGH";
+  plan?: {
+    objective: string;
+    steps: string[];
+  } | null;
   agent_plan?: string | null;
   document_ids?: string[] | null;
-  status: "pending" | "approved" | "rejected" | "expired";
+  status: "pending" | "approved" | "rejected" | "expired" | "PENDING" | "APPROVED" | "REJECTED";
   approver?: string | null;
   note?: string | null;
   created_at?: number | null;

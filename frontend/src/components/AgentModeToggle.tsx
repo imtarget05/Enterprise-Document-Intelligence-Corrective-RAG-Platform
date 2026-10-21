@@ -40,11 +40,6 @@ export default function AgentModeToggle({ agentMode, onToggle }: AgentModeToggle
           <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-onsurface" />
         </div>
       </div>
-      {agentMode && (
-        <span className="text-[11px] text-google-blue font-medium ml-1">
-          Đã chọn Agent BETA (có thể chuyển về RAG)
-        </span>
-      )}
     </div>
   );
 }

@@ -1,3 +1,5 @@
+import { useAuth } from "../context/AuthContext";
+
 interface AppBarProps {
   onMenuClick: () => void;
   username?: string | null;
@@ -7,6 +9,7 @@ interface AppBarProps {
 }
 
 export default function AppBar({ onMenuClick, username, onLogout, currentView = "chat", onViewChange }: AppBarProps) {
+  const { role, isAdmin, login, token } = useAuth();
   const initials = username ? username.slice(0, 2).toUpperCase() : "U";
 
   const handleSwitchView = (target: "chat" | "admin") => {
@@ -93,12 +96,50 @@ export default function AppBar({ onMenuClick, username, onLogout, currentView = 
         </button>
 
         {/* Dropdown */}
-        <div className="absolute right-0 top-full mt-2 w-56 bg-surface border border-outline rounded-material-lg shadow-material-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+        <div className="absolute right-0 top-full mt-2 w-64 bg-surface border border-outline rounded-material-lg shadow-material-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 overflow-hidden">
           <div className="px-4 py-3 border-b border-outline">
             <p className="text-[13px] text-onsurface font-medium truncate">{username || "admin@smartdoc.ai"}</p>
-            <span className="inline-block mt-0.5 text-[10px] bg-emerald-100 text-emerald-800 font-semibold px-1.5 py-0.2 rounded">
-              ROLE_ADMIN
-            </span>
+            <div className="mt-1 flex items-center gap-1.5">
+              <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded ${
+                isAdmin ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-800"
+              }`}>
+                {role || (isAdmin ? "ROLE_ADMIN" : "ROLE_USER")}
+              </span>
+              <span className="text-[11px] text-onsurface-muted">
+                {isAdmin ? "Toàn quyền" : "Quyền người dùng"}
+              </span>
+            </div>
+          </div>
+
+          {/* IAM Role Switcher */}
+          <div className="p-3 bg-slate-50 border-b border-outline">
+            <p className="text-[11px] font-semibold text-slate-600 mb-1.5 flex items-center justify-between">
+              <span>Phân quyền IAM (RBAC)</span>
+              <span className="text-[10px] text-google-blue font-normal">Thử nghiệm</span>
+            </p>
+            <div className="grid grid-cols-2 gap-1.5">
+              <button
+                type="button"
+                onClick={() => login(token, "admin@smartdoc.ai", "ROLE_ADMIN")}
+                className={`py-1 px-2 rounded text-xs font-semibold transition cursor-pointer ${
+                  isAdmin ? "bg-google-blue text-white shadow-xs" : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
+                }`}
+              >
+                👑 Admin
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  login(token, "nhanvien@smartdoc.ai", "ROLE_USER");
+                  handleSwitchView("chat");
+                }}
+                className={`py-1 px-2 rounded text-xs font-semibold transition cursor-pointer ${
+                  !isAdmin ? "bg-slate-800 text-white shadow-xs" : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
+                }`}
+              >
+                👤 User
+              </button>
+            </div>
           </div>
 
           <button

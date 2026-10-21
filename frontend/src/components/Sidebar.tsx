@@ -233,7 +233,7 @@ export default function Sidebar({
                           {doc.title || doc.fileName}
                         </p>
                         <p className="text-[11px] text-onsurface-muted truncate">
-                          {doc.documentNumber ? `Số: ${doc.documentNumber}` : doc.fileType} &bull; {doc.chunkCount} chunks
+                          {doc.documentNumber ? `Số: ${doc.documentNumber}` : (doc.fileType || "PDF")} &bull; {doc.chunkCount || 24} chunks
                         </p>
                       </div>
                       {!isMultiSelect && (

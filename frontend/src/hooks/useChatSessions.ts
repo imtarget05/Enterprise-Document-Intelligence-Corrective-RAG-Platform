@@ -55,6 +55,13 @@ export function saveLocalSession(session: Partial<ChatSession> & { sessionId: st
 
 export function deleteLocalSession(sessionId: string) {
   try {
+    const rawDeleted = localStorage.getItem("smartdoc_deleted_sessions");
+    const deletedSet: string[] = rawDeleted ? JSON.parse(rawDeleted) : [];
+    if (!deletedSet.includes(sessionId)) {
+      deletedSet.push(sessionId);
+      localStorage.setItem("smartdoc_deleted_sessions", JSON.stringify(deletedSet));
+    }
+
     const raw = localStorage.getItem("smartdoc_sessions");
     if (raw) {
       const list: ChatSession[] = JSON.parse(raw);
@@ -68,6 +75,12 @@ export function useChatSessions() {
   return useQuery<ChatSession[]>({
     queryKey: ["chatSessions"],
     queryFn: async () => {
+      let deletedSet: string[] = [];
+      try {
+        const rawDeleted = localStorage.getItem("smartdoc_deleted_sessions");
+        if (rawDeleted) deletedSet = JSON.parse(rawDeleted);
+      } catch {}
+
       let apiSessions: ChatSession[] = [];
       try {
         const res = await fetch(`${API_BASE_URL}/chat/sessions`, {
@@ -76,14 +89,18 @@ export function useChatSessions() {
         });
         if (res.ok) {
           const data: SessionsResponse = await res.json();
-          apiSessions = data.sessions ?? [];
+          apiSessions = (data.sessions ?? []).filter((s) => !deletedSet.includes(s.sessionId));
         }
       } catch {}
 
       let localSessions: ChatSession[] = [];
       try {
         const raw = localStorage.getItem("smartdoc_sessions");
-        if (raw) localSessions = JSON.parse(raw);
+        if (raw) {
+          localSessions = (JSON.parse(raw) as ChatSession[]).filter(
+            (s) => !deletedSet.includes(s.sessionId)
+          );
+        }
       } catch {}
 
       // Merge and deduplicate by sessionId
