@@ -47,7 +47,7 @@ export default function ApprovalsTable({ token }: ApprovalsTableProps) {
         <div>
           <div className="flex items-center gap-2">
             <span className="text-2xl">🛡️</span>
-            <h1 className="text-[22px] text-onsurface font-semibold">Phê Duyệt Tác Vụ Agent (Human-in-the-Loop)</h1>
+            <h1 className="text-[22px] text-onsurface font-semibold">Phê duyệt hành động (HITL)</h1>
           </div>
           <p className="text-[13px] text-onsurface-muted mt-1">
             Cổng kiểm soát an toàn (AI Safety Governor) — Các hành động ra bên ngoài (Email, Webhook, Jira) bắt buộc có sự chấp thuận của con người.
@@ -72,6 +72,18 @@ export default function ApprovalsTable({ token }: ApprovalsTableProps) {
         </div>
       )}
 
+      {queue.isError && (
+        <div className="p-4 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl">
+          Lỗi tải hàng đợi: cần quyền ADMIN hoặc ENGINEER để xem và phê duyệt hàng đợi HITL.
+        </div>
+      )}
+
+      {pending.length === 0 && !queue.isLoading && !queue.isError && (
+        <div className="p-8 text-center text-onsurface-muted text-sm border border-dashed border-outline rounded-xl">
+          <p>Không có yêu cầu nào đang chờ phê duyệt.</p>
+        </div>
+      )}
+
       {/* Main Request Cards */}
       <div className="grid grid-cols-1 gap-5">
         {pending.map((req) => {
@@ -82,6 +94,7 @@ export default function ApprovalsTable({ token }: ApprovalsTableProps) {
           return (
             <div
               key={req.request_id}
+              data-testid={`approval-row-${req.request_id}`}
               onClick={() => setSelectedId(req.request_id)}
               className={`rounded-xl border transition-all duration-200 bg-surface shadow-xs p-5 space-y-4 ${
                 isDecided
@@ -130,24 +143,27 @@ export default function ApprovalsTable({ token }: ApprovalsTableProps) {
                 </div>
               </div>
 
-              {/* Steps Checklist */}
-              {req.plan && Array.isArray(req.plan.steps) && (
-                <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs space-y-1.5">
-                  <p className="font-semibold text-slate-800">Quy trình Agent đã phân tích &amp; đối chiếu:</p>
-                  <ul className="space-y-1 pl-1">
-                    {req.plan.steps.map((st, i) => (
-                      <li key={i} className="flex items-start gap-2 text-slate-700">
-                        <span className="text-emerald-600 font-bold shrink-0">✓</span>
-                        <span>{st}</span>
-                      </li>
-                    ))}
-                  </ul>
+              {/* Steps Checklist / Plan */}
+              {(req.agent_plan || (req.plan && Array.isArray(req.plan.steps))) && (
+                <div data-testid={selected?.request_id === req.request_id ? "approval-detail" : undefined} className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs space-y-1.5">
+                  <p className="font-semibold text-slate-800">Kế hoạch tác vụ:</p>
+                  {req.agent_plan && <pre className="whitespace-pre-wrap font-sans text-slate-700">{req.agent_plan}</pre>}
+                  {req.plan && Array.isArray(req.plan.steps) && (
+                    <ul className="space-y-1 pl-1">
+                      {req.plan.steps.map((st, i) => (
+                        <li key={i} className="flex items-start gap-2 text-slate-700">
+                          <span className="text-emerald-600 font-bold shrink-0">✓</span>
+                          <span>{st}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               )}
 
               {/* Feedback Alert if decided */}
               {isDecided ? (
-                <div className={`p-3 rounded-lg text-xs font-semibold flex items-center gap-2 ${
+                <div data-testid={selected?.request_id === req.request_id ? "queue-success" : undefined} className={`p-3 rounded-lg text-xs font-semibold flex items-center gap-2 ${
                   isApproved ? "bg-emerald-100 border border-emerald-300 text-emerald-900" : "bg-rose-100 border border-rose-300 text-rose-900"
                 }`}>
                   <span>{isApproved ? "✅" : "❌"}</span>
@@ -158,6 +174,7 @@ export default function ApprovalsTable({ token }: ApprovalsTableProps) {
                 <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row items-center gap-3">
                   <input
                     type="text"
+                    data-testid={selected?.request_id === req.request_id ? "queue-note" : undefined}
                     value={notes[req.request_id] || ""}
                     onChange={(e) => setNotes({ ...notes, [req.request_id]: e.target.value })}
                     placeholder="Ghi chú người duyệt (tùy chọn, ví dụ: 'Đã xác minh qua luật sư')..."
@@ -166,6 +183,7 @@ export default function ApprovalsTable({ token }: ApprovalsTableProps) {
                   <div className="flex items-center gap-2 w-full sm:w-auto">
                     <button
                       type="button"
+                      data-testid={selected?.request_id === req.request_id ? "queue-approve" : undefined}
                       onClick={() => handleDecision(req.request_id, "approve")}
                       disabled={decide.isPending}
                       className="flex-1 sm:flex-none px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
@@ -175,6 +193,7 @@ export default function ApprovalsTable({ token }: ApprovalsTableProps) {
                     </button>
                     <button
                       type="button"
+                      data-testid={selected?.request_id === req.request_id ? "queue-reject" : undefined}
                       onClick={() => handleDecision(req.request_id, "reject")}
                       disabled={decide.isPending}
                       className="flex-1 sm:flex-none px-4 py-2 rounded-lg bg-white border border-rose-300 hover:bg-rose-50 text-rose-700 font-semibold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"

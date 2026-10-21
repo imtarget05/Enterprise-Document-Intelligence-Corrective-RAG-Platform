@@ -168,7 +168,7 @@ export default function Sidebar({
                 <polyline points="17 8 12 3 7 8" />
                 <line x1="12" y1="3" x2="12" y2="15" />
               </svg>
-              <span className="text-[13px] text-onsurface-variant">Tải lên tài liệu mới</span>
+              <span className="text-[13px] text-onsurface-variant">Tải lên tài liệu</span>
             </button>
 
             {/* Document list */}

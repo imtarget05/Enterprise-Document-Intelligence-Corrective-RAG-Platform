@@ -37,6 +37,9 @@ export default function AdminPage({ currentView = "admin", onViewChange }: Admin
             <div>
               <h2 className="text-lg font-bold text-slate-900">403 Access Denied (IAM RBAC Enforced)</h2>
               <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                Bạn không có quyền truy cập trang quản trị.
+              </p>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                 Tài khoản của bạn hiện đang có vai trò <span className="font-mono font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded">ROLE_USER</span>.
                 Trang Quản trị, Hàng đợi phê duyệt HITL và Audit Logs được bảo vệ nghiêm ngặt và chỉ cho phép <span className="font-mono font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">ROLE_ADMIN</span> truy cập.
               </p>

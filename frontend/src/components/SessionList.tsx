@@ -100,7 +100,7 @@ export default function SessionList({ activeSessionId, onSelectSession, onResetS
           >
             <div className="flex-1 min-w-0 pr-2">
               <p className="text-[12px] truncate font-medium">
-                💬 {session.lastMessage || "Cuộc trò chuyện"}
+                🕐 {session.lastMessage || "Cuộc trò chuyện"}
               </p>
               <p className="text-[11px] text-onsurface-muted">
                 {relativeTime(session.updatedAt)} • {session.messageCount} tin nhắn
