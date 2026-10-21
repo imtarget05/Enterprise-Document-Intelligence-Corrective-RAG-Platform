@@ -43,6 +43,7 @@ class DocumentServiceIdempotencyTest {
     @Mock private com.smartdocchat.util.LegalDateExtractor legalDateExtractor;
     @Mock private com.smartdocchat.service.DocumentWorkflowClient documentWorkflowClient;
     @Mock private com.smartdocchat.service.DocumentJobService documentJobService;
+    @Mock private DocumentEventPublisher eventPublisher;
 
     private DocumentService documentService;
 
@@ -50,7 +51,7 @@ class DocumentServiceIdempotencyTest {
     void setUp() {
         documentService = new DocumentService(documentRepository, documentParser, storageService,
                 legalStructureParser, legalChunkRepository, legalQueryNormalizer, legalDateExtractor, documentWorkflowClient,
-                new com.smartdocchat.config.IngestionConfig(), documentVersionService, documentJobService);
+                new com.smartdocchat.config.IngestionConfig(), documentVersionService, documentJobService, eventPublisher);
     }
 
     private MockMultipartFile txtFile(String name, String content) {
@@ -84,7 +85,11 @@ class DocumentServiceIdempotencyTest {
         when(documentRepository.findByOwnerUsernameAndContentHash(eq("alice"), anyString()))
                 .thenReturn(Optional.empty());
         stubHappyPath();
-        when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(documentRepository.save(any(Document.class))).thenAnswer(inv -> {
+            Document d = inv.getArgument(0);
+            d.setId(1L);
+            return d;
+        });
 
         Document saved = documentService.uploadDocument(txtFile("report.txt", "brand new content"), "alice");
 
@@ -100,7 +105,11 @@ class DocumentServiceIdempotencyTest {
         when(documentRepository.findByOwnerUsernameAndContentHash(eq("bob"), anyString()))
                 .thenReturn(Optional.empty());
         stubHappyPath();
-        when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(documentRepository.save(any(Document.class))).thenAnswer(inv -> {
+            Document d = inv.getArgument(0);
+            d.setId(1L);
+            return d;
+        });
 
         Document saved = documentService.uploadDocument(txtFile("report.txt", "shared content"), "bob");
 

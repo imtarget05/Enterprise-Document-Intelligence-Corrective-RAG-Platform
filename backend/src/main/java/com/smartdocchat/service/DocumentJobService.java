@@ -51,6 +51,15 @@ public class DocumentJobService {
     @Value("${ingestion-jobs.stale-running-minutes:5}")
     private long staleRunningMinutes;
 
+    @Value("${job.polling.enabled:false}")
+    private boolean pollingEnabled;
+
+    @Value("${ingestion-jobs.poll-interval-ms:5000}")
+    private long pollIntervalMs;
+
+    @Value("${ingestion-jobs.initial-delay-ms:10000}")
+    private long initialDelayMs;
+
     /**
      * Enqueue a document-workflow job. Idempotent: when an active job already
      * exists for the document, nothing is enqueued and null is returned.
@@ -81,10 +90,20 @@ public class DocumentJobService {
      * Poller tick: recover stale RUNNING leases (worker crash recovery), then
      * process a batch of due jobs. Claim and execute happen in separate
      * transactions inside the executor bean (proxy — self-invocation safe).
+     *
+     * @deprecated Replaced by Kafka event-driven consumers (DocumentIngestionConsumer,
+     * DocumentClassificationConsumer, WorkflowCompletionConsumer).
+     * This method is kept for backward compatibility and can be enabled via
+     * {@code job.polling.enabled=true} property (default: false).
      */
+    @Deprecated(since = "1.4", forRemoval = true)
     @Scheduled(fixedDelayString = "${ingestion-jobs.poll-interval-ms:5000}",
             initialDelayString = "${ingestion-jobs.initial-delay-ms:10000}")
     public void poll() {
+        if (!pollingEnabled) {
+            log.debug("Polling is disabled (job.polling.enabled=false). Skipping poll.");
+            return;
+        }
         int recovered = jobRepository.requeueStaleRunningJobs(staleRunningMinutes);
         if (recovered > 0) {
             log.warn("Requeued {} stale RUNNING ingestion jobs (worker crash recovery)", recovered);

@@ -7,12 +7,15 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.concurrent.Callable;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -20,12 +23,17 @@ class RetrievalServiceTest {
 
     @Mock private DocumentService documentService;
     @Mock private com.smartdocchat.repository.LegalChunkRepository legalChunkRepository;
+    @Mock private com.smartdocchat.cache.SearchResultCache searchResultCache;
 
     private RetrievalService retrievalService;
 
     @BeforeEach
     void setUp() {
-        retrievalService = new RetrievalService(documentService, legalChunkRepository, new com.smartdocchat.util.LegalQueryNormalizer());
+        retrievalService = new RetrievalService(documentService, legalChunkRepository, 
+                new com.smartdocchat.util.LegalQueryNormalizer(), searchResultCache);
+        // Delegate to actual retrieval logic for testing (lenient to avoid unnecessary stubbing errors)
+        lenient().when(searchResultCache.getOrCompute(anyString(), anyString(), any(Callable.class)))
+                .thenAnswer(invocation -> invocation.getArgument(2, Callable.class).call());
     }
 
     @Test

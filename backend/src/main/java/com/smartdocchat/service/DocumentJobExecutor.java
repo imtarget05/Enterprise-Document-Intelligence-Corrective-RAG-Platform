@@ -3,6 +3,9 @@ package com.smartdocchat.service;
 import com.smartdocchat.entity.Document;
 import com.smartdocchat.entity.DocumentIngestionJob;
 import com.smartdocchat.entity.DocumentIngestionJob.JobStatus;
+import com.smartdocchat.event.DocumentEvent;
+import com.smartdocchat.event.EventMetadata;
+import com.smartdocchat.event.WorkflowCompletedEvent;
 import com.smartdocchat.repository.DocumentIngestionJobRepository;
 import com.smartdocchat.repository.DocumentRepository;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -38,6 +42,7 @@ public class DocumentJobExecutor {
     private final DocumentIngestionJobRepository jobRepository;
     private final DocumentRepository documentRepository;
     private final DocumentWorkflowClient documentWorkflowClient;
+    private final DocumentEventPublisher eventPublisher;
 
     /**
      * Claim a batch of due jobs (PENDING → RUNNING) and execute them one by one.
@@ -66,6 +71,7 @@ public class DocumentJobExecutor {
         if (job == null || job.getStatus() != JobStatus.RUNNING) {
             return; // deleted or requeued concurrently — never double-execute
         }
+        long startTime = System.currentTimeMillis();
         try {
             org.slf4j.MDC.put("jobId", String.valueOf(job.getId()));
             org.slf4j.MDC.put("documentId", String.valueOf(job.getDocumentId()));
@@ -73,6 +79,9 @@ public class DocumentJobExecutor {
             job.setStatus(JobStatus.COMPLETED);
             job.setLastError(null);
             log.info("Ingestion job {} COMPLETED for document {}", job.getId(), job.getDocumentId());
+
+            // Emit workflow completed event with SUCCESS status (non-blocking)
+            emitWorkflowCompletedEvent(job.getDocumentId(), "SUCCESS", System.currentTimeMillis() - startTime);
         } catch (Exception e) {
             int attempt = job.getAttempts() + 1;
             job.setAttempts(attempt);
@@ -82,6 +91,9 @@ public class DocumentJobExecutor {
                 job.setStatus(JobStatus.DEAD);
                 log.error("Ingestion job {} DEAD after {} attempts for document {}: {}",
                         job.getId(), attempt, job.getDocumentId(), job.getLastError());
+
+                // Emit workflow completed event with FAILED status (non-blocking)
+                emitWorkflowCompletedEvent(job.getDocumentId(), "FAILED", System.currentTimeMillis() - startTime);
             } else {
                 long backoff = BACKOFF_SECONDS[Math.min(attempt - 1, BACKOFF_SECONDS.length - 1)];
                 job.setStatus(JobStatus.PENDING);
@@ -122,5 +134,31 @@ public class DocumentJobExecutor {
     private String stripChunkJson(String chunksJson) {
         return chunksJson.replace('[', ' ').replace(']', ' ')
                 .replace("\",\"", " ").replace("\"", "").trim();
+    }
+
+    /**
+     * Emits a WorkflowCompletedEvent for the given document.
+     * Non-blocking - uses publishAsync to avoid slowing down the job execution.
+     */
+    private void emitWorkflowCompletedEvent(Long documentId, String status, long processingTimeMs) {
+        Document document = documentRepository.findById(documentId).orElse(null);
+        if (document == null) {
+            log.warn("Cannot emit workflow completed event: document {} not found", documentId);
+            return;
+        }
+        EventMetadata metadata = new EventMetadata(
+                documentId.toString(),
+                null,
+                "document-job-executor",
+                "1.0"
+        );
+        WorkflowCompletedEvent event = WorkflowCompletedEvent.create(
+                metadata,
+                documentId,
+                document.getWorkflowResult(),
+                status,
+                processingTimeMs
+        );
+        eventPublisher.publishAsync(event);
     }
 }
