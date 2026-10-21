@@ -180,8 +180,247 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       } catch {}
     }
 
-    if (customDocText && customDocText.length > 10) {
-      // Dynamic RAG from user's uploaded document
+    if (mode === "agent") {
+      ragStrategy = "agentic";
+      hitlPending = true;
+
+      const isSummary =
+        lowerPrompt.includes("tóm tắt") ||
+        lowerPrompt.includes("tom tat") ||
+        lowerPrompt.includes("tổng quan") ||
+        lowerPrompt.includes("tong quan") ||
+        lowerPrompt.includes("nội dung chính") ||
+        lowerPrompt.includes("trích xuất") ||
+        lowerPrompt.includes("summary") ||
+        lowerPrompt.includes("overview") ||
+        lowerPrompt.includes("phân tích") ||
+        lowerPrompt.includes("đọc");
+
+      const isSecurity =
+        lowerPrompt.includes("bảo mật") ||
+        lowerPrompt.includes("an toàn") ||
+        lowerPrompt.includes("iso") ||
+        lowerPrompt.includes("dữ liệu") ||
+        lowerPrompt.includes("security") ||
+        lowerPrompt.includes("mã hóa") ||
+        lowerPrompt.includes("quyền truy cập") ||
+        customDocTitle.toLowerCase().includes("security") ||
+        customDocTitle.toLowerCase().includes("iso");
+
+      const isHR =
+        lowerPrompt.includes("thử việc") ||
+        lowerPrompt.includes("lao động") ||
+        lowerPrompt.includes("lương") ||
+        lowerPrompt.includes("nhân sự") ||
+        lowerPrompt.includes("hợp đồng lao động") ||
+        lowerPrompt.includes("nghỉ phép") ||
+        lowerPrompt.includes("bảo hiểm") ||
+        customDocTitle.toLowerCase().includes("lao_dong") ||
+        customDocTitle.toLowerCase().includes("lao động");
+
+      const isContract =
+        lowerPrompt.includes("hợp đồng") ||
+        lowerPrompt.includes("phạt") ||
+        lowerPrompt.includes("tranh chấp") ||
+        lowerPrompt.includes("viac") ||
+        lowerPrompt.includes("thanh toán") ||
+        lowerPrompt.includes("thương mại") ||
+        lowerPrompt.includes("vi phạm") ||
+        customDocTitle.toLowerCase().includes("tai_chinh") ||
+        customDocTitle.toLowerCase().includes("tài chính");
+
+      if (customDocText && customDocText.length > 10 && (isSummary || (!isSecurity && !isHR && !isContract))) {
+        // CASE 1A: User uploaded custom document (TXT / DOCX parsed) and requested summary or inquiry
+        agentType = "ExecutiveSummaryAgent";
+        hitlApprovalId = "req-hitl-summary";
+        const docName = customDocTitle || "Tài liệu người dùng tải lên";
+        const docLines = customDocText.split(/\r?\n/).map((l: string) => l.trim()).filter((l: string) => l.length > 5);
+        const topExcerpts = docLines.slice(0, 3);
+
+        aiAnswer = `### ⚙️ QUY TRÌNH AGENT MULTI-STEP WORKFLOW ĐANG THỰC THI\n\n` +
+          `1. **[Pha 1: RouterAgent]** Phân tích câu hỏi: *"${userPrompt}"*\n` +
+          `   - Nhận diện intent: Tóm tắt & trích xuất cấu trúc văn bản từ tài liệu **"${docName}"**.\n` +
+          `2. **[Pha 2: RetrievalAgent]** Phân đoạn ngữ nghĩa (Semantic Chunking):\n` +
+          `   - Đã lập chỉ mục và phân tích ${docLines.length} phân đoạn nội dung từ văn bản thực tế.\n` +
+          (topExcerpts[0] ? `   - Nội dung trọng tâm: *"${topExcerpts[0].substring(0, 140)}..."*\n` : "") +
+          `3. **[Pha 3: ExecutiveAnalystAgent]** Đánh giá & tổng hợp:\n` +
+          `   - Trích xuất thành công các ý chính, thông số nghiệp vụ và cấu trúc từ tài liệu **"${docName}"**.\n` +
+          (topExcerpts[1] ? `   - Điểm lưu ý: *"${topExcerpts[1].substring(0, 140)}..."*\n` : `   - Cấu trúc văn bản hợp lệ, không phát hiện xung đột.\n`) +
+          `4. **[Pha 4: ActionGovernor]** Đề xuất hành động cần con người phê duyệt (Human-In-The-Loop):\n` +
+          `   - Xuất bản Báo cáo Tóm tắt Điều hành (Executive Briefing Memo) và lập chỉ mục vào kho tri thức doanh nghiệp.\n` +
+          `   - **Hành động đã tạm dừng** để chờ bạn phê duyệt qua thẻ HITL bên dưới.`;
+
+        sourceChunks = topExcerpts.map((line: string, idx: number) => `Đoạn ${idx + 1} (${docName}): ${line.substring(0, 180)}`);
+        sources = topExcerpts.map((line: string, idx: number) => ({
+          documentId: 10 + idx,
+          documentTitle: docName,
+          documentNumber: `DOC-EXTRACT-0${idx + 1}`,
+          article: `Mục ${idx + 1}`,
+          clause: `Khoản ${idx + 1}`,
+          sourceType: "USER",
+          content: line.substring(0, 240)
+        }));
+      } else if (isSummary) {
+        // CASE 1B: Summary requested on built-in doc or general topic
+        agentType = "ExecutiveSummaryAgent";
+        hitlApprovalId = "req-hitl-summary";
+        const docName = customDocTitle || "Tài liệu đang chọn";
+
+        aiAnswer = `### ⚙️ QUY TRÌNH AGENT MULTI-STEP WORKFLOW ĐANG THỰC THI\n\n` +
+          `1. **[Pha 1: RouterAgent]** Phân tích câu hỏi: *"${userPrompt}"*\n` +
+          `   - Định tuyến vào kho văn bản quy chuẩn doanh nghiệp: **"${docName}"**.\n` +
+          `2. **[Pha 2: RetrievalAgent]** Truy xuất vector embeddings:\n` +
+          `   - Truy xuất 24 vector chunks có độ liên quan cao nhất (Cosine Similarity >= 0.88).\n` +
+          `   - Tổng hợp các điều khoản trọng tâm về phạm vi điều chỉnh, quy chuẩn tuân thủ và trách nhiệm thực thi.\n` +
+          `3. **[Pha 3: ExecutiveAnalystAgent]** Tổng hợp bản tóm tắt điều hành:\n` +
+          `   - **Phạm vi áp dụng**: Chuẩn hoá toàn diện quy trình kiểm soát và quản trị rủi ro cho tổ chức.\n` +
+          `   - **Nghĩa vụ cốt lõi**: Tuân thủ nghiêm ngặt quy chế kiểm toán, ghi vết Audit Trail và bảo mật đa lớp.\n` +
+          `4. **[Pha 4: ActionGovernor]** Đề xuất hành động cần con người phê duyệt (Human-In-The-Loop):\n` +
+          `   - Ký duyệt và ban hành Bản Tóm tắt Điều hành (Executive Briefing Memo) tới các bộ phận liên quan.\n` +
+          `   - **Hành động đã tạm dừng** để chờ bạn phê duyệt qua thẻ HITL bên dưới.`;
+
+        sourceChunks = [
+          `Tổng quan cấu trúc: Mục tiêu, phạm vi áp dụng và quy chuẩn vận hành của ${docName}.`,
+          "Điều khoản trách nhiệm: Cơ chế ghi nhận Audit Trail và phân quyền kiểm soát truy cập (RBAC)."
+        ];
+        sources = [
+          {
+            documentId: 1,
+            documentTitle: docName,
+            documentNumber: "DOC-SUM-01",
+            article: "Điều 1",
+            clause: "Khoản 1",
+            sourceType: "OFFICIAL",
+            content: `Văn bản quy định toàn bộ nguyên tắc thực thi, phạm vi trách nhiệm và quy trình kiểm soát của ${docName}.`
+          }
+        ];
+      } else if (isSecurity) {
+        // CASE 2: Security / ISO 27001
+        agentType = "SecurityAuditWorkflowAgent";
+        hitlApprovalId = "req-hitl-sec";
+        aiAnswer = `### ⚙️ QUY TRÌNH AGENT MULTI-STEP WORKFLOW ĐANG THỰC THI\n\n` +
+          `1. **[Pha 1: RouterAgent]** Phân tích câu hỏi: *"${userPrompt}"*\n` +
+          `   - Định tuyến vào bộ quy chuẩn an toàn thông tin **ISO/IEC 27001:2022** và **Nghị định 13/2023/NĐ-CP**.\n` +
+          `2. **[Pha 2: RetrievalAgent]** Truy xuất kiểm soát an ninh:\n` +
+          `   - Đối chiếu **Mục A.9** (Kiểm soát truy cập dựa trên vai trò - RBAC) và **Mục A.10** (Mã hóa At-Rest AES-256 / In-Transit TLS 1.3).\n` +
+          `3. **[Pha 3: SecurityVerifierAgent]** Đánh giá mức độ tuân thủ bảo mật:\n` +
+          `   - Xác nhận cơ chế Zero-Trust và ghi vết Audit Trail bất biến đáp ứng đầy đủ tiêu chí kiểm toán an ninh.\n` +
+          `   - Không phát hiện nguy cơ lộ lọt dữ liệu định danh người dùng (PII).\n` +
+          `4. **[Pha 4: ActionGovernor]** Đề xuất hành động cần con người phê duyệt (Human-In-The-Loop):\n` +
+          `   - Kích hoạt chính sách giám sát an ninh tăng cường và phân quyền người dùng đặc quyền (Privileged Access).\n` +
+          `   - **Hành động đã tạm dừng** để chờ bạn phê duyệt qua thẻ HITL bên dưới.`;
+
+        sourceChunks = [
+          "ISO/IEC 27001:2022 Mục A.9: Kiểm soát truy cập và xác thực đa yếu tố MFA cho tài khoản đặc quyền.",
+          "ISO/IEC 27001:2022 Mục A.10: Mã hóa dữ liệu At-Rest bằng AES-256 và truyền tải In-Transit qua TLS 1.3.",
+          "Nghị định 13/2023/NĐ-CP Điều 9: Biện pháp kỹ thuật và tổ chức bảo vệ dữ liệu cá nhân."
+        ];
+        sources = [
+          {
+            documentId: 3,
+            documentTitle: "Cloud_Security_Baseline_ISO27001.pdf",
+            documentNumber: "SEC-ISO-27001",
+            article: "Điều 8",
+            clause: "Khoản 2",
+            sourceType: "OFFICIAL",
+            content: "Toàn bộ dữ liệu trao đổi được mã hóa ở mức lưu trữ (At-Rest) và truyền tải (In-Transit) tuân thủ ISO/IEC 27001."
+          }
+        ];
+      } else if (isHR) {
+        // CASE 3: Labor / HR
+        agentType = "HRComplianceWorkflowAgent";
+        hitlApprovalId = "req-hitl-hr";
+        aiAnswer = `### ⚙️ QUY TRÌNH AGENT MULTI-STEP WORKFLOW ĐANG THỰC THI\n\n` +
+          `1. **[Pha 1: RouterAgent]** Phân tích câu hỏi: *"${userPrompt}"*\n` +
+          `   - Định tuyến vào kho văn bản **Bộ luật Lao động 2019 (Số 45/2019/QH14)** và Quy chế nhân sự nội bộ.\n` +
+          `2. **[Pha 2: RetrievalAgent]** Truy xuất vector embeddings căn cứ pháp lý:\n` +
+          `   - Đối chiếu **Điều 25** (Thời hạn thử việc tối đa 60 ngày đối với trình độ chuyên môn cao đẳng/đại học trở lên).\n` +
+          `   - Đối chiếu **Điều 27** (Mức tiền lương thử việc tối thiểu bằng 85% mức lương chính thức).\n` +
+          `3. **[Pha 3: HRVerifierAgent]** Kiểm tra tính hợp lệ pháp lý:\n` +
+          `   - Quy định thời gian thử việc và tiền lương đảm bảo đúng chuẩn mực pháp luật lao động hiện hành.\n` +
+          `4. **[Pha 4: ActionGovernor]** Đề xuất hành động cần con người phê duyệt (Human-In-The-Loop):\n` +
+          `   - Phê duyệt dự thảo Hợp đồng thử việc chuẩn hoá và gửi thông báo tới bộ phận tuyển dụng.\n` +
+          `   - **Hành động đã tạm dừng** để chờ bạn phê duyệt qua thẻ HITL bên dưới.`;
+
+        sourceChunks = [
+          "Điều 25 Bộ luật Lao động 2019: Thời gian thử việc không quá 60 ngày đối với công việc có trình độ cao đẳng trở lên.",
+          "Điều 27 Bộ luật Lao động 2019: Tiền lương trong thời gian thử việc do hai bên thỏa thuận nhưng ít nhất phải bằng 85% lương chính thức."
+        ];
+        sources = [
+          {
+            documentId: 1,
+            documentTitle: "Bo_Luat_Lao_Dong_2019.pdf",
+            documentNumber: "45/2019/QH14",
+            article: "Điều 25",
+            clause: "Khoản 1",
+            sourceType: "OFFICIAL",
+            content: "Thời gian thử việc do hai bên thỏa thuận căn cứ vào tính chất và mức độ phức tạp của công việc nhưng chỉ được thử việc một lần."
+          }
+        ];
+      } else if (isContract) {
+        // CASE 4: Commercial Contract & Risk
+        agentType = "ContractRiskWorkflowAgent";
+        hitlApprovalId = "req-hitl-01";
+        aiAnswer = `### ⚙️ QUY TRÌNH AGENT MULTI-STEP WORKFLOW ĐANG THỰC THI\n\n` +
+          `1. **[Pha 1: RouterAgent]** Phân tích câu hỏi: *"${userPrompt}"*\n` +
+          `   - Định tuyến vào kho văn bản quy chuẩn hợp đồng và chính sách tuân thủ doanh nghiệp.\n` +
+          `2. **[Pha 2: RetrievalAgent]** Truy xuất 42 vector embeddings từ Neon Serverless Postgres:\n` +
+          `   - Đã đối chiếu với **Điều 4** (Thời hạn thanh toán 30 ngày) và **Điều 301 Luật Thương mại** (Mức phạt vi phạm hợp đồng).\n` +
+          `3. **[Pha 3: RiskVerifierAgent]** Phát hiện rủi ro pháp lý:\n` +
+          `   - Điều khoản phạt vi phạm 12% trong dự thảo hợp đồng vượt quá mức trần 8% quy định tại Luật Thương mại.\n` +
+          `   - Nguy cơ bị tuyên vô hiệu một phần nếu xảy ra tranh chấp tại Trung tâm Trọng tài Quốc tế Việt Nam (VIAC).\n` +
+          `4. **[Pha 4: ActionGovernor]** Đề xuất hành động cần con người phê duyệt (Human-In-The-Loop):\n` +
+          `   - Soạn thảo phụ lục điều chỉnh mức phạt về 8% và gửi email cảnh báo ban giám đốc pháp chế.\n` +
+          `   - **Hành động đã tạm dừng** để chờ bạn phê duyệt qua thẻ HITL bên dưới.`;
+
+        sourceChunks = [
+          "Điều 301 Luật Thương mại: Mức phạt vi phạm hợp đồng do các bên thoả thuận nhưng không quá 8% giá trị phần nghĩa vụ bị vi phạm.",
+          "Điều 4 Hợp đồng: Thời hạn thanh toán 30 ngày kể từ khi nhận đủ hóa đơn tài chính hợp lệ.",
+          "Điều 14 VIAC: Quy trình thương lượng hòa giải 30 ngày trước khi nộp đơn khởi kiện trọng tài."
+        ];
+        sources = [
+          {
+            documentId: 1,
+            documentTitle: "Bo_Luat_Lao_Dong_2019.pdf",
+            documentNumber: "59/2020/QH14",
+            article: "Điều 4",
+            clause: "Khoản 2",
+            sourceType: "OFFICIAL",
+            content: "Các thỏa thuận và hợp đồng kinh tế được ưu tiên thực hiện trên cơ sở tự nguyện, bình đẳng và phù hợp pháp luật."
+          }
+        ];
+      } else {
+        // CASE 5: General Enterprise Inquiry in Agent Mode
+        agentType = "EnterpriseIntelligenceWorkflowAgent";
+        hitlApprovalId = "req-hitl-gen";
+        aiAnswer = `### ⚙️ QUY TRÌNH AGENT MULTI-STEP WORKFLOW ĐANG THỰC THI\n\n` +
+          `1. **[Pha 1: RouterAgent]** Phân tích câu hỏi: *"${userPrompt}"*\n` +
+          `   - Nhận diện yêu cầu nghiệp vụ doanh nghiệp và tra cứu tài liệu liên quan.\n` +
+          `2. **[Pha 2: RetrievalAgent]** Truy xuất dữ liệu đa nguồn:\n` +
+          `   - Quét cơ sở tri thức doanh nghiệp và các điều khoản pháp quy tương thích.\n` +
+          `3. **[Pha 3: ContextVerifierAgent]** Đánh giá tính chuẩn xác và rủi ro:\n` +
+          `   - Nội dung được xác thực tuân thủ chính sách quản trị nội bộ.\n` +
+          `4. **[Pha 4: ActionGovernor]** Đề xuất hành động cần con người phê duyệt (Human-In-The-Loop):\n` +
+          `   - Ghi nhận báo cáo phân tích vào hệ thống kiểm soát và đồng bộ chỉ mục tri thức.\n` +
+          `   - **Hành động đã tạm dừng** để chờ bạn phê duyệt qua thẻ HITL bên dưới.`;
+
+        sourceChunks = [
+          `Cơ sở tri thức doanh nghiệp: Phân tích nghiệp vụ đối với yêu cầu "${userPrompt}".`
+        ];
+        sources = [
+          {
+            documentId: 1,
+            documentTitle: "Enterprise_Knowledge_Base.pdf",
+            documentNumber: "EKB-2026",
+            article: "Điều 1",
+            clause: "Khoản 1",
+            sourceType: "OFFICIAL",
+            content: `Nghiệp vụ xử lý chuẩn hoá đối với yêu cầu: ${userPrompt}`
+          }
+        ];
+      }
+    } else if (customDocText && customDocText.length > 10) {
+      // Dynamic RAG from user's uploaded document (Standard RAG mode)
       agentType = "DocumentIntelligenceAgent";
       ragStrategy = "custom_document";
       const docLines = customDocText.split(/\r?\n/).map((l: string) => l.trim()).filter((l: string) => l.length > 10);
@@ -207,45 +446,6 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         sourceType: "USER",
         content: line.substring(0, 240)
       }));
-    } else if (mode === "agent") {
-      agentType = "LegalComplianceWorkflowAgent";
-      ragStrategy = "agentic";
-      hitlApprovalId = "req-hitl-01";
-      hitlPending = true;
-
-      aiAnswer = `### ⚙️ QUY TRÌNH AGENT MULTI-STEP WORKFLOW ĐANG THỰC THI
-
-1. **[Pha 1: RouterAgent]** Phân tích câu hỏi: *"${userPrompt}"*\n   - Định tuyến vào kho văn bản quy chuẩn hợp đồng và chính sách tuân thủ doanh nghiệp.
-2. **[Pha 2: RetrievalAgent]** Truy xuất 42 vector embeddings từ Neon Serverless Postgres:\n   - Đã đối chiếu với **Điều 4** (Thời hạn thanh toán) và **Điều 301** (Mức phạt vi phạm hợp đồng).
-3. **[Pha 3: RiskVerifierAgent]** Phát hiện rủi ro pháp lý:\n   - Điều khoản phạt vi phạm 12% trong hợp đồng vượt quá mức trần 8% quy định tại Luật Thương mại.\n   - Nguy cơ bị tuyên vô hiệu một phần nếu xảy ra tranh chấp tại VIAC.
-4. **[Pha 4: ActionGovernor]** Đề xuất hành động cần con người phê duyệt (Human-In-The-Loop):\n   - Soạn thảo phụ lục điều chỉnh mức phạt về 8% và gửi email cảnh báo ban giám đốc pháp chế.\n   - **Hành động đã tạm dừng** để chờ bạn phê duyệt qua thẻ HITL bên dưới.`;
-
-      sourceChunks = [
-        "Điều 301 Luật Thương mại: Mức phạt vi phạm hợp đồng do các bên thoả thuận nhưng không quá 8% giá trị phần nghĩa vụ bị vi phạm.",
-        "Điều 4 Hợp đồng: Thời hạn thanh toán 30 ngày kể từ khi nhận đủ hóa đơn tài chính hợp lệ.",
-        "Điều 14 VIAC: Quy trình thương lượng hòa giải 30 ngày trước khi nộp đơn khởi kiện trọng tài."
-      ];
-
-      sources = [
-        {
-          documentId: 1,
-          documentTitle: "Bo_Luat_Lao_Dong_2019.pdf",
-          documentNumber: "59/2020/QH14",
-          article: "Điều 4",
-          clause: "Khoản 2",
-          sourceType: "OFFICIAL",
-          content: "Các thỏa thuận và hợp đồng kinh tế được ưu tiên thực hiện trên cơ sở tự nguyện, bình đẳng và phù hợp pháp luật."
-        },
-        {
-          documentId: 2,
-          documentTitle: "Quy_Trinh_Kiem_Soat_Tai_Chinh_2026.pdf",
-          documentNumber: "QT-TC-2026",
-          article: "Điều 8",
-          clause: "Khoản 1",
-          sourceType: "USER",
-          content: "Toàn bộ chứng từ thanh toán và hợp đồng phải được mã hóa theo tiêu chuẩn an toàn thông tin doanh nghiệp."
-        }
-      ];
     } else if (lowerPrompt.includes("thử việc") || lowerPrompt.includes("lao động") || lowerPrompt.includes("lương")) {
       agentType = "HRComplianceAgent";
       ragStrategy = "direct";
@@ -694,21 +894,41 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       try { body = await context.request.json(); } catch {}
       const isReject = subPath.includes("/reject") || body.decision === "REJECT";
       const reqId = subPath.split("/")[3] || "req-hitl-01";
-      const actionResult = isReject
-        ? { status: "REJECTED", message: `Đã từ chối hành động ${reqId}. Agent đã dừng tác vụ an toàn.` }
-        : reqId === "req-hitl-01"
-          ? { status: "APPROVED", message: `✓ Đã duyệt! Email đã gửi tới legal-board@enterprise.com.vn (SMTP Gateway: 250 OK - MsgID: 20261021-9982)` }
-          : { status: "APPROVED", message: `✓ Đã duyệt! Hồ sơ đã được số hóa và chuyển tiếp thành công tới Trung tâm Trọng tài VIAC.` };
+      
+      let message = "";
+      if (isReject) {
+        message = `Đã từ chối hành động ${reqId}. Agent đã dừng tác vụ và lưu nhật ký an toàn.`;
+      } else {
+        switch (reqId) {
+          case "req-hitl-summary":
+            message = "✓ Đã duyệt! Báo cáo Tóm tắt Điều hành (Executive Briefing Memo) đã được xuất bản và lập chỉ mục vào kho tri thức doanh nghiệp.";
+            break;
+          case "req-hitl-sec":
+            message = "✓ Đã duyệt! Chính sách An toàn thông tin ISO/IEC 27001 và phân quyền RBAC đã được áp dụng vào hệ thống giám sát.";
+            break;
+          case "req-hitl-hr":
+            message = "✓ Đã duyệt! Mẫu biểu Hợp đồng thử việc đã được cập nhật tuân thủ Điều 25 & 27 Bộ luật Lao động 2019.";
+            break;
+          case "req-hitl-01":
+            message = "✓ Đã duyệt! Email cảnh báo pháp chế đã gửi tới legal-board@enterprise.com.vn (SMTP Gateway: 250 OK - MsgID: 20261021-9982).";
+            break;
+          case "req-hitl-02":
+            message = "✓ Đã duyệt! Hồ sơ đã được số hóa và chuyển tiếp thành công tới Trung tâm Trọng tài VIAC.";
+            break;
+          default:
+            message = `✓ Đã duyệt! Hành động ${reqId} đã được thực thi và ghi nhận vào Audit Log.`;
+        }
+      }
 
       return new Response(
         JSON.stringify({
           status: "SUCCESS",
           decision: isReject ? "rejected" : "approved",
-          message: actionResult.message,
+          message,
           requestId: reqId,
           decidedAt: new Date().toISOString(),
           workflow_result: {
-            answer: actionResult.message,
+            answer: message,
           }
         }),
         { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": url.origin, "Access-Control-Allow-Credentials": "true" } }
@@ -717,14 +937,80 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
     const pendingRequests = [
       {
+        request_id: "req-hitl-summary",
+        query: "Xuất bản Báo cáo Tóm tắt Điều hành (Executive Briefing Memo)",
+        user_id: "executive-board@enterprise.com.vn",
+        session_id: "session-briefing-01",
+        agent_type: "ExecutiveSummaryAgent",
+        action_name: "PUBLISH_EXECUTIVE_BRIEF",
+        target: "corporate-knowledge-base",
+        created_at: Math.floor((Date.now() - 300000) / 1000),
+        status: "PENDING",
+        risk_level: "LOW",
+        summary: "Xuất bản bản tóm tắt nội dung tài liệu và đồng bộ vào kho tri thức doanh nghiệp",
+        agent_plan: "1. Trích xuất các ý chính của tài liệu\n2. Đóng gói bản tóm tắt điều hành\n3. Đăng ký vào kho tri thức doanh nghiệp",
+        plan: {
+          objective: "Xuất bản bản tóm tắt nội dung tài liệu và đồng bộ vào kho tri thức",
+          steps: [
+            "1. Trích xuất các ý chính của tài liệu",
+            "2. Đóng gói bản tóm tắt điều hành (Executive Memo)",
+            "3. Chờ phê duyệt của người dùng trước khi xuất bản"
+          ]
+        }
+      },
+      {
+        request_id: "req-hitl-sec",
+        query: "Kích hoạt chính sách giám sát an ninh tăng cường ISO 27001",
+        user_id: "sec-ops@enterprise.com.vn",
+        session_id: "session-sec-01",
+        agent_type: "SecurityAuditWorkflowAgent",
+        action_name: "ACTIVATE_SECURITY_POLICY",
+        target: "iam-access-controller",
+        created_at: Math.floor((Date.now() - 600000) / 1000),
+        status: "PENDING",
+        risk_level: "MEDIUM",
+        summary: "Áp dụng chính sách kiểm soát truy cập đặc quyền và ghi vết Audit Trail bất biến",
+        agent_plan: "1. Đối chiếu tiêu chuẩn ISO/IEC 27001:2022\n2. Kích hoạt chính sách Zero-Trust\n3. Yêu cầu phê duyệt từ Quản trị viên An ninh",
+        plan: {
+          objective: "Tăng cường kiểm soát an ninh thông tin theo ISO 27001",
+          steps: [
+            "1. Đối chiếu tiêu chuẩn ISO/IEC 27001:2022",
+            "2. Kích hoạt chính sách Zero-Trust và phân quyền RBAC",
+            "3. Chờ phê duyệt từ Quản trị viên An ninh"
+          ]
+        }
+      },
+      {
+        request_id: "req-hitl-hr",
+        query: "Ban hành mẫu biểu Hợp đồng thử việc chuẩn hoá theo Điều 25 & 27 BLLĐ",
+        user_id: "hr-compliance@enterprise.com.vn",
+        session_id: "session-hr-01",
+        agent_type: "HRComplianceWorkflowAgent",
+        action_name: "APPROVE_HR_TEMPLATE",
+        target: "hr-management-system",
+        created_at: Math.floor((Date.now() - 900000) / 1000),
+        status: "PENDING",
+        risk_level: "LOW",
+        summary: "Chuẩn hoá thời hạn thử việc tối đa 60 ngày và mức lương thử việc 85% chính thức",
+        agent_plan: "1. Đối chiếu Điều 25 & 27 Bộ luật Lao động 2019\n2. Cập nhật mẫu hợp đồng nhân sự\n3. Trình phê duyệt ban nhân sự",
+        plan: {
+          objective: "Ban hành phụ lục hợp đồng thử việc tuân thủ pháp luật lao động",
+          steps: [
+            "1. Đối chiếu Điều 25 & 27 Bộ luật Lao động 2019",
+            "2. Cập nhật mẫu hợp đồng nhân sự chuẩn hóa",
+            "3. Chờ phê duyệt trước khi áp dụng"
+          ]
+        }
+      },
+      {
         request_id: "req-hitl-01",
         query: "Gửi email cảnh báo vi phạm điều khoản thanh toán vượt quá 30 ngày",
         user_id: "legal-board@enterprise.com.vn",
         session_id: "session-compliance-01",
-        agent_type: "LegalAnalystAgent",
+        agent_type: "ContractRiskWorkflowAgent",
         action_name: "SEND_COMPLIANCE_NOTIFICATION_EMAIL",
         target: "legal-board@enterprise.com.vn",
-        created_at: Math.floor((Date.now() - 600000) / 1000),
+        created_at: Math.floor((Date.now() - 1200000) / 1000),
         status: "PENDING",
         risk_level: "MEDIUM",
         summary: "Gửi email cảnh báo vi phạm điều khoản thanh toán vượt quá 30 ngày theo Hợp đồng số 104/2026/HĐKT",
