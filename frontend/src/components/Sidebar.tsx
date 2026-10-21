@@ -172,13 +172,13 @@ export default function Sidebar({
           </button>
 
           {/* Document list */}
-          {documents.length === 0 ? (
+          {(!documents || !Array.isArray(documents) || documents.length === 0) ? (
             <p className="px-3 py-4 text-[12px] text-onsurface-muted text-center">
               Chưa có tài liệu. Tải lên để bắt đầu.
             </p>
           ) : (
             <div className="space-y-0.5">
-              {documents.map((doc) => {
+              {(Array.isArray(documents) ? documents : []).map((doc) => {
                 const isChecked = selectedIds.has(doc.id);
                 return (
                   <div

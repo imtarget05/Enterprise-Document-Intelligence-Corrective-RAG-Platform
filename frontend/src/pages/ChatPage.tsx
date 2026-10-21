@@ -61,7 +61,8 @@ export default function ChatPage() {
         headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       });
       if (!response.ok) throw new Error("Failed to fetch documents");
-      return response.json();
+      const json = await response.json();
+      return Array.isArray(json) ? json : (json?.content || []);
     },
     enabled: !!username || !!token,
   });

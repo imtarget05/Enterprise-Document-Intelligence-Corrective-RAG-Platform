@@ -17,7 +17,7 @@ thay vì bịa. Trí nhớ nằm ở **Corrective RAG 5 lớp**, không nằm �
 [Chuẩn hoá truy vấn — bắt "Điều N", mã tài liệu, số clause]
          │
          ▼
-[Hybrid Retrieval: dense vector + BM25 sparse, hợp nhất qua RRF]
+[Retrieval theo route: Spring PostgreSQL lexical hoặc Python Qdrant+BM25/RRF]
          │
          ▼
 [Corrective RAG 5 lớp: grade → refine → hallucination check → answer grade]
@@ -27,8 +27,10 @@ thay vì bịa. Trí nhớ nằm ở **Corrective RAG 5 lớp**, không nằm �
          └── evidence đủ ──► [Generate có trích dẫn [S1], [S2]]
 ```
 
-**Core engineering promise:** *"Tôi xây được ứng dụng AI doanh nghiệp trả lời từ bằng chứng đã kiểm
-chứng — mỗi câu trả lời quy về được đoạn nguồn cụ thể, và biết nói 'không đủ căn cứ'."*
+**Core engineering promise:** *"Tôi xây được luồng RAG có citation và abstention,
+với kiểm thử owner isolation và đường fallback được mô tả đúng theo môi trường."
+Độ đúng thực tế phải dẫn tới benchmark chạy trên exact commit và nguồn dữ liệu
+được nêu rõ; fixture smoke không phải chứng minh production quality.*
 
 ## 2. Service map (hiện trạng — code thật)
 
@@ -36,7 +38,7 @@ chứng — mỗi câu trả lời quy về được đoạn nguồn cụ thể,
 |---|---|---|---|---|
 | SPA | React 18 + TypeScript (Vite) | — | chat UI, SSE progressive rendering, upload | **Prod: Cloudflare Pages** `https://smart-doc-chatbot.pages.dev` (workflow `pages.yml`) |
 | `smartdoc-backend` | **Spring Boot 3.2 / Java 17** | **8080** | auth (HttpOnly cookie), document CRUD, job queue, chat CRAG + SSE, audit | **Azure demo API** `https://smartdoc-api.blackisland-5a3f0246.southeastasia.azurecontainerapps.io`, RAG live smoke pass 2026-10-09; Render `2hhz` là mirror đang trả 502 gián đoạn |
-| `smart-doc-agent` | Python FastAPI + **LangGraph** | **9000** | multi-agent: `/v1/*` và root — `/agent/invoke`, `/agent/invoke-stream`, `/agent/approvals` (HITL Redis-backed, fail-closed, snapshot resume — approve khôi phục đúng state lúc pause, không chạy lại từ đầu), `/a2a/*`, `/mcp/*`, `/agent/memory/graph`, `/training-jobs`, `/health`, `/ready`, `/metrics` — **đã nối vào luồng chat chính**: backend `ChatService` (mode `agent`, mặc định) gọi `/v1/agent/invoke` qua `AgentClient`, HITL pause (`hitl_pending`/`hitl_approval_id`) propagate qua `ChatResponse`/SSE metadata, duyệt tại `/agent/approvals/**` (ADMIN/ENGINEER) | Render `smart-doc-agent` (+ `AGENT_BASE_URL` trỏ từ backend); compose `agent` + `redis`; k8s `25-smartdoc-agent` + `16-redis` |
+| `smart-doc-agent` | Python FastAPI + **LangGraph** | **9000** | multi-agent `/v1/agent/invoke`; Spring `ChatService` mặc định gọi qua `AgentClient` trong code. HITL serving dùng approval store (Redis khi cấu hình; nếu không là process memory) + snapshot re-invocation, không phải LangGraph interrupt. Direct mutation routes bị chặn 403 mặc định. | Azure revision từng provision nhưng health timeout (README, 2026-10-09); agent live `NOT_VERIFIED`. Local compose và k8s manifests là profile khác. |
 | `smart-doc-llm-router` | FastAPI | — | `POST /api/chat`, `POST /api/embeddings` → **Cloudflare Workers AI exclusively** (service này không fallback Ollama), `GET /health/live` | Render `smart-doc-llm-router` |
 | `smartdoc-keycloak` | Docker | 8080 | OIDC (optional) | Render |
 | DB | **Neon PostgreSQL** | 5432 | Flyway `V1..V21`: users/permissions, document metadata, legal chunks, **ingestion jobs** (`FOR UPDATE SKIP LOCKED`, DLQ) | managed |
@@ -51,12 +53,12 @@ flowchart LR
     U["Browser"] -->|HTTPS| CF["Cloudflare Pages<br/>smart-doc-chatbot.pages.dev<br/>(SSE progressive rendering)"]
     CF -->|"POST /chat/stream · /documents<br/>HttpOnly SameSite cookie"| SVC["Azure Container Apps (demo API)"]
     SVC --> SB["smartdoc-api · Spring Boot :8080<br/>/api/actuator/health"]
-    SVC --> AG["smart-doc-agent · FastAPI :9000<br/>LangGraph (experimental, chưa nối chat chính)"]
+    SVC -.-> AG["smart-doc-agent · FastAPI :9000<br/>code-connected; live health timeout"]
     SVC --> LR["smart-doc-llm-router<br/>POST /api/chat · /api/embeddings<br/>→ Cloudflare Workers AI (exclusive)"]
     SB --> NEON[("Neon PostgreSQL<br/>Flyway V1..V21 · job queue<br/>FOR UPDATE SKIP LOCKED")]
-    SB --> QD[("Qdrant Cloud :6333<br/>dense + BM25 RRF")]
+    AG -.-> QD[("Qdrant Cloud :6333<br/>agent dense + BM25 RRF")]
     SB --> R2[("Cloudflare R2<br/>smart-doc-documents")]
-    SB -.->|"internal token POST /v1"| AG
+    SB -.->|"AgentClient; live fallback to CRAG"| AG
     AG -.-> LR
     SB --> LF["Langfuse Cloud<br/>traceId · tokens · USD · TTFT"]
     K8["GitHub Actions"] -->|"image GHCR · readiness poll"| SB
@@ -190,7 +192,7 @@ flowchart TD
   (service này không fallback Ollama); agent service chạy **local-first Ollama** với fallback theo
   `agent/settings.py`. Observability qua **Langfuse** (tokens, USD, TTFT) + MDC `traceId`.
 
-### Đường thử nghiệm (Python agent — CHƯA nối vào chat chính)
+### Đường agent (đã nối trong code, chưa chứng minh thành công trên Azure)
 
 ```mermaid
 flowchart TD
@@ -202,8 +204,14 @@ flowchart TD
     SG -.->|side-effect action| HITL["HITL: /agent/approvals/{id}/approve|reject<br/>chưa approve → không execute"]
 ```
 
-- Chi tiết từng thành phần, connector ingestion (`POST /v1/agent/connector/ingest`), eval framework và
-  ranh giới ADK/A2A/MCP-tùy-chỉnh: **`docs/agent_architecture.md`**.
+- Spring `ChatService` mặc định gọi `AgentClient`; khi agent unavailable thì
+  fallback về CRAG. Bảng production status trong README ghi lần smoke Azure
+  2026-10-10 đã fallback (`ragStrategy=direct`), nên sơ đồ trên mô tả nhánh
+  code và API thử nghiệm, không phải live agent proof.
+- HITL serving path là approval store + graph END + re-invoke từ snapshot;
+  chưa phải LangGraph interrupt resume. Chi tiết, connector ingestion
+  (`POST /v1/agent/connector/ingest`) và ranh giới ADK/A2A/MCP-tùy-chỉnh:
+  **`docs/agent_architecture.md`**.
 - Eval là gate: `eval/run_fixture_eval.py` (smoke trong CI) + `eval/run_live_benchmark.py`
   (Hit@K, Recall@K, MRR — regression = fail).
 

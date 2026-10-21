@@ -1,0 +1,54 @@
+{
+  "trace_id": "81f94c021f464154a06c0ac07ebd1015",
+  "read_status": "answered",
+  "paused": true,
+  "action_status": "executed",
+  "audit": [
+    {
+      "event": "routed",
+      "action_key": null,
+      "actor": "system",
+      "detail": {
+        "target": "read"
+      }
+    },
+    {
+      "event": "retrieved",
+      "action_key": null,
+      "actor": "system",
+      "detail": {
+        "source_count": 1
+      }
+    },
+    {
+      "event": "answered",
+      "action_key": null,
+      "actor": "system",
+      "detail": {
+        "cited": true
+      }
+    },
+    {
+      "event": "routed",
+      "action_key": "81f94c021f464154a06c0ac07ebd1015-action",
+      "actor": "system",
+      "detail": {
+        "target": "action"
+      }
+    },
+    {
+      "event": "approved",
+      "action_key": "81f94c021f464154a06c0ac07ebd1015-action",
+      "actor": "checker",
+      "detail": {}
+    },
+    {
+      "event": "executed",
+      "action_key": "81f94c021f464154a06c0ac07ebd1015-action",
+      "actor": "system",
+      "detail": {
+        "inserted": true
+      }
+    }
+  ]
+}

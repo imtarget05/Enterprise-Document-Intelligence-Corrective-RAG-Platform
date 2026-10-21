@@ -7,6 +7,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
 
+import java.security.Principal;
 import java.util.List;
 import java.util.Map;
 
@@ -28,6 +29,10 @@ class AgentControllerTest {
 
     @Mock private AgentClient agentClient;
 
+    private static Principal user(String name) {
+        return () -> name;
+    }
+
     @Test
     void invokeReturnsAnswerWithHitlFields() {
         AgentController controller = new AgentController(agentClient);
@@ -36,7 +41,7 @@ class AgentControllerTest {
                         List.of(), 0.5, "trace-1", true, "hitl-abc"));
 
         ResponseEntity<Map<String, Object>> result = controller.invokeAgent(
-                "alice", Map.of("message", "send email", "session_id", "s1"));
+                user("alice"), Map.of("message", "send email", "session_id", "s1"));
 
         assertEquals(200, result.getStatusCodeValue());
         Map<String, Object> body = result.getBody();
@@ -50,12 +55,12 @@ class AgentControllerTest {
     @Test
     void invokeDefaultsHitlFieldsWhenNoApproval() {
         AgentController controller = new AgentController(agentClient);
-        when(agentClient.invokeAgent(eq("anonymous"), eq("api-session"), eq("hello"), anyString()))
+        when(agentClient.invokeAgent(eq("alice"), eq("api-session"), eq("hello"), anyString()))
                 .thenReturn(new AgentClient.AgentResponse("hi", "rag",
                         List.of(), 0.9, "trace-2", false, null));
 
         ResponseEntity<Map<String, Object>> result = controller.invokeAgent(
-                null, Map.of("message", "hello"));
+                user("alice"), Map.of("message", "hello"));
 
         assertEquals(200, result.getStatusCodeValue());
         assertEquals(false, result.getBody().get("hitl_pending"));
@@ -67,7 +72,7 @@ class AgentControllerTest {
         AgentController controller = new AgentController(agentClient);
 
         ResponseEntity<Map<String, Object>> result = controller.invokeAgent(
-                "alice", Map.of("message", "  "));
+                user("alice"), Map.of("message", "  "));
 
         assertEquals(400, result.getStatusCodeValue());
     }
@@ -79,8 +84,16 @@ class AgentControllerTest {
                 .thenThrow(new RuntimeException("agent unavailable: conn refused"));
 
         ResponseEntity<Map<String, Object>> result = controller.invokeAgent(
-                "alice", Map.of("message", "hi", "session_id", "s1"));
+                user("alice"), Map.of("message", "hi", "session_id", "s1"));
 
         assertEquals(502, result.getStatusCodeValue());
+    }
+
+    @Test
+    void invokeRejectsMissingPrincipalInsteadOfUsingAnonymousOwner() {
+        AgentController controller = new AgentController(agentClient);
+        ResponseEntity<Map<String, Object>> result = controller.invokeAgent(
+                null, Map.of("message", "read private document"));
+        assertEquals(401, result.getStatusCodeValue());
     }
 }

@@ -4,6 +4,10 @@ from main import app
 
 
 def test_report_endpoint_calls_generate_pdf_report_with_valid_signature(monkeypatch):
+    import state
+
+    monkeypatch.setattr(state.settings, "app_env", "test")
+    monkeypatch.setattr(state.settings, "allow_direct_mutation_demos", True)
     captured = {}
 
     class FakeReportAgent:

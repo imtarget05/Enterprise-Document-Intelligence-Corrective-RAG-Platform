@@ -36,11 +36,18 @@ Documents and chat histories are scoped to the authenticated username. A client 
 | `POST` | `/chat/ask-stream` | SSE RAG response |
 | `GET` | `/chat/history/{sessionId}` | User-scoped conversation history |
 | `DELETE` | `/chat/history/{sessionId}` | Clear user-scoped conversation history |
-| `POST` | `/agent/invoke` | LangGraph agent orchestration through the Python Agent Service |
-| `POST` | `/agent/report` | Explicit report generation through the Agent Service |
-| `POST` | `/agent/action` | Execute configured agent actions |
-| `POST` | `/agent/connector/ingest` | Ingest Google Drive, Gmail, Slack, or SharePoint data into Qdrant |
-| `GET` | `/agent/health` | Proxy health check for the Python Agent Service |
+| `POST` | `/agent/invoke` | Authenticated principal scopes LangGraph agent orchestration; caller `X-User` is ignored |
+| `GET/POST` | `/agent/approvals[/{id}/approve|reject]` | ADMIN/ENGINEER proxy to HITL queue; upstream success still requires agent readiness |
+
+The Python service also exposes direct `/v1/agent/action`, `/report`, and
+`/connector/ingest`. These mutate state outside the graph approval gate and
+therefore return **403 by default**, even with a valid internal token. They
+are available only when `ALLOW_DIRECT_MUTATION_DEMOS=true` in a local/dev/test
+environment; staging/production always reject them. Clients of the former
+direct routes must migrate to a reviewed approval executor before deployment.
+The approval gate applies to the orchestrated action branch, not every
+state-changing API. The [side-effect inventory](PORTFOLIO_ENTERPRISE_AUDIT.md#side-effect-inventory-and-trust-boundary)
+lists operator, graph-memory, MCP/A2A and document-purge trust boundaries.
 
 Chat payload:
 

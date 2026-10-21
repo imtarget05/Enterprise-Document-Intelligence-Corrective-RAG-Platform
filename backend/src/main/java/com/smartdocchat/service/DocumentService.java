@@ -18,9 +18,8 @@ import com.smartdocchat.util.LegalStructureParser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.CachePut;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -182,7 +181,6 @@ public class DocumentService {
      * its id (history/citations stay stable) and version_number is advanced.
      * RBAC is enforced by the caller (DocumentController) before this runs.
      */
-    @CachePut(value = CacheNames.DOCUMENTS, key = "#result.id")
     public Document replaceDocument(Document current, MultipartFile file, String actorUsername) throws IOException {
         String originalFileName = sanitizeFileName(file.getOriginalFilename());
         String fileExtension = getFileExtension(originalFileName);
@@ -276,7 +274,6 @@ public class DocumentService {
      * RBAC-aware listing (production requirement #3): admins see every
      * document; everyone else is restricted to their own (owner isolation).
      */
-    @Cacheable(value = CacheNames.DOCUMENT_METADATA, key = "#callerUsername", unless = "#result == null")
     public List<Document> getAllDocumentsForRole(String callerUsername, Role role) {
         if (role == Role.ROLE_ADMIN) {
             return documentRepository.findByOrderByCreatedAtDesc();
@@ -288,7 +285,6 @@ public class DocumentService {
         return documentRepository.findByOwnerUsernameOrderByCreatedAtDesc(ownerUsername);
     }
 
-    @Cacheable(value = CacheNames.DOCUMENTS, key = "#id", unless = "#result == null")
     public Document getDocumentById(Long id, String ownerUsername) {
         return documentRepository.findByIdAndOwnerUsername(id, ownerUsername).orElseThrow(
                 () -> new RuntimeException("Document not found with id: " + id)
@@ -299,7 +295,6 @@ public class DocumentService {
      * RBAC-aware fetch (production requirement #3): admins may read any
      * document; other roles remain owner-isolated (same not-found signal).
      */
-    @Cacheable(value = CacheNames.DOCUMENTS, key = "#id", unless = "#result == null")
     public Document getDocumentByIdForRole(Long id, String callerUsername, Role role) {
         if (role == Role.ROLE_ADMIN) {
             return documentRepository.findById(id).orElseThrow(
@@ -326,10 +321,22 @@ public class DocumentService {
     @Transactional
     @CacheEvict(value = {CacheNames.DOCUMENTS, CacheNames.DOCUMENT_METADATA}, allEntries = true)
     public int deleteDocumentsBatch(List<Long> ids, String callerUsername, Role role) {
+        return deleteDocumentsBatchWithResults(ids, callerUsername, role).size();
+    }
+
+    /** Return only IDs whose primary document and blob were actually deleted. */
+    @Transactional
+    @CacheEvict(value = {CacheNames.DOCUMENTS, CacheNames.DOCUMENT_METADATA}, allEntries = true)
+    public List<Long> deleteDocumentsBatchWithResults(List<Long> ids, String callerUsername, Role role) {
         if (ids == null || ids.isEmpty()) {
-            return 0;
+            return List.of();
         }
-        int count = 0;
+        // A read/owner check alone does not authorize deletion: ROLE_USER may
+        // read and upload their own documents, but may not delete them.
+        if (role != Role.ROLE_ADMIN && role != Role.ROLE_ENGINEER) {
+            throw new AccessDeniedException("This role cannot delete documents");
+        }
+        List<Long> deleted = new ArrayList<>();
         for (Long id : ids) {
             try {
                 Document doc = getDocumentByIdForRole(id, callerUsername, role);
@@ -341,12 +348,12 @@ public class DocumentService {
                 legalChunkRepository.deleteByDocumentId(id);
                 documentVersionService.deleteVersionsByDocumentId(id);
                 documentRepository.delete(doc);
-                count++;
+                deleted.add(id);
             } catch (Exception e) {
                 log.warn("Failed to delete document id {} in batch: {}", id, e.getMessage());
             }
         }
-        return count;
+        return deleted;
     }
 
     public Document saveDocument(Document document) {

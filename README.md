@@ -34,6 +34,17 @@ Core workflow: `Upload → Retrieve → Verify → Cite → Answer`
 | LLM router / Keycloak (Render free) | — | **Down** — Keycloak had the same `$PORT` binding issue (fixed here); router requires Cloudflare credentials in the Render dashboard |
 | Python agent (Azure) | https://smartdoc-agent.blackisland-5a3f0246.southeastasia.azurecontainerapps.io | Container revision is provisioned but public `/health` and `/ready` timed out on 2026-10-09; agent workflows are not yet verified live. |
 
+**Agent claim boundary (commit `8b6d394`):** `ChatService` calls `AgentClient`
+by default in code, but the recorded Azure smoke fell back to Spring CRAG.
+The existing HITL serving implementation uses an approval store (Redis when
+configured, otherwise process memory) and snapshot re-invocation, not LangGraph
+`interrupt()` resume; its crash window
+after approval claim remains an open reliability gap. The separate offline
+interrupt demo under `eval/portfolio_demo/` is not a production claim.
+
+The evidence-first portfolio audit and offline demo commands are in
+[`docs/PORTFOLIO_ENTERPRISE_AUDIT.md`](docs/PORTFOLIO_ENTERPRISE_AUDIT.md).
+
 The `fix/pages-api-h4mt` branch (repoints Pages + Docker build-args to h4mt) must **not** be
 merged until Render dashboard/OAuth console evidence confirms `h4mt` is a valid backend for
 this project; today `h4mt` is legacy/unresolved, `2hhz` is a Render mirror, and Azure is the verified RAG demo API. CI runs tests and scans; Azure deployment and Pages publication run afterward with their own readiness gates.
@@ -44,7 +55,7 @@ this project; today `h4mt` is legacy/unresolved, `2hhz` is a Render mirror, and 
 2. **Hybrid Search with RRF**: Combines Dense (Qdrant cosine) + Sparse (BM25) retrieval, fused via Reciprocal Rank Fusion, ensuring high recall across semantic and keyword queries.
 3. **Local-First LLM Strategy**: Routes through `LocalOllamaProvider` first (health probe with TTL cache). Falls back to Cloudflare Workers AI only when local is unavailable. No mid-request fallback — fail fast, fail clean.
 4. **LangGraph Agent Orchestration**: Multi-agent architecture with 9 specialized agents (RAG, CSKH, Research, Report, Engineering Analysis, Ingestion, Action, Comparator) orchestrated by a central agent with state persistence.
-5. **Human-in-the-Loop (HITL)**: Side-effect actions (document ingestion, external API calls) require explicit human approval before execution, preventing unintended mutations.
+5. **Human-in-the-Loop (HITL), bounded:** The orchestrated `action` branch creates an approval request before `ActionAgent` runs. Direct `/v1/agent/action`, connector ingestion and report routes bypass that gate, so they now return **403 by default**; only an explicit `ALLOW_DIRECT_MUTATION_DEMOS=true` in local/dev/test permits sandbox calls. Production/staging remain closed even if that flag is set. Other operator and data mutations have their own token/RBAC controls and are **not** covered by this HITL gate. This blocks the known direct-action bypass but does not make the orchestrated path crash-safe. See the [side-effect inventory](docs/PORTFOLIO_ENTERPRISE_AUDIT.md#side-effect-inventory-and-trust-boundary).
 6. **Agent-First Routing**: All chat queries default to Agent mode (LangGraph multi-step reasoning) with RAG as fallback. The agent *reasons*, the RAG *retrieves* — each has its lane.
 7. **Enterprise Security Stack**: HttpOnly SameSite cookie authentication + in-memory token state (replaces localStorage token storage), CSRF protection, sliding-window rate limiting, CORS, Audit Logging, and PII-aware guardrails. Password reset uses cryptographically secure single-use SHA-256 hashed tokens (`V21__password_reset_tokens.sql`) with generic request responses and IP/user rate limiting to eliminate account takeover vulnerabilities. Dependency posture (2026-10-05): `npm audit --omit=dev` reports **0 vulnerabilities** in production dependencies; remaining advisories (esbuild dev-server, braces via chokidar, vitest chain) are dev-only and fixable only via breaking upgrades (Vite 8 / Tailwind v4) — tracked, not hidden.
 8. **Real-Time Streaming & Endpoints**: Server-Sent Events (SSE) with progressive rendering via `POST /chat/stream` (with legacy `/chat/ask-stream`), search via `POST /search` and `POST /documents/search`, and owner-scoped ingestion monitoring via `GET /jobs/{id}`. Event sequence is `status → metadata → content chunk(s) → complete` (+ `error` on failure). Chunk granularity is word/full-answer depending on the serving path (Spring CRAG emits one content chunk; the Python agent word-splits the completed answer) — this is progressive rendering, not guaranteed provider token-by-token streaming. Dedicated `SseStreamManager`, deduplication via `ChatDedupService`, and dead-letter queue via `ChatDlqService`.
@@ -219,7 +230,7 @@ npm run dev
 | `POST` | `/api/auth/login` | JWT authentication |
 | `POST` | `/api/auth/google` | Google OAuth2 / One Tap login |
 | `POST` | `/api/chat` | Send query (Agent-first, RAG fallback) |
-| `GET` | `/api/chat/stream` | SSE streaming (status → metadata → chunk → complete) |
+| `POST` | `/api/chat/stream` | SSE streaming (status → metadata → chunk → complete) |
 | `POST` | `/api/documents/upload` | Upload PDF/DOCX/TXT documents |
 | `GET` | `/api/documents` | List uploaded documents |
 | `GET` | `/api/history` | Conversation history |
@@ -229,12 +240,11 @@ npm run dev
 
 | Method | Endpoint | Description |
 |:---|:---|:---|
-| `POST` | `/agent/chat` | LangGraph multi-step reasoning |
-| `POST` | `/agent/ingest` | Document ingestion pipeline |
-| `GET` | `/agent/actions/pending` | List pending HITL approvals |
-| `POST` | `/agent/actions/confirm` | Approve/reject side-effect action |
-| `POST` | `/memory/store` | Store long-term memory |
-| `GET` | `/health` | Agent health + model status |
+| `POST` | `/v1/agent/invoke` | LangGraph orchestration; live Azure success unverified |
+| `GET` | `/v1/agent/approvals` | Pending orchestrated-action approvals (internal token) |
+| `POST` | `/v1/agent/approvals/{id}/approve` or `/reject` | Decide a pending action; Spring proxy restricts ADMIN/ENGINEER |
+| `POST` | `/v1/agent/action`, `/report`, `/connector/ingest` | Direct mutations disabled by default (403); local/dev/test demo opt-in only |
+| `GET` | `/v1/health`, `/v1/ready` | Agent liveness/readiness, not proof that a workflow succeeds |
 
 ### LLM Router (FastAPI — :8001)
 

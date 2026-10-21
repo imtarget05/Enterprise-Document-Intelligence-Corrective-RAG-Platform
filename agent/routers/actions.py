@@ -31,7 +31,7 @@ async def adk_demo(request: Request):
     return run_demo_workflow(user_request=user_request, document_name=document_name)
 
 
-@router.post("/report", dependencies=[Depends(state.verify_and_rate_limit)])
+@router.post("/report", dependencies=[Depends(state.verify_and_rate_limit), Depends(state.require_local_mutation_demo)])
 async def generate_report(req: ReportRequest):
     from agents.report_agent import ReportAgent
 
@@ -44,7 +44,7 @@ async def generate_report(req: ReportRequest):
     return {"status": "ok", "report_path": path}
 
 
-@router.post("/action", dependencies=[Depends(state.verify_and_rate_limit)])
+@router.post("/action", dependencies=[Depends(state.verify_and_rate_limit), Depends(state.require_local_mutation_demo)])
 async def execute_action(req: ActionRequest):
     from agents.action_agent import ActionAgent
 
@@ -53,7 +53,7 @@ async def execute_action(req: ActionRequest):
     return {"status": "ok", "result": result}
 
 
-@router.post("/connector/ingest", dependencies=[Depends(state.verify_internal_token)])
+@router.post("/connector/ingest", dependencies=[Depends(state.verify_internal_token), Depends(state.require_local_mutation_demo)])
 async def connector_ingest(req: ConnectorIngestRequest):
     from agents.ingestion_agent import IngestionAgent
 

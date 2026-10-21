@@ -1,0 +1,81 @@
+{
+  "kind": "educational_synthetic_preference_policy_gradient",
+  "model_id": "HuggingFaceTB/SmolLM2-135M-Instruct",
+  "model_revision": "12fd25f77366fa6b3b4b768ec3050bf629380bac",
+  "seed": 42,
+  "device": "mps",
+  "train_pairs": 8,
+  "heldout_pairs": 4,
+  "reward_model": "3-feature linear pairwise logistic ranking",
+  "reward_heldout_pair_accuracy": 1.0,
+  "policy_algorithm": "REINFORCE on A/B choice; final transformer block only",
+  "learning_rate": 1e-05,
+  "before": {
+    "preferred_choice_accuracy": 0.5,
+    "mean_preferred_probability": 0.5094375479966402
+  },
+  "after": {
+    "preferred_choice_accuracy": 0.5,
+    "mean_preferred_probability": 0.5110253784805536
+  },
+  "parameter_delta_l2": 0.017463646829128265,
+  "updates": [
+    {
+      "example": 0,
+      "chosen_arm": 0,
+      "reward": 7.161342620849609,
+      "advantage": 1.7912588119506836,
+      "loss": 0.28682833909988403
+    },
+    {
+      "example": 1,
+      "chosen_arm": 0,
+      "reward": 2.2502598762512207,
+      "advantage": -2.237412929534912,
+      "loss": -0.408743679523468
+    },
+    {
+      "example": 2,
+      "chosen_arm": 0,
+      "reward": 7.282397270202637,
+      "advantage": 2.7806396484375,
+      "loss": 0.19991044700145721
+    },
+    {
+      "example": 3,
+      "chosen_arm": 0,
+      "reward": 1.9533309936523438,
+      "advantage": -2.255685806274414,
+      "loss": -0.33055824041366577
+    },
+    {
+      "example": 4,
+      "chosen_arm": 0,
+      "reward": 6.585757255554199,
+      "advantage": 2.195158004760742,
+      "loss": 0.4324598014354706
+    },
+    {
+      "example": 5,
+      "chosen_arm": 0,
+      "reward": 1.3777456283569336,
+      "advantage": -2.9523258209228516,
+      "loss": -0.4302453100681305
+    },
+    {
+      "example": 6,
+      "chosen_arm": 0,
+      "reward": 6.604030609130859,
+      "advantage": 1.8377017974853516,
+      "loss": 0.5278229713439941
+    },
+    {
+      "example": 7,
+      "chosen_arm": 0,
+      "reward": 1.9317959547042847,
+      "advantage": -2.0001955032348633,
+      "loss": -0.24918894469738007
+    }
+  ],
+  "limitations": "Synthetic labels and two-choice output; no production LLM quality claim."
+}

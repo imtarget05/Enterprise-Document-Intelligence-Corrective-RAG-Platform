@@ -84,6 +84,23 @@ def verify_and_rate_limit(request: Request) -> None:
     )
 
 
+def require_local_mutation_demo() -> None:
+    """Fail closed on legacy mutation routes that bypass graph HITL.
+
+    The internal token proves service identity, not a human approval. Only an
+    explicitly opted-in local/test sandbox may call these direct endpoints.
+    Orchestrated action calls do not use this HTTP route.
+    """
+    environment = str(getattr(settings, "app_env", "production")).strip().lower()
+    if environment not in {"local", "dev", "development", "test", "testing"} or not getattr(
+        settings, "allow_direct_mutation_demos", False
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Direct mutation route disabled: use the approved workflow",
+        )
+
+
 def verify_websocket_and_rate_limit(websocket: WebSocket) -> None:
     if getattr(settings, "app_env", "local").lower() in ("test", "testing"):
         return

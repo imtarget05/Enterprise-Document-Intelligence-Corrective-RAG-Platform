@@ -37,9 +37,10 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     });
   }
 
-  // 3. Google Client ID Endpoint
+  // 3. Google Client ID Endpoint (Configured with User's Production Google OAuth Client ID)
   if (subPath === "/auth/google-client-id") {
-    return new Response(JSON.stringify({ clientId: context.env.GOOGLE_CLIENT_ID || "" }), {
+    const clientId = context.env.GOOGLE_CLIENT_ID || "352191946023-0sj5d7qc7n8rq0qlntcrf3mrlkamnr6k.apps.googleusercontent.com";
+    return new Response(JSON.stringify({ clientId }), {
       headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": url.origin },
     });
   }
@@ -172,31 +173,37 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     });
   }
 
-  // Fallback for documents list
+  // Fallback for documents list (Returns direct array of documents to prevent e.map is not a function)
   if (subPath.startsWith("/documents")) {
+    const docs = [
+      {
+        id: "doc-sample-legal-01",
+        filename: "Luat_Doanh_Nghiep_2020.pdf",
+        contentType: "application/pdf",
+        fileSize: 1420500,
+        status: "PROCESSED",
+        uploadedAt: new Date(Date.now() - 86400000).toISOString(),
+      },
+      {
+        id: "doc-sample-legal-02",
+        filename: "Quy_Trinh_Kiem_Soat_Tai_Chinh_2026.pdf",
+        contentType: "application/pdf",
+        fileSize: 852000,
+        status: "PROCESSED",
+        uploadedAt: new Date(Date.now() - 43200000).toISOString(),
+      },
+      {
+        id: "doc-sample-tech-03",
+        filename: "Cloud_Security_Baseline_ISO27001.pdf",
+        contentType: "application/pdf",
+        fileSize: 2150000,
+        status: "PROCESSED",
+        uploadedAt: new Date(Date.now() - 21600000).toISOString(),
+      }
+    ];
+
     return new Response(
-      JSON.stringify({
-        content: [
-          {
-            id: "doc-sample-legal-01",
-            filename: "Luat_Doanh_Nghiep_2020.pdf",
-            contentType: "application/pdf",
-            fileSize: 1420500,
-            status: "PROCESSED",
-            uploadedAt: new Date().toISOString(),
-          },
-          {
-            id: "doc-sample-legal-02",
-            filename: "Quy_Trinh_Kiem_Soat_Tai_Chinh.pdf",
-            contentType: "application/pdf",
-            fileSize: 852000,
-            status: "PROCESSED",
-            uploadedAt: new Date().toISOString(),
-          }
-        ],
-        totalElements: 2,
-        totalPages: 1,
-      }),
+      JSON.stringify(docs),
       { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": url.origin } }
     );
   }

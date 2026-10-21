@@ -32,6 +32,7 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -157,8 +158,8 @@ class DocumentControllerTest {
     @Test
     void deleteDocumentsBatchReturnsOk() {
         controller = new DocumentController(documentService, documentAccessService, auditLogService, documentVersionService);
-        when(documentService.deleteDocumentsBatch(List.of(1L, 2L), "alice", com.smartdocchat.entity.Role.ROLE_ENGINEER))
-                .thenReturn(2);
+        when(documentService.deleteDocumentsBatchWithResults(List.of(1L, 2L), "alice", com.smartdocchat.entity.Role.ROLE_ENGINEER))
+                .thenReturn(List.of(1L, 2L));
 
         var response = controller.deleteDocumentsBatch(List.of(1L, 2L), principal());
 
@@ -209,13 +210,13 @@ class DocumentControllerTest {
                 mock(com.smartdocchat.service.DocumentPurgeClient.class);
         controller = new DocumentController(documentService, documentAccessService, auditLogService, documentVersionService);
         controller.setDocumentPurgeClient(purgeClient);
-        when(documentService.deleteDocumentsBatch(List.of(1L, 2L), "alice", com.smartdocchat.entity.Role.ROLE_ENGINEER))
-                .thenReturn(2);
+        when(documentService.deleteDocumentsBatchWithResults(List.of(1L, 2L), "alice", com.smartdocchat.entity.Role.ROLE_ENGINEER))
+                .thenReturn(List.of(1L));
 
         controller.deleteDocumentsBatch(List.of(1L, 2L), principal());
 
         verify(purgeClient).purgeDocument(1L, "alice", null);
-        verify(purgeClient).purgeDocument(2L, "alice", null);
+        verify(purgeClient, never()).purgeDocument(2L, "alice", null);
     }
 
     @Test

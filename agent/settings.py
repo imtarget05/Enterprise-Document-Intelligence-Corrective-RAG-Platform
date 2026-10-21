@@ -57,6 +57,11 @@ class Settings(BaseSettings):
     # secret validation. Defaults to "production" so misconfiguration fails safe.
     app_env: str = "production"
 
+    # Legacy direct mutation endpoints bypass the graph HITL gate. They are
+    # available only for explicit local/test demonstrations, never staging or
+    # production, until a durable approval executor owns them.
+    allow_direct_mutation_demos: bool = False
+
     # Spring Boot internal auth — NO default. Must be set explicitly.
     internal_service_token: str = ""
 

@@ -1,0 +1,2415 @@
+{
+  "kind": "synthetic_offline_contextual_bandit",
+  "seed": 42,
+  "reward_formula": "citation_correct - 0.1*latency_seconds - cost_usd",
+  "training_events": 200,
+  "evaluation_events": 80,
+  "policy": {
+    "simple": "rag",
+    "complex": "agent"
+  },
+  "learned_mean_reward": 0.8150000000000001,
+  "always_rag_mean_reward": 0.7,
+  "observed_log": [
+    {
+      "event_id": 0,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 1,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.1,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 2,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 3,
+      "context": "complex",
+      "action": "rag",
+      "propensity": 0.1,
+      "outcome": {
+        "citation_correct": 0.5,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.44999999999999996
+    },
+    {
+      "event_id": 4,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 5,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 6,
+      "context": "simple",
+      "action": "agent",
+      "propensity": 0.1,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.78
+    },
+    {
+      "event_id": 7,
+      "context": "complex",
+      "action": "rag",
+      "propensity": 0.1,
+      "outcome": {
+        "citation_correct": 0.5,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.44999999999999996
+    },
+    {
+      "event_id": 8,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 9,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 10,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 11,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 12,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 13,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 14,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 15,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 16,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 17,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 18,
+      "context": "simple",
+      "action": "agent",
+      "propensity": 0.1,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.78
+    },
+    {
+      "event_id": 19,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 20,
+      "context": "simple",
+      "action": "agent",
+      "propensity": 0.1,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.78
+    },
+    {
+      "event_id": 21,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 22,
+      "context": "simple",
+      "action": "agent",
+      "propensity": 0.1,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.78
+    },
+    {
+      "event_id": 23,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 24,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 25,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 26,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 27,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 28,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 29,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 30,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 31,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 32,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 33,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 34,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 35,
+      "context": "complex",
+      "action": "rag",
+      "propensity": 0.1,
+      "outcome": {
+        "citation_correct": 0.5,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.44999999999999996
+    },
+    {
+      "event_id": 36,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 37,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 38,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 39,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 40,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 41,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 42,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 43,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 44,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 45,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 46,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 47,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 48,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 49,
+      "context": "complex",
+      "action": "rag",
+      "propensity": 0.1,
+      "outcome": {
+        "citation_correct": 0.5,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.44999999999999996
+    },
+    {
+      "event_id": 50,
+      "context": "simple",
+      "action": "agent",
+      "propensity": 0.1,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.78
+    },
+    {
+      "event_id": 51,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 52,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 53,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 54,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 55,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 56,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 57,
+      "context": "complex",
+      "action": "rag",
+      "propensity": 0.1,
+      "outcome": {
+        "citation_correct": 0.5,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.44999999999999996
+    },
+    {
+      "event_id": 58,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 59,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 60,
+      "context": "simple",
+      "action": "agent",
+      "propensity": 0.1,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.78
+    },
+    {
+      "event_id": 61,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 62,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 63,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 64,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 65,
+      "context": "complex",
+      "action": "rag",
+      "propensity": 0.1,
+      "outcome": {
+        "citation_correct": 0.5,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.44999999999999996
+    },
+    {
+      "event_id": 66,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 67,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 68,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 69,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 70,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 71,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 72,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 73,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 74,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 75,
+      "context": "complex",
+      "action": "rag",
+      "propensity": 0.1,
+      "outcome": {
+        "citation_correct": 0.5,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.44999999999999996
+    },
+    {
+      "event_id": 76,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 77,
+      "context": "complex",
+      "action": "rag",
+      "propensity": 0.1,
+      "outcome": {
+        "citation_correct": 0.5,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.44999999999999996
+    },
+    {
+      "event_id": 78,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 79,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 80,
+      "context": "simple",
+      "action": "agent",
+      "propensity": 0.1,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.78
+    },
+    {
+      "event_id": 81,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 82,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 83,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 84,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 85,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 86,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 87,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 88,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 89,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 90,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 91,
+      "context": "complex",
+      "action": "rag",
+      "propensity": 0.1,
+      "outcome": {
+        "citation_correct": 0.5,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.44999999999999996
+    },
+    {
+      "event_id": 92,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 93,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 94,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 95,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 96,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 97,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 98,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 99,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 100,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 101,
+      "context": "complex",
+      "action": "rag",
+      "propensity": 0.1,
+      "outcome": {
+        "citation_correct": 0.5,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.44999999999999996
+    },
+    {
+      "event_id": 102,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 103,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 104,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 105,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 106,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 107,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 108,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 109,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 110,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 111,
+      "context": "complex",
+      "action": "rag",
+      "propensity": 0.1,
+      "outcome": {
+        "citation_correct": 0.5,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.44999999999999996
+    },
+    {
+      "event_id": 112,
+      "context": "simple",
+      "action": "agent",
+      "propensity": 0.1,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.78
+    },
+    {
+      "event_id": 113,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 114,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 115,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 116,
+      "context": "simple",
+      "action": "agent",
+      "propensity": 0.1,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.78
+    },
+    {
+      "event_id": 117,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 118,
+      "context": "simple",
+      "action": "agent",
+      "propensity": 0.1,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.78
+    },
+    {
+      "event_id": 119,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 120,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 121,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 122,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 123,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 124,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 125,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 126,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 127,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 128,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 129,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 130,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 131,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 132,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 133,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 134,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 135,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 136,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 137,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 138,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 139,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 140,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 141,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 142,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 143,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 144,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 145,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 146,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 147,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 148,
+      "context": "simple",
+      "action": "agent",
+      "propensity": 0.1,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.78
+    },
+    {
+      "event_id": 149,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 150,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 151,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 152,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 153,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 154,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 155,
+      "context": "complex",
+      "action": "rag",
+      "propensity": 0.1,
+      "outcome": {
+        "citation_correct": 0.5,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.44999999999999996
+    },
+    {
+      "event_id": 156,
+      "context": "simple",
+      "action": "agent",
+      "propensity": 0.1,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.78
+    },
+    {
+      "event_id": 157,
+      "context": "complex",
+      "action": "rag",
+      "propensity": 0.1,
+      "outcome": {
+        "citation_correct": 0.5,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.44999999999999996
+    },
+    {
+      "event_id": 158,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 159,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 160,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 161,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 162,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 163,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 164,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 165,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 166,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 167,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 168,
+      "context": "simple",
+      "action": "agent",
+      "propensity": 0.1,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.78
+    },
+    {
+      "event_id": 169,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 170,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 171,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 172,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 173,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 174,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 175,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 176,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 177,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 178,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 179,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 180,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 181,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 182,
+      "context": "simple",
+      "action": "agent",
+      "propensity": 0.1,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.78
+    },
+    {
+      "event_id": 183,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 184,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 185,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 186,
+      "context": "simple",
+      "action": "agent",
+      "propensity": 0.1,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.78
+    },
+    {
+      "event_id": 187,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 188,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 189,
+      "context": "complex",
+      "action": "rag",
+      "propensity": 0.1,
+      "outcome": {
+        "citation_correct": 0.5,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.44999999999999996
+    },
+    {
+      "event_id": 190,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 191,
+      "context": "complex",
+      "action": "rag",
+      "propensity": 0.1,
+      "outcome": {
+        "citation_correct": 0.5,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.44999999999999996
+    },
+    {
+      "event_id": 192,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 193,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 194,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 195,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 196,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 197,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    },
+    {
+      "event_id": 198,
+      "context": "simple",
+      "action": "rag",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 1.0,
+        "latency_seconds": 0.3,
+        "cost_usd": 0.02
+      },
+      "reward": 0.95
+    },
+    {
+      "event_id": 199,
+      "context": "complex",
+      "action": "agent",
+      "propensity": 0.9,
+      "outcome": {
+        "citation_correct": 0.9,
+        "latency_seconds": 1.4,
+        "cost_usd": 0.08
+      },
+      "reward": 0.68
+    }
+  ]
+}

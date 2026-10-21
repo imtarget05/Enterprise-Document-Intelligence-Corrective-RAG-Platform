@@ -1,0 +1,14 @@
+[
+  {"split":"train","question":"How many leave days are available?","evidence":"Policy: employees receive 12 leave days annually.","chosen":"Employees receive 12 leave days annually. [S1]","rejected":"Employees receive 30 leave days annually."},
+  {"split":"train","question":"What is the retention period?","evidence":"Policy: retain audit records for seven years.","chosen":"Audit records are retained for seven years. [S1]","rejected":"Audit records are kept forever."},
+  {"split":"train","question":"Who may approve an expense?","evidence":"Policy: a manager approves expenses over 100 dollars.","chosen":"A manager approves expenses over 100 dollars. [S1]","rejected":"Any employee may approve all expenses."},
+  {"split":"train","question":"When should a ticket be escalated?","evidence":"Policy: escalate a P1 incident immediately.","chosen":"A P1 incident is escalated immediately. [S1]","rejected":"P1 incidents can wait a week."},
+  {"split":"train","question":"What is the backup frequency?","evidence":"Policy: backup the database every day.","chosen":"The database is backed up every day. [S1]","rejected":"The database is backed up once a year."},
+  {"split":"train","question":"Is a second approver required?","evidence":"Policy: payments above 500 dollars require two approvers.","chosen":"Payments above 500 dollars require two approvers. [S1]","rejected":"One approver is enough for every payment."},
+  {"split":"train","question":"Who owns a private document?","evidence":"Policy: the uploader owns each private document.","chosen":"The uploader owns the private document. [S1]","rejected":"Every user owns every private document."},
+  {"split":"train","question":"Can a missing policy be inferred?","evidence":"The excerpt has no rule about overtime pay.","chosen":"The evidence does not establish an overtime pay rule. [S1]","rejected":"Overtime pay is always doubled."},
+  {"split":"heldout","question":"How quickly are P0 incidents reported?","evidence":"Policy: report a P0 incident within 15 minutes.","chosen":"A P0 incident is reported within 15 minutes. [S1]","rejected":"A P0 incident is reported within 15 days."},
+  {"split":"heldout","question":"Who can delete a report?","evidence":"Policy: only an admin may delete a report.","chosen":"Only an admin may delete a report. [S1]","rejected":"Anyone may delete a report."},
+  {"split":"heldout","question":"How long are logs stored?","evidence":"Policy: logs are stored for 90 days.","chosen":"Logs are stored for 90 days. [S1]","rejected":"Logs are stored for 900 days."},
+  {"split":"heldout","question":"Does this excerpt set a refund limit?","evidence":"The excerpt discusses access control only.","chosen":"The evidence does not establish a refund limit. [S1]","rejected":"Refunds are limited to 1000 dollars."}
+]

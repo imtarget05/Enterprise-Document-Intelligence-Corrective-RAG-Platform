@@ -40,46 +40,27 @@ class DocumentServiceCacheTest {
     }
 
     @Test
-    void getDocumentById_hasCacheableAnnotation() throws NoSuchMethodException {
+    void ownerScopedReadDoesNotCacheAcrossPrincipals() throws NoSuchMethodException {
         Method method = DocumentService.class.getMethod("getDocumentById", Long.class, String.class);
-        
-        assertThat(method.isAnnotationPresent(org.springframework.cache.annotation.Cacheable.class)).isTrue();
-        var cacheable = method.getAnnotation(org.springframework.cache.annotation.Cacheable.class);
-        assertThat(cacheable.value()).containsExactly(CacheNames.DOCUMENTS);
-        assertThat(cacheable.key()).isEqualTo("#id");
-        assertThat(cacheable.unless()).isEqualTo("#result == null");
+        assertThat(method.isAnnotationPresent(org.springframework.cache.annotation.Cacheable.class)).isFalse();
     }
 
     @Test
-    void getAllDocumentsForRole_hasCacheableAnnotation() throws NoSuchMethodException {
+    void roleScopedListDoesNotCacheAcrossRoleChanges() throws NoSuchMethodException {
         Method method = DocumentService.class.getMethod("getAllDocumentsForRole", String.class, com.smartdocchat.entity.Role.class);
-        
-        assertThat(method.isAnnotationPresent(org.springframework.cache.annotation.Cacheable.class)).isTrue();
-        var cacheable = method.getAnnotation(org.springframework.cache.annotation.Cacheable.class);
-        assertThat(cacheable.value()).containsExactly(CacheNames.DOCUMENT_METADATA);
-        assertThat(cacheable.key()).isEqualTo("#callerUsername");
-        assertThat(cacheable.unless()).isEqualTo("#result == null");
+        assertThat(method.isAnnotationPresent(org.springframework.cache.annotation.Cacheable.class)).isFalse();
     }
 
     @Test
-    void getDocumentByIdForRole_hasCacheableAnnotation() throws NoSuchMethodException {
+    void roleScopedReadDoesNotCacheAcrossPrincipals() throws NoSuchMethodException {
         Method method = DocumentService.class.getMethod("getDocumentByIdForRole", Long.class, String.class, com.smartdocchat.entity.Role.class);
-        
-        assertThat(method.isAnnotationPresent(org.springframework.cache.annotation.Cacheable.class)).isTrue();
-        var cacheable = method.getAnnotation(org.springframework.cache.annotation.Cacheable.class);
-        assertThat(cacheable.value()).containsExactly(CacheNames.DOCUMENTS);
-        assertThat(cacheable.key()).isEqualTo("#id");
-        assertThat(cacheable.unless()).isEqualTo("#result == null");
+        assertThat(method.isAnnotationPresent(org.springframework.cache.annotation.Cacheable.class)).isFalse();
     }
 
     @Test
-    void replaceDocument_hasCachePutAnnotation() throws NoSuchMethodException {
+    void replaceDocumentDoesNotSeedUnscopedDocumentCache() throws NoSuchMethodException {
         Method method = DocumentService.class.getMethod("replaceDocument", com.smartdocchat.entity.Document.class, org.springframework.web.multipart.MultipartFile.class, String.class);
-        
-        assertThat(method.isAnnotationPresent(org.springframework.cache.annotation.CachePut.class)).isTrue();
-        var cachePut = method.getAnnotation(org.springframework.cache.annotation.CachePut.class);
-        assertThat(cachePut.value()).containsExactly(CacheNames.DOCUMENTS);
-        assertThat(cachePut.key()).isEqualTo("#result.id");
+        assertThat(method.isAnnotationPresent(org.springframework.cache.annotation.CachePut.class)).isFalse();
     }
 
     @Test

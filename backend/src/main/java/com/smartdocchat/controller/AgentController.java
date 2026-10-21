@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.Map;
 import java.util.UUID;
 
@@ -17,8 +18,13 @@ public class AgentController {
 
     @PostMapping("/invoke")
     public ResponseEntity<Map<String, Object>> invokeAgent(
-            @RequestHeader(value = "X-User", required = false) String ownerUsername,
+            Principal principal,
             @RequestBody Map<String, Object> request) {
+        // X-User is caller-controlled. Agent retrieval must be scoped to the
+        // authenticated identity, exactly like document and chat endpoints.
+        if (principal == null || principal.getName() == null || principal.getName().isBlank()) {
+            return ResponseEntity.status(401).body(Map.of("error", "authentication required"));
+        }
         String message = (String) request.get("message");
         String traceId = (String) request.get("trace_id");
         String sessionId = (String) request.getOrDefault("session_id", "api-session");
@@ -27,7 +33,7 @@ public class AgentController {
         }
         try {
             AgentClient.AgentResponse resp = agentClient.invokeAgent(
-                    ownerUsername != null ? ownerUsername : "anonymous",
+                    principal.getName(),
                     sessionId,
                     message,
                     traceId != null ? traceId : UUID.randomUUID().toString()

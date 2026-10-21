@@ -1,18 +1,19 @@
 # Agent Architecture (Python LangGraph Service)
 
-> **Trạng thái trung thực:** Python LangGraph Agent Service là một dịch vụ AI
-> **thử nghiệm chạy song song** với sản phẩm chính. Nó có đầy đủ endpoint riêng
-> (`/v1/agent/*` trên cổng 9000) và toàn bộ code hoạt động thật (LangGraph,
-> retrieval Qdrant, memory, security), **nhưng chưa được nối vào luồng chat
-> chính của sản phẩm**: Spring Boot và nginx không gọi dịch vụ này. Luồng
-> sản phẩm chính là Spring Boot CRAG trên PostgreSQL chunks (xem README).
+> **Trạng thái tại commit `8b6d394`:** Spring `ChatService` đã nối `AgentClient`
+> và mặc định thử agent trước, rồi fallback sang Spring CRAG nếu agent lỗi.
+> Đây là **code-connected**, chưa phải bằng chứng agent chạy thành công trên
+> Azure: lần smoke live được ghi ở README (2026-10-10) trả
+> `ragStrategy=direct`. Python service có endpoint riêng và test local, nhưng
+> đường agent live còn `NOT_VERIFIED`. Nginx không cần gọi agent trực tiếp;
+> Spring là client của Python service.
 
 ## Vai trò hai dịch vụ
 
 | Dịch vụ | Vai trò | Trạng thái |
 |---|---|---|
 | Spring Boot (`:8080`) | Auth JWT, owner isolation, document CRUD, chat CRAG, SSE streaming, persistence | **Product path (đã nối)** |
-| Python Agent (`:9000`) | LangGraph multi-agent, RAG Qdrant, connector ingestion, report/action, evaluation | **Prototype / experimental (chưa nối)** |
+| Python Agent (`:9000`) | LangGraph multi-agent, RAG Qdrant, connector ingestion, report/action, evaluation | **Đã nối trong Spring code; agent live chưa verified** |
 
 ## Python Agent Service
 
@@ -77,5 +78,23 @@ Endpoint: `POST /v1/agent/connector/ingest` (trực tiếp trên agent:9000).
 
 - Java Spring Boot là product/API layer: auth, ownership, CRAG, persistence,
   stable user-facing APIs.
-- Python LangGraph là AI agent layer thử nghiệm: multi-agent, connector
-  ingestion, evaluation — sẵn sàng nối vào product khi có nhu cầu thực.
+- Python LangGraph là AI agent layer đã được Spring gọi trong code. Local test
+  chứng minh orchestration; live Azure smoke gần nhất rơi về Spring CRAG.
+- HITL serving path hiện dùng approval store + graph `END`, rồi re-invoke từ
+  snapshot đã lưu. Nó **không dùng** LangGraph `interrupt()/Command(resume=...)`.
+  Approval được claim trước khi action chạy: nếu process chết trong khoảng đó,
+  retry không được bảo đảm. Demo LangGraph interrupt/checkpoint ở
+  `eval/portfolio_demo/agent_hitl.py` là sandbox tách biệt, không phải proof
+  rằng serving path đã có exactly-once side effect.
+- HITL gate chỉ nằm trong nhánh action của graph. `POST /v1/agent/action`
+  gọi `ActionAgent.execute` trực tiếp sau internal-token auth;
+  `/v1/agent/connector/ingest` và `/v1/agent/report` cũng là route riêng.
+  Chúng được chặn **403 mặc định** bởi `require_local_mutation_demo`; opt-in
+  chỉ hoạt động ở local/dev/test. Đây là fail-closed containment, chưa phải
+  approval workflow cho các route đó. Client từng dùng chúng ở production sẽ
+  nhận 403 và phải chuyển sang luồng được duyệt sau khi có executor bền vững.
+
+HITL này không bao phủ mọi API ghi: training promotion/rollback, graph-memory
+extraction, document deletion/purge và improvement proposal có ranh giới tin
+cậy riêng. Bảng đường ghi và giới hạn chính xác nằm trong
+`docs/PORTFOLIO_ENTERPRISE_AUDIT.md`.

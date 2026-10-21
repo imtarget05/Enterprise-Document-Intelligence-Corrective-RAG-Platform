@@ -196,7 +196,9 @@ describe("LoginPage", () => {
     await user.click(screen.getByRole("button", { name: /Tiếp tục với Google/i }));
 
     expect(await screen.findByText("Đăng nhập bằng Google")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Đóng" })).toBeInTheDocument();
+    const cancel = screen.getByRole("button", { name: "Hủy" });
+    await user.click(cancel);
+    expect(screen.queryByText("Đăng nhập bằng Google")).not.toBeInTheDocument();
   });
 
   it("shows password strength indicator in register mode", async () => {

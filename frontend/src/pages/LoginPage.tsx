@@ -17,7 +17,7 @@ declare global {
   }
 }
 
-let GOOGLE_CLIENT_ID = "";
+let GOOGLE_CLIENT_ID = "352191946023-0sj5d7qc7n8rq0qlntcrf3mrlkamnr6k.apps.googleusercontent.com";
 void fetch(`${API_BASE_URL}/auth/google-client-id`)
   .then((r) => (r.ok ? r.json() : null))
   .then((d) => { if (d?.clientId) GOOGLE_CLIENT_ID = d.clientId; })

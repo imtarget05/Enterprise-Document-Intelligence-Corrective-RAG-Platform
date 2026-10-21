@@ -265,11 +265,12 @@ public class DocumentController {
         if (ids == null || ids.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "message", "No document IDs provided"));
         }
-        int deletedCount = documentService.deleteDocumentsBatch(ids, principal.getName(), currentRole());
-        // Phase 2: purge the agent-side artefacts of every requested id. Ids the
-        // batch could not delete are a no-op there (nothing indexed), so the
-        // whole list is purged instead of re-reading each document.
-        purgeDocumentArtifacts(ids, principal.getName());
+        List<Long> deletedIds = documentService.deleteDocumentsBatchWithResults(
+                ids, principal.getName(), currentRole());
+        int deletedCount = deletedIds.size();
+        // Purge only successful primary deletions. A requested ID that belongs
+        // to another owner may still be indexed in the agent store.
+        purgeDocumentArtifacts(deletedIds, principal.getName());
         audit("document.batch_delete", principal.getName(), "document",
                 ids.toString(), "count=" + deletedCount);
         return ResponseEntity.ok(Map.of(

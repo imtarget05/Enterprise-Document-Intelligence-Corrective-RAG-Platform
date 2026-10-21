@@ -2,6 +2,7 @@ package com.smartdocchat.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smartdocchat.entity.Document;
+import com.smartdocchat.entity.Role;
 import com.smartdocchat.repository.DocumentRepository;
 import com.smartdocchat.util.DocumentParser;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,6 +28,7 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.springframework.security.access.AccessDeniedException;
 
 @ExtendWith(MockitoExtension.class)
 class DocumentServiceTest {
@@ -63,6 +65,26 @@ class DocumentServiceTest {
                 .chunkCount(2)
                 .chunks(chunks)
                 .build();
+    }
+
+    @Test
+    void batchDeleteRejectsUserEvenForOwnDocument() {
+        assertThrows(AccessDeniedException.class,
+                () -> documentService.deleteDocumentsBatchWithResults(List.of(1L), "alice", Role.ROLE_USER));
+        verify(documentRepository, never()).delete(any(Document.class));
+    }
+
+    @Test
+    void batchDeleteReturnsOnlySuccessfulAuthorizedIds() {
+        Document owned = document(1L, "[]");
+        when(documentRepository.findByIdAndOwnerUsername(1L, "alice")).thenReturn(Optional.of(owned));
+        when(documentRepository.findByIdAndOwnerUsername(2L, "alice")).thenReturn(Optional.empty());
+
+        List<Long> deleted = documentService.deleteDocumentsBatchWithResults(
+                List.of(1L, 2L), "alice", Role.ROLE_ENGINEER);
+
+        assertEquals(List.of(1L), deleted);
+        verify(documentRepository).delete(owned);
     }
 
     @Test
