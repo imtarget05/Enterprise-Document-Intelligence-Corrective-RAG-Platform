@@ -1,5 +1,7 @@
 package com.smartdocchat.consumer;
 
+import com.smartdocchat.cache.CacheNames;
+import com.smartdocchat.cache.SearchResultCache;
 import com.smartdocchat.config.KafkaProperties;
 import com.smartdocchat.event.DocumentClassifiedEvent;
 import com.smartdocchat.event.DocumentEvent;
@@ -39,6 +41,7 @@ public class DocumentIngestionConsumer {
     private final DocumentWorkflowClient documentWorkflowClient;
     private final DocumentEventPublisher eventPublisher;
     private final KafkaProperties kafkaProperties;
+    private final SearchResultCache searchResultCache;
 
     // Configuration for retry (can be externalized via @Value if needed)
     private int maxAttempts = 3;
@@ -91,6 +94,9 @@ public class DocumentIngestionConsumer {
             if (workflowResult != null && !workflowResult.isBlank()) {
                 // Parse workflow result and emit DocumentClassifiedEvent
                 parseAndEmitClassifiedEvent(event, workflowResult, startTime);
+
+                // The document's searchable content changed — drop stale search results.
+                invalidateSearchCache(event.documentId());
             } else {
                 // Workflow returned null/empty - treat as failure
                 log.warn("Document workflow returned null/empty result for documentId={}", event.documentId());
@@ -157,6 +163,21 @@ public class DocumentIngestionConsumer {
             log.error("Failed to parse workflow result for documentId={}: {}", event.documentId(), e.getMessage(), e);
             emitWorkflowCompletedEvent(event.documentId(), "FAILED", "Failed to parse workflow result: " + e.getMessage(),
                     System.currentTimeMillis() - startTime);
+        }
+    }
+
+    /**
+     * Evicts all cached search results so the newly ingested document's chunks
+     * become searchable immediately. Failure to invalidate must never break
+     * ingestion, so the error is logged and swallowed.
+     */
+    private void invalidateSearchCache(Long documentId) {
+        try {
+            searchResultCache.invalidateAll(CacheNames.SEARCH_RESULTS);
+            log.debug("Search cache invalidated after ingestion for documentId={}", documentId);
+        } catch (Exception e) {
+            log.warn("Failed to invalidate search cache after ingestion for documentId={}: {}",
+                    documentId, e.getMessage());
         }
     }
 

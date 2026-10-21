@@ -670,18 +670,4 @@ public class DocumentService {
         documentRepository.save(document);
         log.info("Updated document {} with workflow result status={}", documentId, status);
     }
-
-    /**
-     * Invalidates the search cache for a document.
-     * Called by WorkflowCompletionConsumer when workflow completes successfully.
-     * This ensures subsequent searches reflect the updated document.
-     *
-     * @param documentId the document ID
-     */
-    public void invalidateSearchCache(Long documentId) {
-        // In a production system, this would invalidate Redis cache, Elasticsearch, etc.
-        // For now, this is a no-op placeholder that can be extended.
-        log.debug("Search cache invalidation requested for document {}", documentId);
-        // TODO: Implement actual cache invalidation (e.g., Redis, Caffeine, Elasticsearch)
-    }
 }

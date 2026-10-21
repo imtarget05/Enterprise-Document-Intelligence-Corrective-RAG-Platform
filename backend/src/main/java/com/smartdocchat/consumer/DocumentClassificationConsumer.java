@@ -1,5 +1,7 @@
 package com.smartdocchat.consumer;
 
+import com.smartdocchat.cache.CacheNames;
+import com.smartdocchat.cache.SearchResultCache;
 import com.smartdocchat.config.KafkaProperties;
 import com.smartdocchat.event.DocumentClassifiedEvent;
 import com.smartdocchat.event.DocumentEvent;
@@ -34,6 +36,7 @@ public class DocumentClassificationConsumer {
     private final DocumentService documentService;
     private final DocumentEventPublisher eventPublisher;
     private final KafkaProperties kafkaProperties;
+    private final SearchResultCache searchResultCache;
 
     // Configuration for retry (can be externalized via @Value if needed)
     private int maxAttempts = 3;
@@ -87,6 +90,9 @@ public class DocumentClassificationConsumer {
                 log.warn("DocumentClassifiedEvent has null documentId, skipping document update");
             }
 
+            // The document's classification changed — drop stale search results.
+            invalidateSearchCache(event.documentId());
+
             // Emit WorkflowCompletedEvent with SUCCESS
             emitWorkflowCompletedEvent(event, "SUCCESS", startTime);
 
@@ -94,6 +100,21 @@ public class DocumentClassificationConsumer {
             log.error("Failed to process DocumentClassifiedEvent for documentId={}: {}", event.documentId(), e.getMessage(), e);
             // Re-throw to trigger retry/DLQ
             throw e;
+        }
+    }
+
+    /**
+     * Evicts all cached search results so the re-classified document is searched
+     * fresh. Failure to invalidate must never break the workflow, so the error
+     * is logged and swallowed.
+     */
+    private void invalidateSearchCache(Long documentId) {
+        try {
+            searchResultCache.invalidateAll(CacheNames.SEARCH_RESULTS);
+            log.debug("Search cache invalidated after classification for documentId={}", documentId);
+        } catch (Exception e) {
+            log.warn("Failed to invalidate search cache after classification for documentId={}: {}",
+                    documentId, e.getMessage());
         }
     }
 

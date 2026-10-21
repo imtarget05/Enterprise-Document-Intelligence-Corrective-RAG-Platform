@@ -1,5 +1,7 @@
 package com.smartdocchat.consumer;
 
+import com.smartdocchat.cache.CacheNames;
+import com.smartdocchat.cache.SearchResultCache;
 import com.smartdocchat.config.KafkaProperties;
 import com.smartdocchat.event.DocumentEvent;
 import com.smartdocchat.event.EventMetadata;
@@ -33,6 +35,7 @@ public class WorkflowCompletionConsumer {
     private final DocumentService documentService;
     private final DocumentEventPublisher eventPublisher;
     private final KafkaProperties kafkaProperties;
+    private final SearchResultCache searchResultCache;
 
     // Configuration for retry (can be externalized via @Value if needed)
     private int maxAttempts = 3;
@@ -78,9 +81,15 @@ public class WorkflowCompletionConsumer {
 
             // Handle SUCCESS vs FAILED
             if ("SUCCESS".equalsIgnoreCase(event.status())) {
-                // Trigger search cache invalidation
-                invalidateSearchCache(event.documentId());
-                log.info("Search cache invalidated for documentId={}", event.documentId());
+                // The document changed — drop stale search results. Cache
+                // invalidation failure must never block the workflow.
+                try {
+                    searchResultCache.invalidateAll(CacheNames.SEARCH_RESULTS);
+                    log.info("Search cache invalidated for documentId={}", event.documentId());
+                } catch (Exception e) {
+                    log.warn("Failed to invalidate search cache for documentId={}: {}",
+                            event.documentId(), e.getMessage());
+                }
             } else if ("FAILED".equalsIgnoreCase(event.status())) {
                 // Log for alerting - in production this could trigger an alert
                 log.error("ALERT: Workflow FAILED for documentId={}: {}", event.documentId(), event.workflowResult());
@@ -91,21 +100,6 @@ public class WorkflowCompletionConsumer {
             log.error("Failed to process WorkflowCompletedEvent for documentId={}: {}", event.documentId(), e.getMessage(), e);
             // Re-throw to trigger retry/DLQ
             throw e;
-        }
-    }
-
-    /**
-     * Invalidates the search cache for the given document.
-     * This ensures that subsequent searches reflect the updated document.
-     */
-    private void invalidateSearchCache(Long documentId) {
-        if (documentId != null) {
-            try {
-                documentService.invalidateSearchCache(documentId);
-            } catch (Exception e) {
-                log.warn("Failed to invalidate search cache for documentId={}: {}", documentId, e.getMessage());
-                // Don't re-throw - cache invalidation failure shouldn't block the workflow
-            }
         }
     }
 

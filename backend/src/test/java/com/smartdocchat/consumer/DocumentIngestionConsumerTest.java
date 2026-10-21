@@ -1,5 +1,7 @@
 package com.smartdocchat.consumer;
 
+import com.smartdocchat.cache.CacheNames;
+import com.smartdocchat.cache.SearchResultCache;
 import com.smartdocchat.config.KafkaProperties;
 import com.smartdocchat.event.DocumentClassifiedEvent;
 import com.smartdocchat.event.DocumentEvent;
@@ -60,6 +62,9 @@ class DocumentIngestionConsumerTest {
     @Mock
     private KafkaTemplate<String, DocumentEvent> kafkaTemplate;
 
+    @Mock
+    private SearchResultCache searchResultCache;
+
     private DocumentIngestionConsumer consumer;
 
     @BeforeEach
@@ -74,7 +79,7 @@ class DocumentIngestionConsumerTest {
         // Mock the KafkaTemplate in eventPublisher
         lenient().when(eventPublisher.publishAsync(any(DocumentEvent.class))).thenReturn(CompletableFuture.completedFuture(mock(SendResult.class)));
 
-        consumer = new DocumentIngestionConsumer(documentService, documentWorkflowClient, eventPublisher, kafkaProperties);
+        consumer = new DocumentIngestionConsumer(documentService, documentWorkflowClient, eventPublisher, kafkaProperties, searchResultCache);
         
         // Set the retry topic configuration via reflection
         ReflectionTestUtils.setField(consumer, "maxAttempts", 3);
@@ -111,6 +116,33 @@ class DocumentIngestionConsumerTest {
         assertEquals("Government", classifiedEvent.issuingBody());
         assertEquals("Decree", classifiedEvent.classification());
         assertEquals(0.95, classifiedEvent.confidence());
+    }
+
+    @Test
+    void handleDocumentIngestedEvent_workflowSuccess_invalidatesSearchCache() throws Exception {
+        // Given
+        DocumentIngestedEvent event = createDocumentIngestedEvent();
+        when(documentWorkflowClient.runWorkflow(anyString(), anyString()))
+                .thenReturn("{\"documentNumber\":\"123/2024/ND-CP\",\"issuingBody\":\"Government\",\"classification\":\"Decree\",\"confidence\":0.95}");
+
+        // When
+        consumer.handleDocumentIngestedEvent(event, 0, 0L);
+
+        // Then - search results cache is invalidated so new chunks are searchable
+        verify(searchResultCache).invalidateAll(CacheNames.SEARCH_RESULTS);
+    }
+
+    @Test
+    void handleDocumentIngestedEvent_workflowFailure_doesNotInvalidateSearchCache() throws Exception {
+        // Given
+        DocumentIngestedEvent event = createDocumentIngestedEvent();
+        when(documentWorkflowClient.runWorkflow(anyString(), anyString())).thenReturn(null);
+
+        // When
+        consumer.handleDocumentIngestedEvent(event, 0, 0L);
+
+        // Then - nothing changed, so the search cache must stay intact
+        verify(searchResultCache, never()).invalidateAll(anyString());
     }
 
     @Test

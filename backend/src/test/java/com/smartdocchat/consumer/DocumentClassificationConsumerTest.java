@@ -1,5 +1,7 @@
 package com.smartdocchat.consumer;
 
+import com.smartdocchat.cache.CacheNames;
+import com.smartdocchat.cache.SearchResultCache;
 import com.smartdocchat.config.KafkaProperties;
 import com.smartdocchat.event.DocumentClassifiedEvent;
 import com.smartdocchat.event.DocumentEvent;
@@ -54,6 +56,9 @@ class DocumentClassificationConsumerTest {
     @Mock
     private KafkaTemplate<String, DocumentEvent> kafkaTemplate;
 
+    @Mock
+    private SearchResultCache searchResultCache;
+
     private DocumentClassificationConsumer consumer;
 
     @BeforeEach
@@ -68,7 +73,7 @@ class DocumentClassificationConsumerTest {
         // Mock the KafkaTemplate in eventPublisher
         lenient().when(eventPublisher.publishAsync(any(DocumentEvent.class))).thenReturn(CompletableFuture.completedFuture(mock(SendResult.class)));
 
-        consumer = new DocumentClassificationConsumer(documentService, eventPublisher, kafkaProperties);
+        consumer = new DocumentClassificationConsumer(documentService, eventPublisher, kafkaProperties, searchResultCache);
         
         // Set the retry topic configuration via reflection
         ReflectionTestUtils.setField(consumer, "maxAttempts", 3);
@@ -109,6 +114,18 @@ class DocumentClassificationConsumerTest {
         assertEquals("SUCCESS", workflowEvent.status());
         assertNotNull(workflowEvent.processingTimeMs());
         assertTrue(workflowEvent.workflowResult().contains(event.documentNumber()));
+    }
+
+    @Test
+    void handleDocumentClassifiedEvent_success_invalidatesSearchCache() throws Exception {
+        // Given
+        DocumentClassifiedEvent event = createDocumentClassifiedEvent();
+
+        // When
+        consumer.handleDocumentClassifiedEvent(event, 0, 0L);
+
+        // Then - classification changed the document, so cached search results are stale
+        verify(searchResultCache).invalidateAll(CacheNames.SEARCH_RESULTS);
     }
 
     @Test
