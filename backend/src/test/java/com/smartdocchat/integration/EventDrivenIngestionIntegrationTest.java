@@ -24,13 +24,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.TestPropertySource;
-import org.testcontainers.containers.KafkaContainer;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
+import org.springframework.kafka.test.EmbeddedKafkaBroker;
+import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.test.annotation.DirtiesContext;
 
 import java.time.Duration;
 import java.util.List;
@@ -47,29 +43,36 @@ import static org.mockito.Mockito.*;
 /**
  * Integration test for the event-driven ingestion pipeline.
  * Tests concurrent document processing and failure handling via Kafka consumers.
- * Uses Testcontainers for real Kafka and PostgreSQL instances.
+ * Uses EmbeddedKafka and H2 in-memory database with PostgreSQL mode.
  */
-@SpringBootTest
-@Testcontainers
-@TestPropertySource(properties = {
+@SpringBootTest(properties = {
+    "spring.main.allow-bean-definition-overriding=true",
     "job.polling.enabled=false",
     "spring.kafka.listener.ack-mode=RECORD",
     "spring.kafka.listener.concurrency=3",
     "spring.kafka.consumer.auto-offset-reset=earliest",
+    "spring.flyway.enabled=false",
+    "spring.datasource.url=jdbc:h2:mem:kaftatest2;DB_CLOSE_DELAY=-1;MODE=PostgreSQL",
+    "spring.datasource.driver-class-name=org.h2.Driver",
+    "spring.datasource.username=sa",
+    "spring.datasource.password=",
     "spring.jpa.hibernate.ddl-auto=create-drop",
-    "spring.flyway.enabled=false"
+    "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect"
+})
+@DirtiesContext
+@EmbeddedKafka(partitions = 3, topics = {
+    "document-ingestion",
+    "document-classified",
+    "workflow-completed",
+    "document-purged",
+    "notification"
 })
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@org.springframework.context.annotation.Import(com.smartdocchat.cache.SimpleCacheTestConfig.class)
 class EventDrivenIngestionIntegrationTest {
 
-    @Container
-    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
-            .withDatabaseName("smartdoc_test")
-            .withUsername("postgres")
-            .withPassword("postgres");
-
-    @Container
-    static final KafkaContainer kafka = new KafkaContainer("confluentinc/cp-kafka:7.5.0");
+    @Autowired
+    private EmbeddedKafkaBroker embeddedKafkaBroker;
 
     @Autowired
     private DocumentService documentService;
@@ -87,40 +90,36 @@ class EventDrivenIngestionIntegrationTest {
     private DocumentWorkflowClient documentWorkflowClient;
 
     // Test consumer to capture events
-    private static KafkaConsumer<String, Object> testConsumer;
-    private static final CountDownLatch classifiedLatch = new CountDownLatch(5); // 5 documents
-    private static final CountDownLatch workflowCompletedLatch = new CountDownLatch(5);
-    private static final AtomicInteger classifiedCount = new AtomicInteger(0);
-    private static final AtomicInteger workflowCompletedCount = new AtomicInteger(0);
-    private static final AtomicReference<WorkflowCompletedEvent> lastFailedWorkflowEvent = new AtomicReference<>();
-    private static String documentClassifiedTopic;
-    private static String workflowCompletedTopic;
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.kafka.bootstrap-servers", kafka::getBootstrapServers);
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-        registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
-        registry.add("spring.flyway.enabled", () -> "false");
-    }
+    private KafkaConsumer<String, Object> testConsumer;
+    private Thread consumerThread;
+    private volatile boolean running = true;
+    private final CountDownLatch classifiedLatch = new CountDownLatch(5); // 5 documents
+    private final CountDownLatch workflowCompletedLatch = new CountDownLatch(5);
+    private final AtomicInteger classifiedCount = new AtomicInteger(0);
+    private final AtomicInteger workflowCompletedCount = new AtomicInteger(0);
+    private final AtomicReference<WorkflowCompletedEvent> lastFailedWorkflowEvent = new AtomicReference<>();
+    private String documentClassifiedTopic;
+    private String workflowCompletedTopic;
 
     @BeforeAll
-    static void setupTestConsumer() {
+    void setupTestConsumer() {
         // Configure test consumer
         var props = new java.util.Properties();
-        props.put("bootstrap.servers", kafka.getBootstrapServers());
+        props.put("bootstrap.servers", embeddedKafkaBroker.getBrokersAsString());
         props.put("group.id", "test-integration-group-" + System.currentTimeMillis());
         props.put("key.deserializer", StringDeserializer.class);
         props.put("value.deserializer", JsonDeserializer.class);
-        props.put(JsonDeserializer.TRUSTED_PACKAGES, "com.smartdocchat.event");
+        props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
         props.put(JsonDeserializer.USE_TYPE_INFO_HEADERS, true);
+        String typeMappings = "documentIngested:com.smartdocchat.event.DocumentIngestedEvent," +
+                "documentClassified:com.smartdocchat.event.DocumentClassifiedEvent," +
+                "workflowCompleted:com.smartdocchat.event.WorkflowCompletedEvent," +
+                "documentPurged:com.smartdocchat.event.DocumentPurgedEvent";
+        props.put(JsonDeserializer.TYPE_MAPPINGS, typeMappings);
         props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, "java.util.HashMap");
         props.put("auto.offset.reset", "earliest");
         props.put("enable.auto.commit", "true");
 
-        // Use default topic names since kafkaProperties is not available in static context
         documentClassifiedTopic = "document-classified";
         workflowCompletedTopic = "workflow-completed";
 
@@ -131,22 +130,30 @@ class EventDrivenIngestionIntegrationTest {
         ));
 
         // Start polling in a background thread
-        Thread consumerThread = new Thread(() -> {
-            while (!Thread.currentThread().isInterrupted()) {
-                ConsumerRecords<String, Object> records = testConsumer.poll(Duration.ofMillis(1000));
-                for (ConsumerRecord<String, Object> record : records) {
-                    Object value = record.value();
-                    if (value instanceof DocumentClassifiedEvent) {
-                        int count = classifiedCount.incrementAndGet();
-                        classifiedLatch.countDown();
-                    } else if (value instanceof WorkflowCompletedEvent event) {
-                        int count = workflowCompletedCount.incrementAndGet();
-                        if ("FAILED".equals(event.status())) {
-                            lastFailedWorkflowEvent.set(event);
+        consumerThread = new Thread(() -> {
+            try {
+                while (running) {
+                    ConsumerRecords<String, Object> records = testConsumer.poll(Duration.ofMillis(200));
+                    for (ConsumerRecord<String, Object> record : records) {
+                        Object value = record.value();
+                        if (value instanceof DocumentClassifiedEvent) {
+                            classifiedCount.incrementAndGet();
+                            classifiedLatch.countDown();
+                        } else if (value instanceof WorkflowCompletedEvent event) {
+                            workflowCompletedCount.incrementAndGet();
+                            if ("FAILED".equals(event.status())) {
+                                lastFailedWorkflowEvent.set(event);
+                            }
+                            workflowCompletedLatch.countDown();
                         }
-                        workflowCompletedLatch.countDown();
                     }
                 }
+            } catch (org.apache.kafka.common.errors.WakeupException e) {
+                if (running) throw e;
+            } finally {
+                try {
+                    testConsumer.close();
+                } catch (Exception ignore) {}
             }
         });
         consumerThread.setDaemon(true);
@@ -154,9 +161,15 @@ class EventDrivenIngestionIntegrationTest {
     }
 
     @AfterAll
-    static void cleanupTestConsumer() {
+    void cleanupTestConsumer() {
+        running = false;
         if (testConsumer != null) {
-            testConsumer.close();
+            testConsumer.wakeup();
+        }
+        if (consumerThread != null) {
+            try {
+                consumerThread.join(3000);
+            } catch (InterruptedException ignored) {}
         }
     }
 

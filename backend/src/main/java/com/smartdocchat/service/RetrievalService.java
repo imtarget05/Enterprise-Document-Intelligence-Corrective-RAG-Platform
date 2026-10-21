@@ -24,7 +24,6 @@ import java.util.concurrent.Callable;
  * CRAG "confidence" value; low confidence triggers query reformulation/fallback.
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class RetrievalService {
 
@@ -45,6 +44,17 @@ public class RetrievalService {
     private final LegalChunkRepository legalChunkRepository;
     private final com.smartdocchat.util.LegalQueryNormalizer normalizer;
     private final SearchResultCache searchResultCache;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public RetrievalService(DocumentService documentService,
+                            LegalChunkRepository legalChunkRepository,
+                            com.smartdocchat.util.LegalQueryNormalizer normalizer,
+                            @org.springframework.beans.factory.annotation.Autowired(required = false) SearchResultCache searchResultCache) {
+        this.documentService = documentService;
+        this.legalChunkRepository = legalChunkRepository;
+        this.normalizer = normalizer;
+        this.searchResultCache = searchResultCache;
+    }
 
     public RetrievalService(DocumentService documentService,
                             LegalChunkRepository legalChunkRepository,
