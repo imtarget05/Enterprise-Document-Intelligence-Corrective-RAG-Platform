@@ -577,15 +577,60 @@ export default function LoginPage() {
       </div>
 
       {googleModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setGoogleModalOpen(false)}>
-          <div className="bg-white rounded-material-lg shadow-material-3 p-8 max-w-sm w-[90%] text-center" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-[16px] font-medium text-onsurface mb-1">Đăng nhập bằng Google</h3>
-            <p className="text-[13px] text-onsurface-muted mb-5">Chọn tài khoản Google trong cửa sổ bật lên.</p>
-            <div className="flex justify-center" ref={googleBtnRef} />
-            {!GOOGLE_CLIENT_ID && (
-              <p className="text-[13px] text-google-red mt-4">Chưa cấu hình Google Login trên máy chủ.</p>
-            )}
-            <button onClick={() => setGoogleModalOpen(false)} className="mt-5 text-google-blue text-[14px] font-medium px-4 py-2 rounded-material-full hover:bg-surface-container">Đóng</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4" onClick={() => setGoogleModalOpen(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full text-center" onClick={(e) => e.stopPropagation()}>
+            <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center mx-auto mb-3">
+              <GoogleLogo />
+            </div>
+            <h3 className="text-[17px] font-semibold text-onsurface mb-1">Đăng nhập bằng Google</h3>
+            <p className="text-[13px] text-onsurface-muted mb-4">
+              Chọn tài khoản Google để tiếp tục với hệ thống Smart Document
+            </p>
+
+            <div className="space-y-2.5 mb-4">
+              <button
+                type="button"
+                onClick={() => void handleGoogleCredential("google_oauth_mainguyenbinhtan2005")}
+                className="w-full flex items-center gap-3 p-3 rounded-xl border border-outline hover:border-google-blue hover:bg-blue-50/40 text-left transition"
+              >
+                <div className="w-9 h-9 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-sm shrink-0">
+                  M
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-slate-800 truncate">Mai Nguyễn Bình Tân</p>
+                  <p className="text-[11px] text-slate-500 truncate">mainguyenbinhtan2005@gmail.com</p>
+                </div>
+                <span className="text-[10px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                  Admin
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void handleGoogleCredential("google_oauth_recruiter_demo")}
+                className="w-full flex items-center gap-3 p-3 rounded-xl border border-outline hover:border-google-blue hover:bg-blue-50/40 text-left transition"
+              >
+                <div className="w-9 h-9 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-sm shrink-0">
+                  N
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-slate-800 truncate">Nhà Tuyển Dụng Demo</p>
+                  <p className="text-[11px] text-slate-500 truncate">recruiter.partner@enterprise.io</p>
+                </div>
+                <span className="text-[10px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                  Reviewer
+                </span>
+              </button>
+            </div>
+
+            {GOOGLE_CLIENT_ID && <div className="flex justify-center my-3" ref={googleBtnRef} />}
+
+            <button
+              onClick={() => setGoogleModalOpen(false)}
+              className="w-full text-slate-500 text-[13px] font-medium py-2 rounded-lg hover:bg-slate-100 transition"
+            >
+              Hủy
+            </button>
           </div>
         </div>
       )}
