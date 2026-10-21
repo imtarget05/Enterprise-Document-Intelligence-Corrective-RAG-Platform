@@ -32,6 +32,7 @@ class DocumentSearchTest {
     @Mock private com.smartdocchat.util.LegalDateExtractor legalDateExtractor;
     @Mock private com.smartdocchat.service.DocumentWorkflowClient documentWorkflowClient;
     @Mock private com.smartdocchat.service.DocumentJobService documentJobService;
+    @Mock private DocumentEventPublisher eventPublisher;
 
     private DocumentService documentService;
 
@@ -39,7 +40,7 @@ class DocumentSearchTest {
     void setUp() {
         documentService = new DocumentService(documentRepository, documentParser, storageService,
                 legalStructureParser, legalChunkRepository, new LegalQueryNormalizer(), legalDateExtractor, documentWorkflowClient,
-                new com.smartdocchat.config.IngestionConfig(), documentVersionService, documentJobService);
+                new com.smartdocchat.config.IngestionConfig(), documentVersionService, documentJobService, eventPublisher);
     }
 
     private Document doc(long id, String fileName, String title, String number) {

@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Optional;
@@ -78,7 +79,10 @@ class DocumentJobServiceTest {
     @Test
     void pollRecoversStaleLeasesThenProcessesBatch() {
         when(jobRepository.requeueStaleRunningJobs(5L)).thenReturn(2);
-
+        
+        // Enable polling for this test
+        ReflectionTestUtils.setField(service, "pollingEnabled", true);
+        
         service.poll();
 
         verify(executor).processBatch(10);

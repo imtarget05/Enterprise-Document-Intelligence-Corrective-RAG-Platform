@@ -1,5 +1,7 @@
 package com.smartdocchat.service;
 
+import com.smartdocchat.cache.CacheNames;
+import com.smartdocchat.cache.SearchResultCache;
 import com.smartdocchat.entity.LegalChunk;
 import com.smartdocchat.repository.LegalChunkRepository;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +13,7 @@ import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Callable;
 
 /**
  * Scored retrieval over the chunks stored in PostgreSQL.
@@ -41,6 +44,13 @@ public class RetrievalService {
     private final DocumentService documentService;
     private final LegalChunkRepository legalChunkRepository;
     private final com.smartdocchat.util.LegalQueryNormalizer normalizer;
+    private final SearchResultCache searchResultCache;
+
+    public RetrievalService(DocumentService documentService,
+                            LegalChunkRepository legalChunkRepository,
+                            com.smartdocchat.util.LegalQueryNormalizer normalizer) {
+        this(documentService, legalChunkRepository, normalizer, null);
+    }
 
     /**
      * Retrieves the top-{@code topK} chunks for a query, sorted by descending score.
@@ -54,12 +64,31 @@ public class RetrievalService {
      *  - explicit "Điều N [khoản M [điểm K]]" references boost chunks whose
      *    STRUCTURED METADATA matches (never text guesses)
      *  - explicit document numbers must match the chunk text to count
+     *
+     * Results are cached using a write-through cache with a key derived from
+     * ownerUsername, documentId, query, and topK. Cache is invalidated when
+     * documents are ingested, classified, or purged.
      */
     public List<RetrievalResult> retrieve(String ownerUsername, Long documentId, String query, int topK) {
         if (documentId == null || topK <= 0) {
             return List.of();
         }
 
+        if (searchResultCache == null) {
+            return performRetrieval(ownerUsername, documentId, query, topK);
+        }
+
+        // Build cache key from all parameters affecting results
+        String cacheKey = buildCacheKey(ownerUsername, documentId, query, topK);
+
+        return searchResultCache.getOrCompute(CacheNames.SEARCH_RESULTS, cacheKey, () -> performRetrieval(ownerUsername, documentId, query, topK));
+    }
+
+    /**
+     * Performs the actual retrieval logic without caching.
+     * Extracted to allow write-through caching via SearchResultCache.
+     */
+    private List<RetrievalResult> performRetrieval(String ownerUsername, Long documentId, String query, int topK) {
         // Owner isolation check first: throws when the document does not belong
         // to ownerUsername, so private chunks are never exposed cross-user.
         // We deliberately PROPAGATE this exception so the controller can return
@@ -104,6 +133,35 @@ public class RetrievalService {
                 .filter(c -> c != null && !c.isBlank())
                 .map(c -> new Candidate(c, null, null, null, null))
                 .toList(), terms, query, ref, docNumber, topK);
+    }
+
+    /**
+     * Builds a cache key from all parameters that affect retrieval results.
+     */
+    private String buildCacheKey(String ownerUsername, Long documentId, String query, int topK) {
+        return ownerUsername + ":" + documentId + ":" + query + ":" + topK;
+    }
+
+    /**
+     * Invalidates all search result cache entries.
+     * Called when documents are ingested, classified, or purged.
+     */
+    public void invalidateSearchCache() {
+        if (searchResultCache != null) {
+            searchResultCache.invalidateAll(CacheNames.SEARCH_RESULTS);
+        }
+    }
+
+    /**
+     * Invalidates search cache entries for a specific document.
+     * Called when a specific document is updated or deleted.
+     */
+    public void invalidateSearchCacheForDocument(Long documentId) {
+        // Note: This is a simple implementation. For production, consider using
+        // cache key patterns or tags for more efficient partial invalidation.
+        if (searchResultCache != null) {
+            searchResultCache.invalidateAll(CacheNames.SEARCH_RESULTS);
+        }
     }
 
     /** Internal candidate: chunk text plus optional structured metadata. */

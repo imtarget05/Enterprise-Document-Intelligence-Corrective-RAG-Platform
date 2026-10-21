@@ -38,12 +38,13 @@ class DocumentJobExecutorTest {
     @Mock private DocumentIngestionJobRepository jobRepository;
     @Mock private DocumentRepository documentRepository;
     @Mock private DocumentWorkflowClient documentWorkflowClient;
+    @Mock private DocumentEventPublisher eventPublisher;
 
     private DocumentJobExecutor executor;
 
     @BeforeEach
     void setUp() {
-        executor = new DocumentJobExecutor(jobRepository, documentRepository, documentWorkflowClient);
+        executor = new DocumentJobExecutor(jobRepository, documentRepository, documentWorkflowClient, eventPublisher);
     }
 
     private DocumentIngestionJob job(long id, long docId, JobStatus status, int attempts) {

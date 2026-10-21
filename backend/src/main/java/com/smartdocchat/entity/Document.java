@@ -98,6 +98,13 @@ public class Document {
     @Column(name = "workflow_result", columnDefinition = "TEXT")
     private String workflowResult;
 
+    /**
+     * Trạng thái workflow: PENDING, SUCCESS, FAILED.
+     * Được cập nhật khi workflow hoàn tất.
+     */
+    @Column(name = "workflow_status", length = 20)
+    private String workflowStatus;
+
     @PrePersist
     public void prePersist() {
         createdAt = LocalDateTime.now();

@@ -41,6 +41,7 @@ class DocumentServiceTest {
     @Mock private com.smartdocchat.util.LegalDateExtractor legalDateExtractor;
     @Mock private com.smartdocchat.service.DocumentWorkflowClient documentWorkflowClient;
     @Mock private com.smartdocchat.service.DocumentJobService documentJobService;
+    @Mock private DocumentEventPublisher eventPublisher;
 
     private DocumentService documentService;
 
@@ -48,7 +49,7 @@ class DocumentServiceTest {
     void setUp() {
         documentService = new DocumentService(documentRepository, documentParser, storageService,
                 legalStructureParser, legalChunkRepository, legalQueryNormalizer, legalDateExtractor, documentWorkflowClient,
-                new com.smartdocchat.config.IngestionConfig(), documentVersionService, documentJobService);
+                new com.smartdocchat.config.IngestionConfig(), documentVersionService, documentJobService, eventPublisher);
     }
 
     private Document document(long id, String chunks) {
@@ -72,7 +73,11 @@ class DocumentServiceTest {
         when(storageService.download("uploads/report.txt")).thenReturn(new File("report.txt"));
         when(documentParser.extractText(any(File.class), anyString())).thenReturn("extracted text");
         when(documentParser.chunkText("extracted text", 500, 100)).thenReturn(List.of("chunk1", "chunk2"));
-        when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(documentRepository.save(any(Document.class))).thenAnswer(inv -> {
+            Document d = inv.getArgument(0);
+            d.setId(1L);
+            return d;
+        });
 
         Document saved = documentService.uploadDocument(file, "alice");
 
@@ -112,7 +117,11 @@ class DocumentServiceTest {
         when(storageService.download(anyString())).thenReturn(new File("scanned.pdf"));
         when(documentParser.extractText(any(File.class), anyString())).thenReturn("scanned text");
         when(documentParser.chunkText(anyString(), anyInt(), anyInt())).thenReturn(List.of("chunk"));
-        when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(documentRepository.save(any(Document.class))).thenAnswer(inv -> {
+            Document d = inv.getArgument(0);
+            d.setId(1L);
+            return d;
+        });
 
         Document saved = documentService.uploadDocument(file, "alice");
         assertEquals("pdf", saved.getFileType());
@@ -127,7 +136,11 @@ class DocumentServiceTest {
         when(storageService.download(anyString())).thenReturn(new File("real.pdf"));
         when(documentParser.extractText(any(File.class), anyString())).thenReturn("pdf text");
         when(documentParser.chunkText(anyString(), anyInt(), anyInt())).thenReturn(List.of("chunk"));
-        when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(documentRepository.save(any(Document.class))).thenAnswer(inv -> {
+            Document d = inv.getArgument(0);
+            d.setId(1L);
+            return d;
+        });
 
         Document saved = documentService.uploadDocument(file, "alice");
         assertEquals("pdf", saved.getFileType());
@@ -142,7 +155,11 @@ class DocumentServiceTest {
         when(storageService.download(anyString())).thenReturn(new File("real.docx"));
         when(documentParser.extractText(any(File.class), anyString())).thenReturn("docx text");
         when(documentParser.chunkText(anyString(), anyInt(), anyInt())).thenReturn(List.of("chunk"));
-        when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(documentRepository.save(any(Document.class))).thenAnswer(inv -> {
+            Document d = inv.getArgument(0);
+            d.setId(1L);
+            return d;
+        });
 
         Document saved = documentService.uploadDocument(file, "alice");
         assertEquals("docx", saved.getFileType());
@@ -155,7 +172,11 @@ class DocumentServiceTest {
         when(storageService.download(anyString())).thenReturn(new File("README.txt"));
         when(documentParser.extractText(any(File.class), anyString())).thenReturn("text");
         when(documentParser.chunkText(anyString(), anyInt(), anyInt())).thenReturn(List.of("chunk"));
-        when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(documentRepository.save(any(Document.class))).thenAnswer(inv -> {
+            Document d = inv.getArgument(0);
+            d.setId(1L);
+            return d;
+        });
 
         Document saved = documentService.uploadDocument(file, "alice");
         assertEquals("txt", saved.getFileType());
@@ -206,7 +227,11 @@ class DocumentServiceTest {
         when(storageService.download("uploads/report.txt")).thenReturn(new File("report.txt"));
         when(documentParser.extractText(any(File.class), anyString())).thenReturn("extracted text");
         when(documentParser.chunkText("extracted text", 500, 100)).thenReturn(List.of("chunk1"));
-        when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(documentRepository.save(any(Document.class))).thenAnswer(inv -> {
+            Document d = inv.getArgument(0);
+            d.setId(1L);
+            return d;
+        });
 
         Document saved = documentService.uploadDocument(file, "alice");
 

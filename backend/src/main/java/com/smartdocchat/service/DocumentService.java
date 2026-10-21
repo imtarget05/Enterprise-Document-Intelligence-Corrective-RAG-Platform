@@ -1,10 +1,15 @@
 package com.smartdocchat.service;
 
+import com.smartdocchat.cache.CacheNames;
 import com.smartdocchat.dto.DocumentDTO;
 import com.smartdocchat.entity.Document;
 import com.smartdocchat.entity.LegalChunk;
 import com.smartdocchat.entity.Role;
 import com.smartdocchat.entity.SourceType;
+import com.smartdocchat.event.DocumentEvent;
+import com.smartdocchat.event.DocumentIngestedEvent;
+import com.smartdocchat.event.DocumentPurgedEvent;
+import com.smartdocchat.event.EventMetadata;
 import com.smartdocchat.repository.DocumentRepository;
 import com.smartdocchat.repository.LegalChunkRepository;
 import com.smartdocchat.util.DocumentParser;
@@ -12,6 +17,9 @@ import com.smartdocchat.util.LegalDateExtractor;
 import com.smartdocchat.util.LegalStructureParser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -40,6 +48,7 @@ public class DocumentService {
     private final com.smartdocchat.config.IngestionConfig ingestionConfig;
     private final DocumentVersionService documentVersionService;
     private final DocumentJobService documentJobService;
+    private final DocumentEventPublisher eventPublisher;
 
     /** Matches an explicit "Số: NN/YYYY/AAA" document-number line only. */
     private static final Pattern DOCUMENT_NUMBER =
@@ -161,6 +170,9 @@ public class DocumentService {
         // blocks the upload response, survives restarts and retries on failure.
         documentJobService.enqueueWorkflowJob(saved, originalFileName);
 
+        // Emit document ingested event (non-blocking)
+        emitDocumentIngestedEvent(saved);
+
         return saved;
     }
 
@@ -170,6 +182,7 @@ public class DocumentService {
      * its id (history/citations stay stable) and version_number is advanced.
      * RBAC is enforced by the caller (DocumentController) before this runs.
      */
+    @CachePut(value = CacheNames.DOCUMENTS, key = "#result.id")
     public Document replaceDocument(Document current, MultipartFile file, String actorUsername) throws IOException {
         String originalFileName = sanitizeFileName(file.getOriginalFilename());
         String fileExtension = getFileExtension(originalFileName);
@@ -248,6 +261,10 @@ public class DocumentService {
         Document saved = documentRepository.save(current);
         log.info("Document {} replaced → version {} with {} chunks",
                 saved.getId(), saved.getVersionNumber(), chunks.size());
+
+        // Emit document ingested event for replacement (non-blocking)
+        emitDocumentIngestedEvent(saved);
+
         return saved;
     }
 
@@ -259,6 +276,7 @@ public class DocumentService {
      * RBAC-aware listing (production requirement #3): admins see every
      * document; everyone else is restricted to their own (owner isolation).
      */
+    @Cacheable(value = CacheNames.DOCUMENT_METADATA, key = "#callerUsername", unless = "#result == null")
     public List<Document> getAllDocumentsForRole(String callerUsername, Role role) {
         if (role == Role.ROLE_ADMIN) {
             return documentRepository.findByOrderByCreatedAtDesc();
@@ -270,6 +288,7 @@ public class DocumentService {
         return documentRepository.findByOwnerUsernameOrderByCreatedAtDesc(ownerUsername);
     }
 
+    @Cacheable(value = CacheNames.DOCUMENTS, key = "#id", unless = "#result == null")
     public Document getDocumentById(Long id, String ownerUsername) {
         return documentRepository.findByIdAndOwnerUsername(id, ownerUsername).orElseThrow(
                 () -> new RuntimeException("Document not found with id: " + id)
@@ -280,6 +299,7 @@ public class DocumentService {
      * RBAC-aware fetch (production requirement #3): admins may read any
      * document; other roles remain owner-isolated (same not-found signal).
      */
+    @Cacheable(value = CacheNames.DOCUMENTS, key = "#id", unless = "#result == null")
     public Document getDocumentByIdForRole(Long id, String callerUsername, Role role) {
         if (role == Role.ROLE_ADMIN) {
             return documentRepository.findById(id).orElseThrow(
@@ -290,8 +310,13 @@ public class DocumentService {
     }
 
     @Transactional
+    @CacheEvict(value = CacheNames.DOCUMENTS, key = "#id")
     public void deleteDocument(Long id, String ownerUsername) {
         Document document = getDocumentById(id, ownerUsername);
+
+        // Emit document purged event before deletion (non-blocking)
+        emitDocumentPurgedEvent(document, ownerUsername, "User deletion request");
+
         storageService.delete(document.getFilePath());
         legalChunkRepository.deleteByDocumentId(id);
         documentVersionService.deleteVersionsByDocumentId(id);
@@ -299,6 +324,7 @@ public class DocumentService {
     }
 
     @Transactional
+    @CacheEvict(value = {CacheNames.DOCUMENTS, CacheNames.DOCUMENT_METADATA}, allEntries = true)
     public int deleteDocumentsBatch(List<Long> ids, String callerUsername, Role role) {
         if (ids == null || ids.isEmpty()) {
             return 0;
@@ -307,6 +333,10 @@ public class DocumentService {
         for (Long id : ids) {
             try {
                 Document doc = getDocumentByIdForRole(id, callerUsername, role);
+
+                // Emit document purged event before deletion (non-blocking)
+                emitDocumentPurgedEvent(doc, callerUsername, "Batch deletion");
+
                 storageService.delete(doc.getFilePath());
                 legalChunkRepository.deleteByDocumentId(id);
                 documentVersionService.deleteVersionsByDocumentId(id);
@@ -524,5 +554,134 @@ public class DocumentService {
             }
             default -> throw new IllegalArgumentException("Unsupported extension: " + extension);
         }
+    }
+
+    /**
+     * Emits a DocumentIngestedEvent for the given document.
+     * Non-blocking - uses publishAsync to avoid slowing down the response.
+     */
+    private void emitDocumentIngestedEvent(Document document) {
+        EventMetadata metadata = new EventMetadata(
+                document.getId().toString(),
+                null,
+                "document-service",
+                "1.0"
+        );
+        DocumentIngestedEvent event = DocumentIngestedEvent.create(
+                metadata,
+                document.getId(),
+                document.getFileName(),
+                document.getOwnerUsername(),
+                document.getFileType(),
+                document.getFileSize(),
+                document.getContentHash(),
+                document.getSourceType() != null ? document.getSourceType().name() : "USER"
+        );
+        eventPublisher.publishAsync(event);
+    }
+
+    /**
+     * Emits a DocumentPurgedEvent for the given document.
+     * Non-blocking - uses publishAsync to avoid slowing down the response.
+     */
+    private void emitDocumentPurgedEvent(Document document, String purgedBy, String reason) {
+        EventMetadata metadata = new EventMetadata(
+                document.getId().toString(),
+                null,
+                "document-service",
+                "1.0"
+        );
+        DocumentPurgedEvent event = DocumentPurgedEvent.create(
+                metadata,
+                document.getId(),
+                document.getFileName(),
+                purgedBy,
+                reason
+        );
+        eventPublisher.publishAsync(event);
+    }
+
+    /**
+     * Updates a document with classification metadata from the workflow.
+     * Called by DocumentClassificationConsumer when a DocumentClassifiedEvent is received.
+     *
+     * @param documentId the document ID
+     * @param documentNumber the document number (e.g., "123/2024/ND-CP")
+     * @param issuingBody the issuing body (e.g., "Government")
+     * @param issueDate the issue date
+     * @param effectiveDate the effective date
+     * @param classification the classification type (e.g., "Decree", "Circular")
+     * @param confidence the confidence score (0.0 to 1.0)
+     */
+    @Transactional
+    @CacheEvict(value = CacheNames.DOCUMENTS, key = "#documentId")
+    public void updateDocumentClassification(Long documentId,
+                                              String documentNumber,
+                                              String issuingBody,
+                                              java.time.LocalDate issueDate,
+                                              java.time.LocalDate effectiveDate,
+                                              String classification,
+                                              Double confidence) {
+        Document document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new IllegalArgumentException("Document not found: " + documentId));
+
+        if (documentNumber != null) {
+            document.setDocumentNumber(documentNumber);
+        }
+        if (issuingBody != null) {
+            document.setIssuingBody(issuingBody);
+        }
+        if (issueDate != null) {
+            document.setIssueDate(issueDate);
+        }
+        if (effectiveDate != null) {
+            document.setEffectiveDate(effectiveDate);
+        }
+        // Store classification and confidence in a metadata field or extended attributes
+        // For now, we'll store classification in the title field if not set, or add a dedicated field later
+        if (classification != null && (document.getTitle() == null || document.getTitle().isBlank())) {
+            document.setTitle(classification);
+        }
+        // Confidence could be stored in a new field or metadata JSON - for now log it
+        if (confidence != null) {
+            log.info("Document {} classification confidence: {}", documentId, confidence);
+        }
+
+        documentRepository.save(document);
+        log.info("Updated document {} with classification metadata", documentId);
+    }
+
+    /**
+     * Updates a document with the workflow result and status.
+     * Called by WorkflowCompletionConsumer when a WorkflowCompletedEvent is received.
+     *
+     * @param documentId the document ID
+     * @param workflowResult the workflow result JSON string
+     * @param status the workflow status (SUCCESS or FAILED)
+     */
+    @Transactional
+    @CacheEvict(value = CacheNames.DOCUMENTS, key = "#documentId")
+    public void updateWorkflowResult(Long documentId, String workflowResult, String status) {
+        Document document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new IllegalArgumentException("Document not found: " + documentId));
+
+        document.setWorkflowResult(workflowResult);
+        document.setWorkflowStatus(status);
+        documentRepository.save(document);
+        log.info("Updated document {} with workflow result status={}", documentId, status);
+    }
+
+    /**
+     * Invalidates the search cache for a document.
+     * Called by WorkflowCompletionConsumer when workflow completes successfully.
+     * This ensures subsequent searches reflect the updated document.
+     *
+     * @param documentId the document ID
+     */
+    public void invalidateSearchCache(Long documentId) {
+        // In a production system, this would invalidate Redis cache, Elasticsearch, etc.
+        // For now, this is a no-op placeholder that can be extended.
+        log.debug("Search cache invalidation requested for document {}", documentId);
+        // TODO: Implement actual cache invalidation (e.g., Redis, Caffeine, Elasticsearch)
     }
 }

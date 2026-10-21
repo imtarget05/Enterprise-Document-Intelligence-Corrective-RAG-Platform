@@ -41,6 +41,32 @@ spring:
           min-idle: 1
   lifecycle:
     timeout-per-shutdown-phase: 30s
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: smartdoc-backend
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.smartdocchat.event"
+        spring.json.type.mapping: |
+          documentIngested: com.smartdocchat.event.DocumentIngestedEvent,
+          documentClassified: com.smartdocchat.event.DocumentClassifiedEvent,
+          workflowCompleted: com.smartdocchat.event.WorkflowCompletedEvent,
+          documentPurged: com.smartdocchat.event.DocumentPurgedEvent
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    listener:
+      ack-mode: RECORD
+      concurrency: 3
+    topics:
+      document-ingestion: document-ingestion
+      document-classified: document-classified
+      workflow-completed: workflow-completed
+      document-purged: document-purged
+      notification: notification
 
 server:
   # Render injects $PORT (not SERVER_PORT). The container must listen on it,
@@ -291,3 +317,11 @@ langfuse:
   # Propagate the trace id to the FastAPI llm-router so a single request
   # shows both Java and Python spans in one tree.
   router-trace-header: X-Langfuse-Trace-Id
+
+# Cache TTL configuration (in seconds)
+cache:
+  ttl:
+    documents: 3600
+    document-metadata: 1800
+    search-results: 900
+    user-sessions: 86400
