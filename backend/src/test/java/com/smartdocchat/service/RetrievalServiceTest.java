@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -30,8 +31,8 @@ class RetrievalServiceTest {
     void setUp() {
         retrievalService = new RetrievalService(documentService, legalChunkRepository, 
                 new com.smartdocchat.util.LegalQueryNormalizer(), searchResultCache);
-        // Delegate to actual retrieval logic for testing
-        when(searchResultCache.getOrCompute(anyString(), anyString(), any(Callable.class)))
+        // Delegate to actual retrieval logic for testing (lenient to avoid unnecessary stubbing errors)
+        lenient().when(searchResultCache.getOrCompute(anyString(), anyString(), any(Callable.class)))
                 .thenAnswer(invocation -> invocation.getArgument(2, Callable.class).call());
     }
 
