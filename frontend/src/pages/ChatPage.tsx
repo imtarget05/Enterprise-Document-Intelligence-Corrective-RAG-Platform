@@ -196,15 +196,8 @@ export default function ChatPage() {
       mode: agentMode ? "agent" : "rag",
     };
 
-    const userMsg: ChatMessageType = {
-      sessionId,
-      userMessage: textToSend,
-      aiResponse: "",
-      documentId: selectedDoc?.id || null,
-    };
-
     const streamingPlaceholderId = Date.now();
-    const streamingAiMsg: ChatMessageType = {
+    const newExchange: ChatMessageType = {
       id: streamingPlaceholderId,
       sessionId,
       userMessage: textToSend,
@@ -214,7 +207,7 @@ export default function ChatPage() {
       isStreaming: true,
     };
 
-    setMessages((prev) => [...prev, userMsg, streamingAiMsg]);
+    setMessages((prev) => [...prev, newExchange]);
 
     try {
       const response = await fetch(`${API_BASE_URL}/chat/ask-stream`, {
@@ -331,6 +324,22 @@ export default function ChatPage() {
     }
   };
 
+  const handleClearChat = async () => {
+    try {
+      await fetch(`${API_BASE_URL}/chat/history/${sessionId}`, {
+        method: "DELETE",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...csrfHeaders(),
+        },
+        credentials: "include",
+      });
+    } catch {}
+    setMessages([]);
+    handleNewChat();
+    queryClient.invalidateQueries({ queryKey: ["chatSessions"] });
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -374,6 +383,27 @@ export default function ChatPage() {
             ) : (
               <div className="px-6 py-6" role="log" aria-label="Lịch sử trò chuyện" tabIndex={0}>
                 <div className="max-w-3xl mx-auto space-y-6">
+                  {/* Top Chat Bar with Clear Chat button */}
+                  <div className="flex items-center justify-between pb-3 border-b border-outline/60">
+                    <div className="flex items-center gap-2 text-xs text-onsurface-muted font-medium">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                      <span>Phiên trò chuyện:</span>
+                      <span className="font-mono text-onsurface font-semibold">{sessionId.substring(0, 8)}...</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleClearChat}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-material-full text-xs font-medium text-rose-600 hover:bg-rose-50 border border-rose-200 transition cursor-pointer"
+                      title="Xóa toàn bộ cuộc trò chuyện này"
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      </svg>
+                      <span>Xóa đoạn chat</span>
+                    </button>
+                  </div>
+
                   {messages.map((msg, idx) => (
                     <div key={msg.id || idx} className="space-y-3">
                       <MessageBubble content={msg.userMessage} role="user" />

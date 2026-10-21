@@ -583,7 +583,7 @@ export default function LoginPage() {
               <GoogleLogo />
             </div>
             <h3 className="text-[17px] font-semibold text-onsurface mb-1">Đăng nhập bằng Google</h3>
-            <p className="text-[13px] text-onsurface-muted mb-4">
+            <p className="text-[12px] text-onsurface-muted mb-4">
               Chọn tài khoản Google để tiếp tục với hệ thống Smart Document
             </p>
 
@@ -591,45 +591,50 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => void handleGoogleCredential("google_oauth_mainguyenbinhtan2005")}
-                className="w-full flex items-center gap-3 p-3 rounded-xl border border-outline hover:border-google-blue hover:bg-blue-50/40 text-left transition"
+                className="w-full flex items-center gap-3 p-3 rounded-xl border-2 border-google-blue bg-blue-50/50 hover:bg-blue-100/60 text-left transition shadow-xs cursor-pointer"
               >
                 <div className="w-9 h-9 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-sm shrink-0">
                   M
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-slate-800 truncate">Mai Nguyễn Bình Tân</p>
-                  <p className="text-[11px] text-slate-500 truncate">mainguyenbinhtan2005@gmail.com</p>
+                  <p className="text-xs font-bold text-slate-900 truncate">Mai Nguyễn Bình Tân</p>
+                  <p className="text-[11px] text-slate-600 truncate font-mono">mainguyenbinhtan2005@gmail.com</p>
+                  <span className="inline-block mt-0.5 text-[10px] font-semibold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded">
+                    ✓ Google Verified • Admin
+                  </span>
                 </div>
-                <span className="text-[10px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                  Admin
-                </span>
               </button>
 
               <button
                 type="button"
                 onClick={() => void handleGoogleCredential("google_oauth_recruiter_demo")}
-                className="w-full flex items-center gap-3 p-3 rounded-xl border border-outline hover:border-google-blue hover:bg-blue-50/40 text-left transition"
+                className="w-full flex items-center gap-3 p-3 rounded-xl border border-outline hover:border-google-blue hover:bg-slate-50 text-left transition cursor-pointer"
               >
                 <div className="w-9 h-9 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-sm shrink-0">
                   N
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold text-slate-800 truncate">Nhà Tuyển Dụng Demo</p>
-                  <p className="text-[11px] text-slate-500 truncate">recruiter.partner@enterprise.io</p>
+                  <p className="text-[11px] text-slate-500 truncate font-mono">recruiter.partner@enterprise.io</p>
+                  <span className="inline-block mt-0.5 text-[10px] font-medium text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded">
+                    Reviewer Role
+                  </span>
                 </div>
-                <span className="text-[10px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
-                  Reviewer
-                </span>
               </button>
             </div>
 
-            {GOOGLE_CLIENT_ID && <div className="flex justify-center my-3" ref={googleBtnRef} />}
+            <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-left text-[11px] text-amber-800 leading-4 mb-3">
+              <span className="font-semibold block mb-0.5">ℹ️ Lưu ý cấu hình Google Cloud (GCP):</span>
+              Nếu mở popup bị báo <i>"no registered origin"</i>, vui lòng thêm <code className="font-mono bg-white px-1 py-0.5 rounded border border-amber-300 text-amber-900">https://smart-doc-chatbot.pages.dev</code> vào mục <b>Authorized JavaScript origins</b> trên Google Cloud Console.
+            </div>
+
+            {GOOGLE_CLIENT_ID && <div className="flex justify-center my-2" ref={googleBtnRef} />}
 
             <button
               onClick={() => setGoogleModalOpen(false)}
-              className="w-full text-slate-500 text-[13px] font-medium py-2 rounded-lg hover:bg-slate-100 transition"
+              className="w-full text-slate-500 text-[13px] font-medium py-2 rounded-lg hover:bg-slate-100 transition cursor-pointer"
             >
-              Hủy
+              Đóng
             </button>
           </div>
         </div>
