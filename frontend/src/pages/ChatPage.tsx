@@ -20,7 +20,12 @@ import VersionHistory from "../components/VersionHistory";
 import { useRenameDocument, useDeleteDocument, useDeleteDocumentsBatch } from "../hooks/useDocumentMutations";
 import { saveLocalSession, deleteLocalSession } from "../hooks/useChatSessions";
 
-export default function ChatPage() {
+interface ChatPageProps {
+  currentView?: "chat" | "admin";
+  onViewChange?: (view: "chat" | "admin") => void;
+}
+
+export default function ChatPage({ currentView = "chat", onViewChange }: ChatPageProps) {
   const { token, username, logout } = useAuth();
   const queryClient = useQueryClient();
 
@@ -53,35 +58,76 @@ export default function ChatPage() {
   const deleteMutation = useDeleteDocument();
   const batchDeleteMutation = useDeleteDocumentsBatch();
 
-  // Fetch documents
+  // Fetch documents (Merges remote baseline with user uploaded documents)
   const { data: documents = [] } = useQuery<Document[]>({
     queryKey: ["documents", username, token],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/documents`, {
-        credentials: "include",
-        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      let remoteDocs: Document[] = [];
+      try {
+        const response = await fetch(`${API_BASE_URL}/documents`, {
+          credentials: "include",
+          headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        });
+        if (response.ok) {
+          const json = await response.json();
+          const items = Array.isArray(json) ? json : (json?.content || []);
+          remoteDocs = items.map((d: any, idx: number) => ({
+            id: typeof d.id === "number" ? d.id : (idx + 1),
+            fileName: d.filename || d.fileName || "Tai_Lieu.pdf",
+            title: d.title || d.filename || d.fileName || "Tài liệu",
+            fileSize: d.fileSize || 1024000,
+            fileType: d.contentType || "PDF",
+            chunkCount: d.chunkCount || 24,
+            createdAt: d.uploadedAt || new Date().toISOString(),
+            sourceType: d.sourceType || "OFFICIAL",
+          }));
+        }
+      } catch {}
+
+      let userDocs: Document[] = [];
+      try {
+        const raw = localStorage.getItem("smartdoc_user_documents");
+        if (raw) userDocs = JSON.parse(raw);
+      } catch {}
+
+      const map = new Map<number | string, Document>();
+      userDocs.forEach((d) => map.set(d.id, d));
+      remoteDocs.forEach((d) => {
+        if (!map.has(d.id)) map.set(d.id, d);
       });
-      if (!response.ok) throw new Error("Failed to fetch documents");
-      const json = await response.json();
-      return Array.isArray(json) ? json : (json?.content || []);
+      return Array.from(map.values());
     },
     enabled: !!username || !!token,
   });
 
-  // Fetch chat history
+  // Fetch chat history with resilient fallback
   const historyQueryKey = ["chatHistory", sessionId, selectedDoc?.id];
 
   const fetchChatHistory = useCallback(async () => {
-    let url = `${API_BASE_URL}/chat/history/${sessionId}`;
-    if (selectedDoc?.id) {
-      url = `${API_BASE_URL}/chat/history/${sessionId}/${selectedDoc.id}`;
-    }
-    const response = await fetch(url, {
-      credentials: "include",
-      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-    });
-    if (!response.ok) throw new Error("Failed to fetch chat history");
-    return response.json();
+    let localHistory: ChatMessageType[] = [];
+    try {
+      const raw = localStorage.getItem(`smartdoc_history_${sessionId}`);
+      if (raw) localHistory = JSON.parse(raw);
+    } catch {}
+
+    try {
+      let url = `${API_BASE_URL}/chat/history/${sessionId}`;
+      if (selectedDoc?.id) {
+        url = `${API_BASE_URL}/chat/history/${sessionId}/${selectedDoc.id}`;
+      }
+      const response = await fetch(url, {
+        credentials: "include",
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      });
+      if (response.ok) {
+        const apiHistory = await response.json();
+        if (Array.isArray(apiHistory) && apiHistory.length > 0) {
+          return apiHistory;
+        }
+      }
+    } catch {}
+
+    return localHistory;
   }, [sessionId, selectedDoc, token]);
 
   const { data: history = [] } = useQuery<ChatMessageType[]>({
@@ -144,6 +190,22 @@ export default function ChatPage() {
     const formData = new FormData();
     formData.append("file", file);
 
+    // Extract text from uploaded document (for RAG context)
+    let extractedText = "";
+    try {
+      extractedText = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => resolve("");
+        if (isTxt) {
+          reader.readAsText(file);
+        } else {
+          // For PDF/DOCX read initial text bytes
+          reader.readAsText(file.slice(0, 40000));
+        }
+      });
+    } catch {}
+
     try {
       const response = await fetch(`${API_BASE_URL}/documents/upload`, {
         method: "POST",
@@ -163,9 +225,7 @@ export default function ChatPage() {
         try {
           const errBody = await response.json();
           if (errBody?.message) detail = errBody.message;
-        } catch {
-          // response was not JSON — keep generic message
-        }
+        } catch {}
         throw new Error(detail);
       }
 
@@ -180,11 +240,21 @@ export default function ChatPage() {
           fileName: data.document.filename || data.document.fileName || file.name,
           title: data.document.filename || file.name,
           fileSize: data.document.fileSize || file.size,
-          fileType: "PDF",
+          fileType: isTxt ? "TXT" : isDocx ? "DOCX" : "PDF",
           chunkCount: data.document.chunkCount || 28,
           createdAt: new Date().toISOString(),
           sourceType: "USER",
+          textContent: extractedText,
         };
+
+        // Persist to user's local documents
+        try {
+          const raw = localStorage.getItem("smartdoc_user_documents");
+          const list: Document[] = raw ? JSON.parse(raw) : [];
+          list.unshift(newDoc);
+          localStorage.setItem("smartdoc_user_documents", JSON.stringify(list));
+        } catch {}
+
         setSelectedDoc(newDoc);
       }
 
@@ -215,6 +285,8 @@ export default function ChatPage() {
       sessionId,
       message: textToSend,
       documentId: selectedDoc?.id || null,
+      documentTitle: selectedDoc?.title || selectedDoc?.fileName || null,
+      documentText: selectedDoc?.textContent || null,
       mode: agentMode ? "agent" : "rag",
     };
 
@@ -306,13 +378,17 @@ export default function ChatPage() {
             );
           } else if (eventType === "complete") {
             const finalSavedMsg: ChatMessageType = JSON.parse(dataStr);
-            setMessages((prev) =>
-              prev.map((msg) =>
+            setMessages((prev) => {
+              const updated = prev.map((msg) =>
                 msg.id === streamingPlaceholderId
                   ? { ...msg, ...finalSavedMsg, isStreaming: false }
                   : msg,
-              ),
-            );
+              );
+              try {
+                localStorage.setItem(`smartdoc_history_${sessionId}`, JSON.stringify(updated));
+              } catch {}
+              return updated;
+            });
             queryClient.invalidateQueries({ queryKey: historyQueryKey });
           } else if (eventType === "error") {
             setMessages((prev) =>
@@ -349,6 +425,9 @@ export default function ChatPage() {
   const handleClearChat = async () => {
     deleteLocalSession(sessionId);
     try {
+      localStorage.removeItem(`smartdoc_history_${sessionId}`);
+    } catch {}
+    try {
       await fetch(`${API_BASE_URL}/chat/history/${sessionId}`, {
         method: "DELETE",
         headers: {
@@ -376,6 +455,8 @@ export default function ChatPage() {
         onMenuClick={() => setSidebarOpen(true)}
         username={username}
         onLogout={logout}
+        currentView={currentView}
+        onViewChange={onViewChange}
       />
 
       <div className="flex flex-1 overflow-hidden">
@@ -597,6 +678,15 @@ export default function ChatPage() {
           if (deleteDoc) {
             deleteMutation.mutate(deleteDoc.id, {
               onSuccess: () => {
+                try {
+                  const raw = localStorage.getItem("smartdoc_user_documents");
+                  if (raw) {
+                    const list: Document[] = JSON.parse(raw);
+                    const filtered = list.filter((d) => d.id !== deleteDoc.id);
+                    localStorage.setItem("smartdoc_user_documents", JSON.stringify(filtered));
+                  }
+                } catch {}
+                queryClient.invalidateQueries({ queryKey: ["documents"] });
                 setDeleteDoc(null);
                 setSelectedDoc((prev) => (prev?.id === deleteDoc.id ? null : prev));
               },

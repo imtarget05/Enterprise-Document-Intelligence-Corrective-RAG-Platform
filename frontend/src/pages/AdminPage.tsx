@@ -8,7 +8,12 @@ import AdminSidebar from "../components/AdminSidebar";
 import AuditLogTable from "../components/AuditLogTable";
 import ApprovalsTable from "../components/ApprovalsTable";
 
-export default function AdminPage() {
+interface AdminPageProps {
+  currentView?: "chat" | "admin";
+  onViewChange?: (view: "chat" | "admin") => void;
+}
+
+export default function AdminPage({ currentView = "admin", onViewChange }: AdminPageProps) {
   const { isAdmin, isEngineer, token, username, logout } = useAuth();
   // ENGINEER may only touch the HITL approvals queue — never admin tabs.
   const canApprove = isAdmin || isEngineer;
@@ -27,7 +32,13 @@ export default function AdminPage() {
 
   return (
     <div className="flex flex-col h-screen bg-surface-dim">
-      <AppBar onMenuClick={() => {}} username={username} onLogout={logout} />
+      <AppBar
+        onMenuClick={() => {}}
+        username={username}
+        onLogout={logout}
+        currentView={currentView}
+        onViewChange={onViewChange}
+      />
       <div className="flex flex-1 overflow-hidden">
         <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} canAdmin={isAdmin} />
         <main className="flex-1 flex flex-col overflow-hidden bg-surface-dim">

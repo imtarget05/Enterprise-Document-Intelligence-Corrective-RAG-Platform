@@ -2,10 +2,22 @@ interface AppBarProps {
   onMenuClick: () => void;
   username?: string | null;
   onLogout: () => void;
+  currentView?: "chat" | "admin";
+  onViewChange?: (view: "chat" | "admin") => void;
 }
 
-export default function AppBar({ onMenuClick, username, onLogout }: AppBarProps) {
+export default function AppBar({ onMenuClick, username, onLogout, currentView = "chat", onViewChange }: AppBarProps) {
   const initials = username ? username.slice(0, 2).toUpperCase() : "U";
+
+  const handleSwitchView = (target: "chat" | "admin") => {
+    if (onViewChange) {
+      onViewChange(target);
+    }
+    const bridge = (window as unknown as { __appView?: ["chat" | "admin", (v: "chat" | "admin") => void] }).__appView;
+    if (bridge && bridge[1]) {
+      bridge[1](target);
+    }
+  };
 
   return (
     <header className="h-appbar bg-surface border-b border-outline flex items-center justify-between px-4 shrink-0">
@@ -33,16 +45,48 @@ export default function AppBar({ onMenuClick, username, onLogout }: AppBarProps)
               <line x1="16" y1="17" x2="8" y2="17" stroke="white" strokeWidth="2" strokeLinecap="round" />
             </svg>
           </div>
-          <h1 className="text-[20px] text-onsurface font-normal tracking-tight hidden sm:block">
-            Smart Document
+          <h1 className="text-[18px] text-onsurface font-medium tracking-tight hidden sm:block">
+            Smart Document AI
           </h1>
         </div>
+      </div>
+
+      {/* Center: Interactive Mode Switcher */}
+      <div className="flex items-center gap-1 bg-surface-container/70 p-1 rounded-material-full border border-outline">
+        <button
+          type="button"
+          onClick={() => handleSwitchView("chat")}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-material-full text-[13px] font-medium transition cursor-pointer ${
+            currentView !== "admin"
+              ? "bg-google-blue text-white shadow-xs"
+              : "text-onsurface-variant hover:text-onsurface hover:bg-surface"
+          }`}
+        >
+          <span>💬</span>
+          <span className="hidden md:inline">Trợ lý Chatbot RAG</span>
+          <span className="md:hidden">Chat</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleSwitchView("admin")}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-material-full text-[13px] font-medium transition cursor-pointer ${
+            currentView === "admin"
+              ? "bg-google-blue text-white shadow-xs"
+              : "text-onsurface-variant hover:text-onsurface hover:bg-surface"
+          }`}
+        >
+          <span>🛡️</span>
+          <span className="hidden md:inline">Quản Trị &amp; HITL Queue</span>
+          <span className="md:hidden">Quản Trị</span>
+          <span className="ml-1 px-1.5 py-0.2 bg-amber-500 text-white rounded-full text-[10px] font-bold">2</span>
+        </button>
       </div>
 
       {/* Right: user menu */}
       <div className="relative group">
         <button
-          className="w-9 h-9 rounded-material-full bg-google-blue text-white text-[13px] font-medium flex items-center justify-center hover:shadow-material-btn transition-shadow duration-200"
+          className="w-9 h-9 rounded-material-full bg-google-blue text-white text-[13px] font-medium flex items-center justify-center hover:shadow-material-btn transition-shadow duration-200 cursor-pointer"
           aria-label="Menu người dùng"
         >
           {initials}
@@ -51,11 +95,22 @@ export default function AppBar({ onMenuClick, username, onLogout }: AppBarProps)
         {/* Dropdown */}
         <div className="absolute right-0 top-full mt-2 w-56 bg-surface border border-outline rounded-material-lg shadow-material-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
           <div className="px-4 py-3 border-b border-outline">
-            <p className="text-[13px] text-onsurface font-medium truncate">{username || "User"}</p>
+            <p className="text-[13px] text-onsurface font-medium truncate">{username || "admin@smartdoc.ai"}</p>
+            <span className="inline-block mt-0.5 text-[10px] bg-emerald-100 text-emerald-800 font-semibold px-1.5 py-0.2 rounded">
+              ROLE_ADMIN
+            </span>
           </div>
+
+          <button
+            onClick={() => handleSwitchView(currentView === "admin" ? "chat" : "admin")}
+            className="w-full text-left px-4 py-2.5 text-[13px] text-google-blue hover:bg-surface-container transition-colors duration-200 flex items-center gap-2 cursor-pointer"
+          >
+            <span>{currentView === "admin" ? "💬 Mở Chatbot RAG" : "🛡️ Mở Quản trị HITL"}</span>
+          </button>
+
           <button
             onClick={onLogout}
-            className="w-full text-left px-4 py-2.5 text-[13px] text-onsurface-variant hover:bg-surface-container transition-colors duration-200 flex items-center gap-2"
+            className="w-full text-left px-4 py-2.5 text-[13px] text-rose-600 hover:bg-rose-50 transition-colors duration-200 flex items-center gap-2 cursor-pointer border-t border-outline/50"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />

@@ -61,8 +61,8 @@ function AppContent() {
   return (
     <ErrorBoundary>
       <SuspensePage>
-        {view === "admin" && <AdminPage />}
-        {view === "chat" && <ChatPage />}
+        {view === "admin" && <AdminPage currentView={view} onViewChange={setView} />}
+        {view === "chat" && <ChatPage currentView={view} onViewChange={setView} />}
       </SuspensePage>
     </ErrorBoundary>
   );

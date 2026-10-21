@@ -11,6 +11,7 @@ export interface Document {
   issueDate?: string | null;
   effectiveDate?: string | null;
   sourceType?: "OFFICIAL" | "USER" | "FIXTURE" | null;
+  textContent?: string | null;
 }
 
 /** Structured citation returned by the backend. All legal fields nullable —
