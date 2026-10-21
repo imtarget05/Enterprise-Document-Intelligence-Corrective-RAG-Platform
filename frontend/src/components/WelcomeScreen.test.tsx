@@ -12,6 +12,11 @@ describe("WelcomeScreen", () => {
     expect(screen.getByRole("button", { name: /Tải lên tài liệu đầu tiên/ })).toBeInTheDocument();
   });
 
+  it("renders 'Tải lên tài liệu mới' when documents already exist", () => {
+    render(<WelcomeScreen onUploadClick={vi.fn()} hasDocuments={true} />);
+    expect(screen.getByRole("button", { name: /Tải lên tài liệu mới/ })).toBeInTheDocument();
+  });
+
   it("lists the four suggested prompts", () => {
     render(<WelcomeScreen onUploadClick={vi.fn()} />);
     expect(screen.getByText("Tóm tắt tài liệu này")).toBeInTheDocument();

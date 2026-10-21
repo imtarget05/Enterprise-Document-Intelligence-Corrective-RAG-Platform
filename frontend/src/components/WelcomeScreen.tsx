@@ -1,6 +1,7 @@
 interface WelcomeScreenProps {
   onUploadClick: () => void;
   onSelectPrompt?: (text: string) => void;
+  hasDocuments?: boolean;
 }
 
 const SUGGESTED_PROMPTS = [
@@ -10,7 +11,7 @@ const SUGGESTED_PROMPTS = [
   { icon: "📋", text: "Trích xuất các điểm chính" },
 ];
 
-export default function WelcomeScreen({ onUploadClick, onSelectPrompt }: WelcomeScreenProps) {
+export default function WelcomeScreen({ onUploadClick, onSelectPrompt, hasDocuments = false }: WelcomeScreenProps) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 animate-fade-in">
       {/* Logo + heading */}
@@ -61,7 +62,7 @@ export default function WelcomeScreen({ onUploadClick, onSelectPrompt }: Welcome
             <polyline points="17 8 12 3 7 8" />
             <line x1="12" y1="3" x2="12" y2="15" />
           </svg>
-          Tải lên tài liệu đầu tiên
+          {hasDocuments ? "Tải lên tài liệu mới" : "Tải lên tài liệu đầu tiên"}
         </button>
       </div>
     </div>

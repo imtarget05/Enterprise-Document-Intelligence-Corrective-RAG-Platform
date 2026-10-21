@@ -507,22 +507,59 @@ export default function LoginPage() {
             {authMode === "login" ? "Đăng nhập để tiếp tục Smart Doc" : "Bắt đầu với Smart Doc miễn phí"}
           </p>
 
-          <form onSubmit={handleAuthSubmit} className="mt-8 space-y-5">
+          {/* Sandbox & Transparency Notice */}
+          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-material text-left" role="note" aria-label="Thông báo môi trường thử nghiệm">
+            <div className="text-[13px] font-medium text-amber-900 flex items-center gap-1.5 mb-0.5">
+              <span>⚠️</span>
+              <span>Bản Demo mô phỏng (Interactive Sandbox)</span>
+            </div>
+            <p className="text-[12px] text-amber-800 leading-relaxed">
+              Môi trường web tĩnh mô phỏng phục vụ đánh giá UI/UX và RAG workflow. <strong>Vui lòng không tải lên tài liệu nội bộ hoặc dữ liệu nhạy cảm.</strong>
+            </p>
+          </div>
+
+          <form onSubmit={handleAuthSubmit} className="mt-6 space-y-5">
             <div className="relative">
-              <input value={authUsername} onChange={(e) => setAuthUsername(e.target.value)} placeholder="Email hoặc tên đăng nhập" className="peer w-full px-3.5 py-3.5 border border-outline rounded-material text-[14px] text-onsurface placeholder-transparent focus:outline-none focus:border-google-blue focus:ring-1 focus:ring-google-blue bg-white" />
-              <label className="absolute left-3 -top-2 bg-white px-1 text-[12px] text-google-blue peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-[14px] peer-placeholder-shown:text-onsurface-muted peer-focus:-top-2 peer-focus:text-[12px] peer-focus:text-google-blue transition-all duration-200">Email hoặc tên đăng nhập</label>
+              <input
+                id="login-username"
+                name="username"
+                aria-label="Email hoặc tên đăng nhập"
+                value={authUsername}
+                onChange={(e) => setAuthUsername(e.target.value)}
+                placeholder="Email hoặc tên đăng nhập"
+                className="peer w-full px-3.5 py-3.5 border border-outline rounded-material text-[14px] text-onsurface placeholder-transparent focus:outline-none focus:border-google-blue focus:ring-1 focus:ring-google-blue bg-white"
+              />
+              <label htmlFor="login-username" className="absolute left-3 -top-2 bg-white px-1 text-[12px] text-google-blue peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-[14px] peer-placeholder-shown:text-onsurface-muted peer-focus:-top-2 peer-focus:text-[12px] peer-focus:text-google-blue transition-all duration-200">Email hoặc tên đăng nhập</label>
             </div>
 
             <div className="relative">
-              <input type="password" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} placeholder="Mật khẩu" className="peer w-full px-3.5 py-3.5 border border-outline rounded-material text-[14px] text-onsurface placeholder-transparent focus:outline-none focus:border-google-blue focus:ring-1 focus:ring-google-blue bg-white" />
-              <label className="absolute left-3 -top-2 bg-white px-1 text-[12px] text-google-blue peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-[14px] peer-placeholder-shown:text-onsurface-muted peer-focus:-top-2 peer-focus:text-[12px] peer-focus:text-google-blue transition-all duration-200">Mật khẩu</label>
+              <input
+                id="login-password"
+                name="password"
+                aria-label="Mật khẩu"
+                type="password"
+                value={authPassword}
+                onChange={(e) => setAuthPassword(e.target.value)}
+                placeholder="Mật khẩu"
+                className="peer w-full px-3.5 py-3.5 border border-outline rounded-material text-[14px] text-onsurface placeholder-transparent focus:outline-none focus:border-google-blue focus:ring-1 focus:ring-google-blue bg-white"
+              />
+              <label htmlFor="login-password" className="absolute left-3 -top-2 bg-white px-1 text-[12px] text-google-blue peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-[14px] peer-placeholder-shown:text-onsurface-muted peer-focus:-top-2 peer-focus:text-[12px] peer-focus:text-google-blue transition-all duration-200">Mật khẩu</label>
               {authMode === "register" && <PasswordStrength password={authPassword} />}
             </div>
 
             {authMode === "register" && (
               <div className="relative">
-                <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Xác nhận mật khẩu" className="peer w-full px-3.5 py-3.5 border border-outline rounded-material text-[14px] placeholder-transparent focus:outline-none focus:border-google-blue focus:ring-1 focus:ring-google-blue bg-white" />
-                <label className="absolute left-3 -top-2 bg-white px-1 text-[12px] text-google-blue peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-[14px] peer-placeholder-shown:text-onsurface-muted peer-focus:-top-2 peer-focus:text-[12px] peer-focus:text-google-blue transition-all duration-200">Xác nhận mật khẩu</label>
+                <input
+                  id="register-confirm-password"
+                  name="confirmPassword"
+                  aria-label="Xác nhận mật khẩu"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Xác nhận mật khẩu"
+                  className="peer w-full px-3.5 py-3.5 border border-outline rounded-material text-[14px] placeholder-transparent focus:outline-none focus:border-google-blue focus:ring-1 focus:ring-google-blue bg-white"
+                />
+                <label htmlFor="register-confirm-password" className="absolute left-3 -top-2 bg-white px-1 text-[12px] text-google-blue peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-[14px] peer-placeholder-shown:text-onsurface-muted peer-focus:-top-2 peer-focus:text-[12px] peer-focus:text-google-blue transition-all duration-200">Xác nhận mật khẩu</label>
               </div>
             )}
 
@@ -559,10 +596,10 @@ export default function LoginPage() {
               className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-material-full bg-emerald-600 hover:bg-emerald-700 text-white text-[14px] font-semibold shadow-material-btn hover:shadow-material-btn-hover transition-all duration-200 cursor-pointer"
             >
               <span>🚀</span>
-              <span>Trải nghiệm ngay (Live Demo / Reviewer)</span>
+              <span>Trải nghiệm Sandbox (Demo mô phỏng / Reviewer)</span>
             </button>
             <p className="text-[12px] text-onsurface-muted mt-2">
-              Khám phá toàn bộ tính năng RAG, Agent Workflow &amp; Admin HITL mà không cần mật khẩu.
+              Khám phá giao diện RAG, Multi-Agent workflow và hàng đợi duyệt HITL mô phỏng.
             </p>
           </div>
 
