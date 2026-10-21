@@ -77,7 +77,12 @@ async def approve_action(request_id: str, req: ApprovalDecisionRequest):
                 "request_id": request_id,
                 "workflow_result": current.get("workflow_result"),
             }
-        raise HTTPException(status_code=404, detail="Approval request not found, already decided, or expired")
+        # Crash recovery window: If request was approved but crashed before completion, allow resuming execution
+        if current is not None and current.get("status") == "approved":
+            logger.info("HITL approve %s: resuming in-flight / crashed approved request", request_id)
+            record = current
+        else:
+            raise HTTPException(status_code=404, detail="Approval request not found, already decided, or expired")
 
     if state._workflow is None:
         await hitl_store.fail(request_id, "LangGraph workflow unavailable")
@@ -105,6 +110,7 @@ async def approve_action(request_id: str, req: ApprovalDecisionRequest):
         "use_web_search": False,
         "hybrid_search_enabled": True,
         "hitl_auto_approved": True,
+        "idempotency_key": record.get("idempotency_key") or f"hitl-action-{request_id}",
     }
     if snapshot_payload is not None:
         restored = decode_workflow_snapshot(snapshot_payload)

@@ -120,6 +120,7 @@ def _new_record(
 ) -> Dict[str, Any]:
     return {
         "request_id": f"hitl-{uuid.uuid4().hex[:12]}",
+        "idempotency_key": f"hitl-action-{uuid.uuid4().hex[:16]}",
         "query": query,
         "session_id": session_id,
         "user_id": user_id,
@@ -295,7 +296,12 @@ class HITLStore:
         async with self._lock:
             self._evict_expired()
             record = self._requests.get(request_id)
-            if record is None or record["status"] not in {"pending", "execution_failed"}:
+            if record is None:
+                return None
+            is_valid_transition = record["status"] in {"pending", "execution_failed"} or (
+                record["status"] == "approved" and record.get("approver") == approver
+            )
+            if not is_valid_transition:
                 return None
             record["status"] = decision
             record["approver"] = approver
@@ -482,7 +488,10 @@ class RedisHITLStore:
             except (TypeError, json.JSONDecodeError):
                 logger.warning("HITL record %s is not valid JSON — treating as missing", request_id)
                 return None
-            if record.get("status") not in {"pending", "execution_failed"}:
+            is_valid_transition = record.get("status") in {"pending", "execution_failed"} or (
+                record.get("status") == "approved" and record.get("approver") == approver
+            )
+            if not is_valid_transition:
                 return None
             record["status"] = decision
             record["approver"] = approver
