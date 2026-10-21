@@ -1,4 +1,4 @@
-// Use relative path in development so Vite proxy handles requests.
-// In production, set VITE_API_URL to the full backend URL.
-export const API_BASE_URL =
-  (import.meta.env.VITE_API_URL as string) || "/api";
+// Same-Origin API base URL. Cloudflare Pages Functions (/functions/api)
+// proxies all /api/* requests directly to the backend service.
+export const API_BASE_URL = "/api";
+

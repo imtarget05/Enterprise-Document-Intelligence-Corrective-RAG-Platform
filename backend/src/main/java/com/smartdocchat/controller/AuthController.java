@@ -317,9 +317,8 @@ public class AuthController {
     }
 
     private String resolveResponseToken(String token) {
-        if (env != null && env.getActiveProfiles() != null && java.util.Arrays.asList(env.getActiveProfiles()).contains("prod")) {
-            return null;
-        }
+        // Dual-Auth: Always return token to support SPA Bearer authentication fallback
+        // across cloud domains and prevent Safari ITP / Chrome Privacy Sandbox cookie drops.
         return token;
     }
 
