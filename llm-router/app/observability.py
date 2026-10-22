@@ -26,7 +26,7 @@ except ImportError:
 
 PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY", "")
 SECRET_KEY = os.getenv("LANGFUSE_SECRET_KEY", "")
-HOST = os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com")
+HOST = os.getenv("LANGFUSE_HOST") or os.getenv("LANGFUSE_BASE_URL") or "https://cloud.langfuse.com"
 
 TRACE_HEADER = "X-Langfuse-Trace-Id"
 
