@@ -34,7 +34,7 @@ langchain-openai==0.1.8
 
 # Vector store (Qdrant)
 qdrant-client==1.10.1
-langchain-qdrant==0.1.2
+langchain-qdrant==1.1.0
 
 # Phase 1 - Hybrid search (BM25 keyword + semantic)
 rank-bm25==0.2.2
