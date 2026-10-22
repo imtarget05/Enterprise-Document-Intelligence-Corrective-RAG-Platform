@@ -76,10 +76,18 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   if (subPath === "/auth/google" && context.request.method === "POST") {
     let reqBody: any = {};
     try { reqBody = await context.request.json(); } catch {}
-    let email = "mainguyenbinhtan2005@gmail.com";
-    let name = "Mai Nguyễn Bình Tân";
 
-    if (reqBody.credential && typeof reqBody.credential === "string" && reqBody.credential.includes(".")) {
+    if (!reqBody.credential) {
+      return new Response(JSON.stringify({ error: "InvalidCredential", message: "Google Credential không hợp lệ." }), {
+        status: 401,
+        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": url.origin },
+      });
+    }
+
+    let email = "reviewer@smartdoc.sandbox";
+    let name = "Sandbox Reviewer";
+
+    if (typeof reqBody.credential === "string" && reqBody.credential.includes(".")) {
       try {
         const payloadBase64 = reqBody.credential.split(".")[1];
         const normalized = payloadBase64.replace(/-/g, "+").replace(/_/g, "/");
@@ -99,15 +107,16 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       email = reqBody.email;
     }
 
-    const role = "ROLE_ADMIN";
-    const demoToken = "jwt-google-verified-" + btoa(JSON.stringify({ sub: email, name, role, exp: Date.now() + 86400000 }));
+    const role = "ROLE_USER"; // Sandbox guest: safe viewer role, not admin
+    const demoToken = "jwt-sandbox-" + btoa(JSON.stringify({ sub: email, name, role, exp: Date.now() + 86400000 }));
     return new Response(
       JSON.stringify({
         token: demoToken,
         username: email,
         name: name,
         role: role,
-        message: "Google OAuth account verified successfully.",
+        isSandbox: true,
+        message: "Tài khoản Sandbox xác thực thành công (Quyền xem tài liệu kiểm thử).",
       }),
       {
         status: 200,
@@ -123,30 +132,38 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
   // 4b. Document Upload Endpoint
   if (subPath === "/documents/upload" && context.request.method === "POST") {
-    let filename = "Tai_Lieu_Phap_Ly_" + Math.floor(Math.random() * 900 + 100) + ".pdf";
-    let fileSize = 1250000;
+    let filename = "";
+    let fileSize = 0;
     try {
       const formData = await context.request.formData();
       const file = formData.get("file");
       if (file && typeof file === "object" && "name" in file) {
-        filename = (file as any).name || filename;
-        fileSize = (file as any).size || fileSize;
+        filename = (file as any).name || "";
+        fileSize = (file as any).size || 0;
       }
     } catch {}
+
+    if (!filename || fileSize === 0) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Không tìm thấy tệp tin hoặc tệp rỗng." }),
+        { status: 400, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": url.origin } }
+      );
+    }
 
     const uploadedDoc = {
       id: "doc-" + Date.now(),
       filename,
       contentType: "application/pdf",
       fileSize,
-      status: "PROCESSED",
+      status: "READY_LOCAL",
       uploadedAt: new Date().toISOString(),
+      isSandboxSimulated: true,
     };
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: "Tải lên và lập chỉ mục tài liệu thành công.",
+        message: "Tải lên và xử lý tài liệu cục bộ thành công.",
         document: uploadedDoc,
       }),
       { status: 200, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": url.origin, "Access-Control-Allow-Credentials": "true" } }
@@ -169,6 +186,25 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     const isFinanceDocSelected = docTitleLower.includes("tai_chinh") || docTitleLower.includes("tài chính") || body.documentId === 2 || body.documentId === "doc-sample-legal-02";
     const isSecurityDocSelected = docTitleLower.includes("security") || docTitleLower.includes("iso") || body.documentId === 3 || body.documentId === "doc-sample-tech-03";
     const isNhaXeDoc = docTitleLower.includes("an anh") || docTitleLower.includes("nha xe") || docTitleLower.includes("nhà xe") || (customDocText && (customDocText.toLowerCase().includes("an anh") || customDocText.toLowerCase().includes("nhà xe")));
+
+    const isSummaryQuery =
+      lowerPrompt.includes("tóm tắt") ||
+      lowerPrompt.includes("tom tat") ||
+      lowerPrompt.includes("báo cáo") ||
+      lowerPrompt.includes("tổng quan") ||
+      lowerPrompt.includes("tong quan") ||
+      lowerPrompt.includes("nội dung chính") ||
+      lowerPrompt.includes("summary") ||
+      lowerPrompt.includes("overview") ||
+      lowerPrompt.includes("tài liệu này") ||
+      lowerPrompt.includes("tài liệu bên trong") ||
+      lowerPrompt.includes("nội dung bên trong") ||
+      lowerPrompt.includes("nội dung tài liệu") ||
+      lowerPrompt.includes("khái quát") ||
+      lowerPrompt.includes("giới thiệu") ||
+      lowerPrompt.includes("nói về cái gì") ||
+      lowerPrompt.includes("có những gì") ||
+      lowerPrompt.includes("trích xuất");
 
     const defaultAnAnhText = `Tài liệu: Báo cáo Vận hành & Dịch vụ Khách hàng - Nhà xe An Anh\n1. Tuyến vận hành: Tuyến cố định kết nối TP. Hồ Chí Minh (Bến xe Miền Đông) - Phan Rang Ninh Thuận, khởi hành đều đặn lúc 20h00, 21h00 và 22h00 hàng ngày.\n2. Dịch vụ cung cấp cho khách hàng:\n   - Vận tải hành khách chất lượng cao bằng xe giường nằm và limousine VIP 34 phòng.\n   - Vận chuyển bưu phẩm, hàng hóa chuyển phát nhanh hỏa tốc giao nhận trong ngày.\n   - Tiện ích trọn gói trên chuyến đi: nước uống, khăn lạnh, wifi tốc độ cao và cổng sạc cá nhân.\n   - Dịch vụ chăm sóc khách hàng: hỗ trợ đặt vé 24/7, đổi trả vé linh hoạt trước giờ khởi hành tối thiểu 02 tiếng.\n3. Chính sách giá vé & Hành lý: Giá vé niêm yết 260.000 VNĐ - 320.000 VNĐ/vé (đã bao gồm bảo hiểm hành khách trên toàn lộ trình). Hành lý cá nhân miễn cước tối đa 20kg.\n4. Tiêu chuẩn an toàn: Phương tiện trang bị đầy đủ thiết bị định vị GPS, camera giám sát hành trình theo Nghị định 10/2020/NĐ-CP và kiểm tra an toàn kỹ thuật trước mỗi ca xuất bến.`;
 
@@ -226,14 +262,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       hitlPending = true;
 
       const isSummary =
-        lowerPrompt.includes("tóm tắt") ||
-        lowerPrompt.includes("tom tat") ||
-        lowerPrompt.includes("tổng quan") ||
-        lowerPrompt.includes("tong quan") ||
-        lowerPrompt.includes("nội dung chính") ||
-        lowerPrompt.includes("trích xuất") ||
-        lowerPrompt.includes("summary") ||
-        lowerPrompt.includes("overview") ||
+        isSummaryQuery ||
         lowerPrompt.includes("phân tích") ||
         lowerPrompt.includes("đọc");
 
@@ -477,22 +506,6 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     } else if ((effectiveDocText && effectiveDocText.length > 10) || isNhaXeDoc) {
       // Dynamic RAG from user's uploaded document (Standard RAG mode)
       agentType = "DocumentIntelligenceAgent";
-      const isNhaXeDoc =
-        docTitleLower.includes("an anh") ||
-        docTitleLower.includes("nha xe") ||
-        docTitleLower.includes("nhà xe") ||
-        customDocText.toLowerCase().includes("an anh") ||
-        customDocText.toLowerCase().includes("nhà xe");
-
-      const isSummaryQuery =
-        lowerPrompt.includes("tóm tắt") ||
-        lowerPrompt.includes("tom tat") ||
-        lowerPrompt.includes("báo cáo") ||
-        lowerPrompt.includes("tổng quan") ||
-        lowerPrompt.includes("tong quan") ||
-        lowerPrompt.includes("nội dung chính") ||
-        lowerPrompt.includes("summary") ||
-        lowerPrompt.includes("overview");
 
       const isCustomerServiceQuery =
         lowerPrompt.includes("công việc") ||
@@ -726,7 +739,39 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       const isLeave = lowerPrompt.includes("nghỉ phép") || lowerPrompt.includes("phép năm") || lowerPrompt.includes("nghỉ hàng năm");
       const isContract = lowerPrompt.includes("hợp đồng lao động") || lowerPrompt.includes("loại hợp đồng") || lowerPrompt.includes("chấm dứt");
 
-      if (isWorkingHours) {
+      if (isSummaryQuery) {
+        ragStrategy = "direct";
+        aiAnswer = `### 📑 TÓM TẮT BỘ LUẬT LAO ĐỘNG 2019 (SỐ 45/2019/QH14)\n\n` +
+          `Bộ luật Lao động 2019 quy định tiêu chuẩn lao động, quyền, nghĩa vụ và trách nhiệm của người lao động và người sử dụng lao động:\n\n` +
+          `1. **Hợp đồng lao động (Điều 14 & 20)**:\n` +
+          `   - Giao kết bằng văn bản hoặc thông điệp dữ liệu điện tử.\n` +
+          `   - Gồm 02 loại: Hợp đồng không xác định thời hạn và Hợp đồng xác định thời hạn (tối đa 36 tháng).\n\n` +
+          `2. **Thời gian thử việc & Tiền lương thử việc (Điều 25 & 27)**:\n` +
+          `   - Tối đa 60 ngày đối với trình độ từ cao đẳng trở lên; 30 ngày đối với trình độ trung cấp.\n` +
+          `   - Tiền lương thử việc ít nhất bằng **85%** mức lương của công việc đó.\n\n` +
+          `3. **Thời giờ làm việc & Nghỉ ngơi (Điều 105 & 113)**:\n` +
+          `   - Thời giờ làm việc bình thường không quá **08 giờ/ngày** và **48 giờ/tuần** (khuyến khích 40 giờ/tuần).\n` +
+          `   - Nghỉ phép hằng năm hưởng nguyên lương từ **12 đến 16 ngày làm việc** đối với người làm đủ 12 tháng.\n\n` +
+          `4. **Tiền lương & Chế độ phúc lợi (Điều 90 & 95)**:\n` +
+          `   - Tiền lương trả theo thỏa thuận, đảm bảo không thấp hơn mức lương tối thiểu vùng.\n` +
+          `   - Phải cung cấp bảng kê chi tiết tiền lương và các khoản khấu trừ cho người lao động.`;
+
+        sourceChunks = [
+          "Điều 20 & 25 Bộ luật Lao động 2019: Hợp đồng lao động và thời gian thử việc tối đa 60 ngày.",
+          "Điều 105 & 113 Bộ luật Lao động 2019: Thời giờ làm việc bình thường không quá 08 giờ/ngày, 48 giờ/tuần và nghỉ phép năm 12 ngày."
+        ];
+        sources = [
+          {
+            documentId: 1,
+            documentTitle: "Bo_Luat_Lao_Dong_2019.pdf",
+            documentNumber: "45/2019/QH14",
+            article: "Điều 20, 25, 105, 113",
+            clause: "Khoản 1",
+            sourceType: "OFFICIAL",
+            content: "Bộ luật Lao động 2019 quy định về hợp đồng lao động, thử việc, thời giờ làm việc bình thường (tối đa 8h/ngày, 48h/tuần) và chế độ nghỉ phép hằng năm."
+          }
+        ];
+      } else if (isWorkingHours) {
         ragStrategy = "direct";
         aiAnswer = `Căn cứ theo **Điều 105 Bộ luật Lao động 2019 (Số 45/2019/QH14)** quy định về **Thời giờ làm việc bình thường**:\n\n` +
           `1. **Giới hạn thời giờ làm việc bình thường**:\n` +
@@ -836,7 +881,36 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       agentType = "FinancialComplianceAgent";
       const isPaymentOrFinance = lowerPrompt.includes("thanh toán") || lowerPrompt.includes("tài chính") || lowerPrompt.includes("hóa đơn") || lowerPrompt.includes("nghiệm thu") || lowerPrompt.includes("hạn mức") || lowerPrompt.includes("chi");
       
-      if (isPaymentOrFinance) {
+      if (isSummaryQuery) {
+        ragStrategy = "direct";
+        aiAnswer = `### 📑 TÓM TẮT QUY TRÌNH KIỂM SOÁT TÀI CHÍNH DOANH NGHIỆP 2026 (QT-TC-2026)\n\n` +
+          `Quy trình này quy định cơ chế quản trị dòng tiền, thanh toán và thẩm quyền ký duyệt chứng từ chi tiêu trong toàn doanh nghiệp:\n\n` +
+          `1. **Thời hạn thanh toán tiêu chuẩn (Điều 4)**:\n` +
+          `   - Thời hạn thanh toán tiêu chuẩn là **30 ngày làm việc** kể từ ngày ký biên bản nghiệm thu đầy đủ và nhận hóa đơn GTGT hợp lệ.\n` +
+          `   - Tạm ứng chi phí phải có bảo lãnh ngân hàng hoặc phê duyệt đặc biệt từ Ban Giám đốc.\n\n` +
+          `2. **Kiểm soát & Ký duyệt chứng từ (Điều 8)**:\n` +
+          `   - Toàn bộ hồ sơ thanh toán phải qua thẩm định của bộ phận kế toán và được phê duyệt theo phân cấp tài chính.\n` +
+          `   - Phải có đầy đủ chữ ký điện tử/bằng văn bản của kế toán trưởng và đại diện pháp luật.\n\n` +
+          `3. **Xử phạt vi phạm hợp đồng (Điều 12)**:\n` +
+          `   - Mức phạt vi phạm hợp đồng kinh tế tối đa **8% giá trị phần nghĩa vụ bị vi phạm** theo quy định của Luật Thương mại.\n` +
+          `   - Đảm bảo tính minh bạch và bảo toàn nguồn vốn của doanh nghiệp.`;
+
+        sourceChunks = [
+          "Điều 4 Quy trình QT-TC-2026: Thời hạn thanh toán tiêu chuẩn 30 ngày làm việc sau nghiệm thu và nhận hóa đơn hợp lệ.",
+          "Điều 8 Quy trình QT-TC-2026: Nguyên tắc kiểm soát chứng từ chi tiêu và thẩm quyền phê duyệt tài chính."
+        ];
+        sources = [
+          {
+            documentId: 2,
+            documentTitle: "Quy_Trinh_Kiem_Soat_Tai_Chinh_2026.pdf",
+            documentNumber: "QT-TC-2026",
+            article: "Điều 4 & 8",
+            clause: "Khoản 1",
+            sourceType: "OFFICIAL",
+            content: "Quy trình kiểm soát tài chính quy định thời hạn thanh toán 30 ngày làm việc sau nghiệm thu và nguyên tắc phê duyệt chứng từ kế toán."
+          }
+        ];
+      } else if (isPaymentOrFinance) {
         ragStrategy = "direct";
         aiAnswer = `Theo **Quy trình Kiểm soát Tài chính Doanh nghiệp 2026 (Số QT-TC-2026)**:\n\n` +
           `1. **Thời hạn thanh toán (Điều 4)**: Thời hạn thanh toán tiêu chuẩn là **30 ngày làm việc** kể từ ngày hai bên ký biên bản nghiệm thu và nhận đủ hóa đơn GTGT hợp lệ.\n` +
@@ -870,7 +944,36 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       agentType = "SecurityComplianceAgent";
       const isSecurity = lowerPrompt.includes("bảo mật") || lowerPrompt.includes("an toàn") || lowerPrompt.includes("iso") || lowerPrompt.includes("mã hóa") || lowerPrompt.includes("dữ liệu") || lowerPrompt.includes("truy cập");
 
-      if (isSecurity) {
+      if (isSummaryQuery) {
+        ragStrategy = "direct";
+        aiAnswer = `### 📑 TÓM TẮT TIÊU CHUẨN AN TOÀN THÔNG TIN ISO/IEC 27001 & CLOUD SECURITY\n\n` +
+          `Tài liệu chuẩn hóa khung bảo mật hệ thống thông tin và hạ tầng đám mây của tổ chức:\n\n` +
+          `1. **Kiểm soát truy cập (Access Control - Mục A.9)**:\n` +
+          `   - Áp dụng kiểm soát truy cập dựa trên vai trò (RBAC) và nguyên tắc đặc quyền tối thiểu (Least Privilege).\n` +
+          `   - Bắt buộc xác thực đa yếu tố (MFA) cho toàn bộ tài khoản quản trị và truy cập từ xa.\n\n` +
+          `2. **Mã hóa dữ liệu (Cryptography - Mục A.10)**:\n` +
+          `   - Mã hóa dữ liệu lưu trữ (At-Rest) bằng tiêu chuẩn mã hóa nâng cao **AES-256**.\n` +
+          `   - Mã hóa dữ liệu truyền tải (In-Transit) sử dụng giao thức an toàn **TLS 1.3**.\n\n` +
+          `3. **An toàn vận hành & Tuân thủ pháp lý (Mục A.12)**:\n` +
+          `   - Ghi nhật ký Audit Trail tập trung, lưu trữ tối thiểu 12 tháng phục vụ kiểm toán độc lập.\n` +
+          `   - Tuân thủ chặt chẽ quy định về bảo vệ dữ liệu cá nhân theo **Nghị định 13/2023/NĐ-CP**.`;
+
+        sourceChunks = [
+          "ISO/IEC 27001:2022 Mục A.9: Kiểm soát truy cập RBAC và xác thực đa yếu tố MFA cho tài khoản đặc quyền.",
+          "ISO/IEC 27001:2022 Mục A.10: Mã hóa dữ liệu At-Rest (AES-256) và In-Transit (TLS 1.3)."
+        ];
+        sources = [
+          {
+            documentId: 3,
+            documentTitle: "Cloud_Security_Baseline_ISO27001.pdf",
+            documentNumber: "SEC-ISO-27001",
+            article: "Mục A.9 & A.10",
+            clause: "Khoản 2",
+            sourceType: "OFFICIAL",
+            content: "Toàn bộ dữ liệu trao đổi được mã hóa ở mức lưu trữ (At-Rest AES-256) và truyền tải (In-Transit TLS 1.3) tuân thủ tiêu chuẩn ISO/IEC 27001."
+          }
+        ];
+      } else if (isSecurity) {
         ragStrategy = "direct";
         aiAnswer = `Theo **Tiêu chuẩn An toàn thông tin ISO/IEC 27001 & Cloud Security Baseline**:\n\n` +
           `1. **Kiểm soát truy cập (Access Control - Mục A.9)**: Áp dụng cơ chế kiểm soát truy cập dựa trên vai trò (RBAC) và nguyên tắc đặc quyền tối thiểu (Least Privilege).\n` +
@@ -901,7 +1004,57 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       }
     } else {
       // NO SPECIFIC DOCUMENT SELECTED (Cross-document general repository search)
-      if (lowerPrompt.includes("thời giờ") || lowerPrompt.includes("thời gian làm việc") || lowerPrompt.includes("giờ làm việc") || lowerPrompt.includes("thử việc") || lowerPrompt.includes("lao động")) {
+      if (isSummaryQuery) {
+        agentType = "LegalAnalystAgent";
+        ragStrategy = "direct";
+        aiAnswer = `### 📚 TỔNG QUAN KHO TRI THỨC DOANH NGHIỆP\n\n` +
+          `Kho tri thức hiện tại tích hợp các bộ tài liệu quy chuẩn cốt lõi phục vụ hoạt động vận hành, tài chính và tuân thủ pháp lý:\n\n` +
+          `1. **Bộ luật Lao động 2019 (Số 45/2019/QH14)**:\n` +
+          `   - Tiêu chuẩn hợp đồng lao động, thời gian thử việc tối đa 60 ngày, tiền lương thử việc ≥ 85%.\n` +
+          `   - Thời giờ làm việc chuẩn: 08 giờ/ngày, 48 giờ/tuần; chế độ nghỉ phép năm từ 12 ngày.\n\n` +
+          `2. **Quy trình Kiểm soát Tài chính Doanh nghiệp 2026 (QT-TC-2026)**:\n` +
+          `   - Thời hạn thanh toán tiêu chuẩn 30 ngày làm việc sau khi nghiệm thu và có hóa đơn GTGT hợp lệ.\n` +
+          `   - Nguyên tắc kiểm soát chứng từ, ma trận ký duyệt và trần phạt vi phạm hợp đồng tối đa 8% theo Luật Thương mại.\n\n` +
+          `3. **Tiêu chuẩn An toàn thông tin ISO/IEC 27001 & Cloud Security Baseline**:\n` +
+          `   - Kiểm soát truy cập RBAC, xác thực đa yếu tố MFA cho tài khoản đặc quyền.\n` +
+          `   - Mã hóa dữ liệu At-Rest (AES-256) và In-Transit (TLS 1.3), bảo vệ dữ liệu theo Nghị định 13/2023/NĐ-CP.\n\n` +
+          `👉 **Gợi ý tra cứu**: Bạn có thể chọn từng tài liệu cụ thể ở danh mục bên trái hoặc tải lên văn bản nội bộ (.docx, .pdf, .txt) để hệ thống phân tích chi tiết.`;
+
+        sourceChunks = [
+          "Bộ luật Lao động 2019: Tiêu chuẩn thời giờ làm việc 8h/ngày, hợp đồng lao động và chế độ lương.",
+          "Quy trình Tài chính 2026: Thời hạn thanh toán 30 ngày làm việc và ma trận phê duyệt chi tiêu.",
+          "ISO 27001: Khung kiểm soát truy cập RBAC, xác thực MFA và mã hóa dữ liệu doanh nghiệp."
+        ];
+        sources = [
+          {
+            documentId: 1,
+            documentTitle: "Bo_Luat_Lao_Dong_2019.pdf",
+            documentNumber: "45/2019/QH14",
+            article: "Điều 105",
+            clause: "Khoản 1",
+            sourceType: "OFFICIAL",
+            content: "Bộ luật Lao động quy định tiêu chuẩn lao động, tiền lương và thời giờ làm việc."
+          },
+          {
+            documentId: 2,
+            documentTitle: "Quy_Trinh_Kiem_Soat_Tai_Chinh_2026.pdf",
+            documentNumber: "QT-TC-2026",
+            article: "Điều 4",
+            clause: "Khoản 1",
+            sourceType: "OFFICIAL",
+            content: "Quy trình tài chính quy định thời hạn thanh toán 30 ngày và kiểm soát chứng từ."
+          },
+          {
+            documentId: 3,
+            documentTitle: "Cloud_Security_Baseline_ISO27001.pdf",
+            documentNumber: "SEC-ISO-27001",
+            article: "Mục A.9",
+            clause: "Khoản 1",
+            sourceType: "OFFICIAL",
+            content: "Tiêu chuẩn ISO 27001 quy định bảo mật hệ thống thông tin và kiểm soát truy cập."
+          }
+        ];
+      } else if (lowerPrompt.includes("thời giờ") || lowerPrompt.includes("thời gian làm việc") || lowerPrompt.includes("giờ làm việc") || lowerPrompt.includes("thử việc") || lowerPrompt.includes("lao động")) {
         agentType = "HRComplianceAgent";
         ragStrategy = "direct";
         aiAnswer = `Tra cứu trong kho tri thức pháp lý (**Bộ luật Lao động 2019 - Số 45/2019/QH14**):\n\n` +
@@ -1096,9 +1249,20 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       reqBody = await context.request.json();
     } catch {}
 
-    const username = reqBody.username || "admin";
+    const username = (reqBody.username || "").trim();
+    const password = reqBody.password || "";
+
+    // Require both username and password
+    if (!username || !password) {
+      return new Response(
+        JSON.stringify({ error: "MissingCredentials", message: "Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu." }),
+        { status: 401, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": url.origin } }
+      );
+    }
+
+    // Role mapping
     const role = username.toLowerCase().includes("admin") ? "ROLE_ADMIN" : "ROLE_ENGINEER";
-    const demoToken = "jwt-edge-verified-" + btoa(JSON.stringify({ sub: username, role, exp: Date.now() + 86400000 }));
+    const demoToken = "jwt-edge-" + btoa(JSON.stringify({ sub: username, role, exp: Date.now() + 86400000 }));
 
     return new Response(
       JSON.stringify({
@@ -1123,14 +1287,32 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     const cookie = context.request.headers.get("cookie") || "";
     const authHeader = context.request.headers.get("authorization") || "";
     
-    // Check if token exists in cookie or Bearer header
-    const hasToken = cookie.includes("jwt_token") || authHeader.startsWith("Bearer ");
-    if (hasToken) {
+    // Extract token string
+    let tokenStr = "";
+    if (authHeader.startsWith("Bearer ")) {
+      tokenStr = authHeader.substring(7).trim();
+    } else if (cookie.includes("jwt_token=")) {
+      const match = cookie.match(/jwt_token=([^;]+)/);
+      if (match) tokenStr = match[1];
+    }
+
+    if (tokenStr && (tokenStr.startsWith("jwt-") || tokenStr.startsWith("ey"))) {
+      let sub = "user";
+      let role = "ROLE_USER";
+      let email = "user@smartdoc.sandbox";
+      try {
+        const payload = tokenStr.split("-").pop() || "";
+        const decoded = JSON.parse(atob(payload));
+        if (decoded.sub) sub = decoded.sub;
+        if (decoded.role) role = decoded.role;
+        email = decoded.sub?.includes("@") ? decoded.sub : `${sub}@smartdoc.ai`;
+      } catch {}
+
       return new Response(
         JSON.stringify({
-          username: "admin",
-          role: "ROLE_ADMIN",
-          email: "admin@smartdoc.ai",
+          username: sub,
+          role,
+          email,
           status: "authenticated",
         }),
         {
@@ -1142,7 +1324,8 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         }
       );
     }
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+
+    return new Response(JSON.stringify({ error: "Unauthorized", message: "Token không tồn tại hoặc không hợp lệ." }), {
       status: 401,
       headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": url.origin },
     });
@@ -1210,8 +1393,8 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     );
   }
 
-  // Document Delete
-  if (subPath.startsWith("/documents/") && context.request.method === "DELETE") {
+  // Document Delete (Single & Batch)
+  if ((subPath === "/documents/batch" || subPath.startsWith("/documents/")) && context.request.method === "DELETE") {
     return new Response(
       JSON.stringify({ success: true, message: "Đã xóa tài liệu thành công khỏi kho lưu trữ." }),
       { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": url.origin, "Access-Control-Allow-Credentials": "true" } }

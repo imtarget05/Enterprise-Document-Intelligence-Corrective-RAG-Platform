@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Document } from "../types";
 import SearchInput from "./SearchInput";
 import SessionList from "./SessionList";
@@ -37,6 +37,21 @@ export default function Sidebar({
 }: SidebarProps) {
   const [isMultiSelect, setIsMultiSelect] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
+  // Clean up selected IDs that no longer exist in documents
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      const currentDocIds = new Set(documents.map((d) => d.id));
+      const next = new Set<number>();
+      prev.forEach((id) => {
+        if (currentDocIds.has(id)) next.add(id);
+      });
+      if (next.size === 0 && documents.length === 0) {
+        setIsMultiSelect(false);
+      }
+      return next;
+    });
+  }, [documents]);
 
   const toggleSelect = (id: number) => {
     setSelectedIds((prev) => {

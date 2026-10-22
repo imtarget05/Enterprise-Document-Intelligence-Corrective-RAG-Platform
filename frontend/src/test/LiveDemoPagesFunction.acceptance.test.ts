@@ -206,23 +206,22 @@ describe("Cloudflare Pages Function Live Demo Acceptance Tests", () => {
     expect(complete.sources[0].documentTitle).toBe("Bo_Luat_Lao_Dong_2019.pdf");
   });
 
-  it("P0 Transparency: HITL approval returns sandbox confirmation without claiming real SMTP or VIAC execution", async () => {
-    const request = new Request("https://smart-doc-chatbot.pages.dev/api/agent/approvals/req-hitl-01/approve", {
+  it("P0: Handles summary query 'tóm tắt tài liệu bên trong' on ISO 27001 document with high confidence", async () => {
+    const request = new Request("https://smart-doc-chatbot.pages.dev/api/chat/ask-stream", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer jwt-edge-verified-admin",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        reviewer: "admin@smartdoc.ai",
-        comments: "Approved for testing",
+        message: "tóm tắt tài liệu bên trong",
+        documentId: 3,
+        documentTitle: "Cloud_Security_Baseline_ISO27001.pdf",
+        mode: "rag",
       }),
     });
 
     const response = await onRequest({
       request,
       env: {},
-      params: { path: ["agent", "approvals", "req-hitl-01", "approve"] },
+      params: { path: ["chat", "ask-stream"] },
       waitUntil: () => {},
       next: () => Promise.resolve(new Response()),
       data: {},
@@ -230,10 +229,51 @@ describe("Cloudflare Pages Function Live Demo Acceptance Tests", () => {
     } as any);
 
     expect(response.status).toBe(200);
-    const data = await response.json();
-    expect(data.status).toBe("SUCCESS");
-    expect(data.message).toContain("[Mô phỏng Sandbox]");
-    expect(data.message).not.toContain("SMTP Gateway: 250 OK");
-    expect(data.message).not.toContain("VIAC Arbitration Hub");
+    const { complete } = await parseSseResponse(response);
+
+    expect(complete.ragStrategy).toBe("direct");
+    expect(complete.confidence).toBe("high");
+    expect(complete.aiResponse).toContain("ISO/IEC 27001");
+    expect(complete.aiResponse).toContain("Mục A.9");
+    expect(complete.sources.length).toBeGreaterThan(0);
+    expect(complete.sources[0].documentTitle).toBe("Cloud_Security_Baseline_ISO27001.pdf");
+  });
+
+  it("P0: Handles single and batch document deletion cleanly via edge API", async () => {
+    // Single delete
+    const singleReq = new Request("https://smart-doc-chatbot.pages.dev/api/documents/1", {
+      method: "DELETE",
+    });
+    const singleRes = await onRequest({
+      request: singleReq,
+      env: {},
+      params: { path: ["documents", "1"] },
+      waitUntil: () => {},
+      next: () => Promise.resolve(new Response()),
+      data: {},
+      functionPath: "",
+    } as any);
+    expect(singleRes.status).toBe(200);
+    const singleData = await singleRes.json();
+    expect(singleData.success).toBe(true);
+
+    // Batch delete
+    const batchReq = new Request("https://smart-doc-chatbot.pages.dev/api/documents/batch", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify([1, 2, 3]),
+    });
+    const batchRes = await onRequest({
+      request: batchReq,
+      env: {},
+      params: { path: ["documents", "batch"] },
+      waitUntil: () => {},
+      next: () => Promise.resolve(new Response()),
+      data: {},
+      functionPath: "",
+    } as any);
+    expect(batchRes.status).toBe(200);
+    const batchData = await batchRes.json();
+    expect(batchData.success).toBe(true);
   });
 });

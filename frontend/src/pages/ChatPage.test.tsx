@@ -22,6 +22,9 @@ function sseBody(events: string) {
 }
 
 function renderChatPage(_token = "test-token") {
+  if (_token) {
+    sessionStorage.setItem("smartdoc_jwt", _token);
+  }
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -35,8 +38,12 @@ function renderChatPage(_token = "test-token") {
 }
 
 function mockFetch(responses: Record<string, unknown>) {
+  const merged = {
+    "/api/auth/me": { ok: true, json: async () => ({ username: "testuser", role: "USER" }) },
+    ...responses,
+  };
   const fetchMock = vi.fn(async (url: string) => {
-    for (const [pattern, response] of Object.entries(responses)) {
+    for (const [pattern, response] of Object.entries(merged)) {
       if (url.startsWith(pattern)) {
         return response as Response;
       }
@@ -52,6 +59,7 @@ describe("ChatPage", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     localStorage.clear();
+    sessionStorage.clear();
   });
 
   it("renders welcome screen when no messages", async () => {
@@ -323,5 +331,31 @@ describe("ChatPage", () => {
     await waitFor(() => expect(screen.getByTestId("agent-badge")).toBeInTheDocument());
     const assistantBubble = screen.getByText("Engineering analysis.").closest('[aria-live]');
     expect(assistantBubble).toBeNull();
+  });
+
+  it("filters out documents present in smartdoc_deleted_doc_ids from document list", async () => {
+    localStorage.setItem("smartdoc_deleted_doc_ids", JSON.stringify(["1", "cloud_security_baseline_iso27001.pdf"]));
+
+    mockFetch({
+      "/api/documents": {
+        ok: true,
+        json: async () => [
+          { id: 1, filename: "Bo_Luat_Lao_Dong_2019.pdf", title: "Bộ luật Lao động 2019" },
+          { id: 2, filename: "Quy_Trinh_Kiem_Soat_Tai_Chinh_2026.pdf", title: "Quy trình Kiểm soát Tài chính 2026" },
+          { id: 3, filename: "Cloud_Security_Baseline_ISO27001.pdf", title: "Tiêu chuẩn An toàn thông tin ISO 27001" },
+        ],
+      },
+      "/api/chat/history/": { ok: true, json: async () => [] },
+    });
+
+    renderChatPage();
+
+    await waitFor(() => {
+      // Document 2 should be present
+      expect(screen.getByText("Quy trình Kiểm soát Tài chính 2026")).toBeInTheDocument();
+      // Document 1 (deleted by id "1") and Document 3 (deleted by filename) should NOT be rendered
+      expect(screen.queryByText("Bộ luật Lao động 2019")).toBeNull();
+      expect(screen.queryByText("Tiêu chuẩn An toàn thông tin ISO 27001")).toBeNull();
+    });
   });
 });

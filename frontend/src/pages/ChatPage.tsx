@@ -26,6 +26,50 @@ interface ChatPageProps {
   onViewChange?: (view: "chat" | "admin") => void;
 }
 
+const DELETED_DOCS_KEY = "smartdoc_deleted_doc_ids";
+
+function getDeletedDocKeys(): Set<string> {
+  try {
+    const raw = localStorage.getItem(DELETED_DOCS_KEY);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) {
+        return new Set(arr.map((k: string) => String(k).trim().toLowerCase()));
+      }
+    }
+  } catch {}
+  return new Set();
+}
+
+function markDocumentsDeleted(docs: Array<{ id?: number | string; fileName?: string | null; title?: string | null }>) {
+  try {
+    const existing = getDeletedDocKeys();
+    docs.forEach((d) => {
+      if (d.id !== undefined && d.id !== null) {
+        existing.add(String(d.id).trim().toLowerCase());
+      }
+      if (d.fileName) {
+        existing.add(d.fileName.trim().toLowerCase());
+      }
+      if (d.title) {
+        existing.add(d.title.trim().toLowerCase());
+      }
+    });
+    localStorage.setItem(DELETED_DOCS_KEY, JSON.stringify(Array.from(existing)));
+  } catch {}
+}
+
+function unmarkDocumentDeleted(fileNameOrId: string | number) {
+  try {
+    const existing = getDeletedDocKeys();
+    const key = String(fileNameOrId).trim().toLowerCase();
+    if (existing.has(key)) {
+      existing.delete(key);
+      localStorage.setItem(DELETED_DOCS_KEY, JSON.stringify(Array.from(existing)));
+    }
+  } catch {}
+}
+
 export default function ChatPage({ currentView = "chat", onViewChange }: ChatPageProps) {
   const { token, username, logout } = useAuth();
   const queryClient = useQueryClient();
@@ -133,9 +177,17 @@ export default function ChatPage({ currentView = "chat", onViewChange }: ChatPag
         }
       } catch {}
 
+      const deletedKeys = getDeletedDocKeys();
+      const isNotDeleted = (d: Document) => {
+        if (deletedKeys.has(String(d.id).trim().toLowerCase())) return false;
+        if (d.fileName && deletedKeys.has(d.fileName.trim().toLowerCase())) return false;
+        if (d.title && deletedKeys.has(d.title.trim().toLowerCase())) return false;
+        return true;
+      };
+
       const map = new Map<number | string, Document>();
-      userDocs.forEach((d) => map.set(d.id, d));
-      remoteDocs.forEach((d) => {
+      userDocs.filter(isNotDeleted).forEach((d) => map.set(d.id, d));
+      remoteDocs.filter(isNotDeleted).forEach((d) => {
         if (!map.has(d.id)) map.set(d.id, d);
       });
       return Array.from(map.values());
@@ -260,13 +312,16 @@ export default function ChatPage({ currentView = "chat", onViewChange }: ChatPag
         }
         // Guard against corrupt docx or empty text
         if (!extractedText || extractedText.startsWith("PK") || extractedText.length < 5) {
-          extractedText = `Tài liệu: ${file.name}\nDung lượng: ${(file.size / 1024).toFixed(1)} KB\nVăn bản Word đã được chuẩn hóa và sẵn sàng phân tích.`;
+          throw new Error(`Tệp tin "${file.name}" bị lỗi định dạng hoặc không thể trích xuất văn bản.`);
         }
       } else {
         // PDF or binary on Serverless Edge: do not fabricate fake indexed text
         extractedText = "";
       }
-    } catch {}
+    } catch (parseErr: any) {
+      setUploadError(parseErr.message || `Không thể đọc nội dung tệp "${file.name}". Vui lòng kiểm tra định dạng.`);
+      return;
+    }
 
     try {
       const response = await fetch(`${API_BASE_URL}/documents/upload`, {
@@ -311,6 +366,11 @@ export default function ChatPage({ currentView = "chat", onViewChange }: ChatPag
 
         // Persist to user's local documents
         try {
+          unmarkDocumentDeleted(newDoc.id);
+          unmarkDocumentDeleted(newDoc.fileName);
+          if (newDoc.title) unmarkDocumentDeleted(newDoc.title);
+          unmarkDocumentDeleted(file.name);
+
           const raw = localStorage.getItem("smartdoc_user_documents");
           const list: Document[] = raw ? JSON.parse(raw) : [];
           list.unshift(newDoc);
@@ -762,17 +822,23 @@ export default function ChatPage({ currentView = "chat", onViewChange }: ChatPag
           if (deleteDoc) {
             deleteMutation.mutate(deleteDoc.id, {
               onSuccess: () => {
+                markDocumentsDeleted([deleteDoc]);
                 try {
                   const raw = localStorage.getItem("smartdoc_user_documents");
                   if (raw) {
                     const list: Document[] = JSON.parse(raw);
-                    const filtered = list.filter((d) => d.id !== deleteDoc.id);
+                    const filtered = list.filter((d) => String(d.id) !== String(deleteDoc.id));
                     localStorage.setItem("smartdoc_user_documents", JSON.stringify(filtered));
                   }
                 } catch {}
                 queryClient.invalidateQueries({ queryKey: ["documents"] });
                 setDeleteDoc(null);
                 setSelectedDoc((prev) => (prev?.id === deleteDoc.id ? null : prev));
+              },
+              onError: (err: any) => {
+                queryClient.invalidateQueries({ queryKey: ["documents"] });
+                setDeleteDoc(null);
+                setUploadError(err?.message || "Không thể xóa tài liệu do máy chủ gặp sự cố.");
               },
             });
           }
@@ -786,11 +852,28 @@ export default function ChatPage({ currentView = "chat", onViewChange }: ChatPag
         loading={batchDeleteMutation.isPending}
         onConfirm={async () => {
           if (batchDeleteIds && batchDeleteIds.length > 0) {
-            await batchDeleteMutation.mutateAsync(batchDeleteIds);
-            if (selectedDoc && batchDeleteIds.includes(selectedDoc.id)) {
-              setSelectedDoc(null);
+            try {
+              await batchDeleteMutation.mutateAsync(batchDeleteIds);
+              const docsToDelete = documents.filter((d) => batchDeleteIds.includes(d.id));
+              markDocumentsDeleted(docsToDelete);
+              try {
+                const raw = localStorage.getItem("smartdoc_user_documents");
+                if (raw) {
+                  const list: Document[] = JSON.parse(raw);
+                  const idSet = new Set(batchDeleteIds.map((id) => String(id)));
+                  const filtered = list.filter((d) => !idSet.has(String(d.id)));
+                  localStorage.setItem("smartdoc_user_documents", JSON.stringify(filtered));
+                }
+              } catch {}
+              queryClient.invalidateQueries({ queryKey: ["documents"] });
+              if (selectedDoc && batchDeleteIds.includes(selectedDoc.id)) {
+                setSelectedDoc(null);
+              }
+              setBatchDeleteIds(null);
+            } catch (err: any) {
+              setUploadError(err?.message || "Lỗi khi xóa hàng loạt tài liệu.");
+              setBatchDeleteIds(null);
             }
-            setBatchDeleteIds(null);
           }
         }}
       />

@@ -1,4 +1,5 @@
 import { useAuth } from "../context/AuthContext";
+import { useApprovalsQueue } from "../hooks/useApprovals";
 
 interface AppBarProps {
   onMenuClick: () => void;
@@ -10,6 +11,8 @@ interface AppBarProps {
 
 export default function AppBar({ onMenuClick, username, onLogout, currentView = "chat", onViewChange }: AppBarProps) {
   const { role, isAdmin, login, token } = useAuth();
+  const { data: approvalsData } = useApprovalsQueue(token, Boolean(token));
+  const pendingCount = approvalsData?.pending?.length ?? approvalsData?.count ?? 0;
   const initials = username ? username.slice(0, 2).toUpperCase() : "U";
 
   const handleSwitchView = (target: "chat" | "admin") => {
@@ -82,7 +85,11 @@ export default function AppBar({ onMenuClick, username, onLogout, currentView = 
           <span>🛡️</span>
           <span className="hidden md:inline">Quản Trị &amp; HITL Queue</span>
           <span className="md:hidden">Quản Trị</span>
-          <span className="ml-1 px-1.5 py-0.2 bg-amber-500 text-white rounded-full text-[10px] font-bold">2</span>
+          {pendingCount > 0 && (
+            <span className="ml-1 px-1.5 py-0.2 bg-amber-500 text-white rounded-full text-[10px] font-bold">
+              {pendingCount}
+            </span>
+          )}
         </button>
       </div>
 
