@@ -1,35 +1,31 @@
-# Build stage: install dependencies into a virtualenv so the runtime image
-# stays free of build tooling.
+# Build stage
 FROM python:3.11-slim AS builder
-
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
-
-WORKDIR /build
-COPY requirements.txt .
-RUN python -m venv /opt/venv \
-    && /opt/venv/bin/pip install --no-cache-dir --upgrade pip \
-    && /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
-
-# Runtime stage
-FROM python:3.11-slim
-
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PATH="/opt/venv/bin:$PATH"
-
 WORKDIR /app
 
-RUN addgroup --system app && adduser --system --uid 10001 --ingroup app app
-COPY --from=builder /opt/venv /opt/venv
-# --chown is required: host files may be 700 (owner-only), which would leave
-# the runtime user unable to read the app package.
-COPY --chown=10001:10001 app ./app
+RUN pip install --no-cache-dir poetry==1.8.3
 
-USER 10001
-EXPOSE 8000
+COPY pyproject.toml poetry.lock* ./
+RUN poetry export -f requirements.txt --output requirements.txt --without-hashes
 
-HEALTHCHECK --interval=15s --timeout=3s --start-period=10s --retries=3 \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"
+RUN pip install --no-cache-dir -r requirements.txt
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Runtime stage
+FROM python:3.11-slim AS runtime
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+COPY . .
+
+RUN useradd --create-home --shell /bin/bash appuser && chown -R appuser:appuser /app
+USER appuser
+
+EXPOSE 8001
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]

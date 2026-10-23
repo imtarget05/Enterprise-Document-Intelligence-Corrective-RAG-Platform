@@ -33,6 +33,10 @@ class ChatRequest(BaseModel):
     stream: bool = False
     options: dict[str, Any] = Field(default_factory=dict)
     routing: RoutingContext = Field(default_factory=RoutingContext)
+    provider: str | None = Field(
+        default=None,
+        description="AI provider: cloudflare, ollama, or local. Overrides default routing when provided.",
+    )
 
 
 class RouteDecision(BaseModel):

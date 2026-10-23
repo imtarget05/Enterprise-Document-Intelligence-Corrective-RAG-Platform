@@ -8,7 +8,7 @@ Executes real-world actions:
 """
 
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import httpx
 from langchain_core.messages import HumanMessage
@@ -40,7 +40,11 @@ class ActionAgent:
         payload = action_info.get("payload", {})
         payload["user_id"] = state["user_id"]
 
-        result = await self.execute(action_type, payload)
+        # Get idempotency key from HITL approval for crash-safe execution
+        idempotency_key = state.get("hitl_idempotency_key")
+        approval_id = state.get("hitl_approval_id")
+
+        result = await self.execute(action_type, payload, idempotency_key, approval_id)
 
         state["final_answer"] = self._format_result(action_type, result)
         state["action_result"] = result
@@ -51,7 +55,9 @@ class ActionAgent:
     # Standalone execution (called via /agent/action endpoint)
     # ------------------------------------------------------------------
     async def execute(
-        self, action_type: str, payload: Dict[str, Any]
+        self, action_type: str, payload: Dict[str, Any],
+        idempotency_key: Optional[str] = None,
+        approval_id: Optional[str] = None
     ) -> Dict[str, Any]:
         handlers = {
             "send_email": self._send_email,
@@ -63,7 +69,23 @@ class ActionAgent:
         handler = handlers.get(action_type)
         if not handler:
             return {"error": f"Unknown action type: {action_type}"}
-        return await handler(payload)
+
+        # If we have an idempotency key and approval_id, check if already executed
+        if idempotency_key and approval_id:
+            from hitl import hitl_store
+            existing = await hitl_store.get(approval_id)
+            if existing and existing.get("status") == "executed":
+                logger.info("Action already executed for approval %s, returning cached result", approval_id)
+                return existing.get("workflow_result", {"status": "already_executed"})
+
+        result = await handler(payload)
+
+        # If we have an approval_id, mark as executed
+        if approval_id and idempotency_key:
+            from hitl import hitl_store
+            await hitl_store.complete(approval_id, result)
+
+        return result
 
     # ------------------------------------------------------------------
     # Email

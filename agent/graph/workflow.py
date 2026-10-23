@@ -556,6 +556,7 @@ async def hitl_gate_node(state: AgentState) -> AgentState:
     if not settings.hitl_require_approval or state.get("hitl_auto_approved"):
         state["hitl_pending"] = False
         state["hitl_approval_id"] = None
+        state["hitl_idempotency_key"] = None
         return state
 
     # Capture pause-time state so APPROVE resumes instead of restarting from
@@ -580,6 +581,7 @@ async def hitl_gate_node(state: AgentState) -> AgentState:
         )
         state["hitl_pending"] = True
         state["hitl_approval_id"] = None
+        state["hitl_idempotency_key"] = None
         state["action_result"] = {
             "hitl": True,
             "approval_id": None,
@@ -593,6 +595,7 @@ async def hitl_gate_node(state: AgentState) -> AgentState:
         return state
     state["hitl_pending"] = True
     state["hitl_approval_id"] = record["request_id"]
+    state["hitl_idempotency_key"] = record["idempotency_key"]
     state["action_result"] = {
         "hitl": True,
         "approval_id": record["request_id"],

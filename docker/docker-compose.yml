@@ -245,12 +245,18 @@ services:
       QDRANT_PORT: ${QDRANT_PORT:-6333}
       QDRANT_USE_HTTPS: ${QDRANT_USE_HTTPS:-false}
       QDRANT_API_KEY: ${QDRANT_API_KEY}
-      # Neon PostgreSQL (agent uses direct psycopg2 connection)
+      # Neon PostgreSQL (agent uses direct psycopg2 connection for GraphMemory)
       POSTGRES_HOST: ${NEON_POSTGRES_HOST:-localhost}
       POSTGRES_PORT: 5432
       POSTGRES_DB: ${POSTGRES_DB:-neondb}
       POSTGRES_USER: ${POSTGRES_USER:-neondb_owner}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_SSLMODE: ${POSTGRES_SSLMODE:-require}
+      # Shared LangGraph checkpoints (Postgres/Neon) - enables durable HITL across replicas
+      # Set DATABASE_URL in .env to the Neon connection string for checkpoints database
+      DATABASE_URL: ${DATABASE_URL:-}
+      NEON_DATABASE_URL: ${NEON_DATABASE_URL:-}
+      LANGGRAPH_CHECKPOINT_SHARED_REQUIRED: ${LANGGRAPH_CHECKPOINT_SHARED_REQUIRED:-true}
       SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
       SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
       SMTP_PORT: ${SMTP_PORT:-587}

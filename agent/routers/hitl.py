@@ -110,7 +110,8 @@ async def approve_action(request_id: str, req: ApprovalDecisionRequest):
         "use_web_search": False,
         "hybrid_search_enabled": True,
         "hitl_auto_approved": True,
-        "idempotency_key": record.get("idempotency_key") or f"hitl-action-{request_id}",
+        "hitl_idempotency_key": record.get("idempotency_key") or f"hitl-action-{request_id}",
+        "hitl_approval_id": request_id,
     }
     if snapshot_payload is not None:
         restored = decode_workflow_snapshot(snapshot_payload)
@@ -125,7 +126,9 @@ async def approve_action(request_id: str, req: ApprovalDecisionRequest):
     # Re-enforce routing after the merge (a stale snapshot must never change
     # where the resumed run goes).
     workflow_input.update(
-        {"agent_type": "action", "intent_override": "action", "hitl_auto_approved": True}
+        {"agent_type": "action", "intent_override": "action", "hitl_auto_approved": True,
+         "hitl_idempotency_key": record.get("idempotency_key") or f"hitl-action-{request_id}",
+         "hitl_approval_id": request_id}
     )
     try:
         result = await state._workflow.ainvoke(workflow_input)

@@ -55,3 +55,4 @@ class AgentState(TypedDict):
     hitl_pending: bool  # True → action paused, awaiting human approval
     hitl_approval_id: Optional[str]  # request id for /agent/approvals/{id}
     hitl_auto_approved: bool  # set on resume to bypass the gate
+    hitl_idempotency_key: Optional[str]  # idempotency key for crash-safe action execution

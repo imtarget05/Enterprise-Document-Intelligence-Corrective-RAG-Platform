@@ -33,8 +33,27 @@ def is_complex(request: ChatRequest) -> bool:
     return False
 
 
-def choose_route(request: ChatRequest, settings: Settings) -> RouteDecision:
+def choose_route(request: ChatRequest, settings: Settings, user_provider: str | None = None) -> RouteDecision:
     task_type = infer_task_type(request)
+
+    # Use user-specified provider if provided (e.g., from API query param or header)
+    if user_provider:
+        provider = user_provider.lower()
+        if provider == "ollama" or provider == "local":
+            # Use local Ollama model
+            return RouteDecision(
+                model=settings.local_ollama_model,
+                reason=f"user_selected:{provider}",
+                task_type=task_type,
+            )
+        elif provider == "cloudflare" or provider == "workers_ai":
+            # Use Cloudflare Workers AI
+            return RouteDecision(
+                model=settings.cloudflare_chat_model,
+                reason=f"user_selected:{provider}",
+                task_type=task_type,
+            )
+        # If provider is unrecognized, fall through to default logic
 
     if is_complex(request):
         return RouteDecision(
