@@ -98,6 +98,8 @@ jobs:
           JWT_SECRET: bG9hZC10ZXN0LXNlY3JldC1rZXktZm9yLW5pZ2h0bHktY2ktMjAyNA==
           INTERNAL_SERVICE_TOKEN: load-test-internal-token
           SERVER_PORT: 8080
+          # Disable synthetic rate limiting for high-concurrency load testing
+          RATE_LIMIT_ENABLED: "false"
           # Point the backend at the local mock Ollama (Ollama-compatible API)
           # so /chat/ask and retrieval embeddings succeed without any cloud LLM.
           LLM_BASE_URL: http://localhost:11434
