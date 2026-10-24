@@ -1,0 +1,59 @@
+{
+  "metadata": {
+    "timestamp": "2026-10-24T04:27:30Z",
+    "total_chunks": 52,
+    "total_queries": 61,
+    "scored_queries": 61,
+    "verification_status": "UNIT_VERIFIED"
+  },
+  "results": {
+    "BM25": {
+      "scored_queries": 61,
+      "hit_rate_at_1": 0.4754,
+      "hit_rate_at_3": 0.4754,
+      "hit_rate_at_5": 0.4754,
+      "mrr": 0.4754,
+      "ndcg_at_5": 0.4677,
+      "latency_p50_ms": 0.09,
+      "latency_p95_ms": 0.14,
+      "tenant_leaks": 0,
+      "tenant_isolation_pass": true
+    },
+    "Dense (Vector)": {
+      "scored_queries": 61,
+      "hit_rate_at_1": 0.4262,
+      "hit_rate_at_3": 0.4754,
+      "hit_rate_at_5": 0.4754,
+      "mrr": 0.4508,
+      "ndcg_at_5": 0.4504,
+      "latency_p50_ms": 0.49,
+      "latency_p95_ms": 0.58,
+      "tenant_leaks": 0,
+      "tenant_isolation_pass": true
+    },
+    "Hybrid (RRF k=60)": {
+      "scored_queries": 61,
+      "hit_rate_at_1": 0.459,
+      "hit_rate_at_3": 0.4754,
+      "hit_rate_at_5": 0.4754,
+      "mrr": 0.4672,
+      "ndcg_at_5": 0.4625,
+      "latency_p50_ms": 0.6,
+      "latency_p95_ms": 0.69,
+      "tenant_leaks": 0,
+      "tenant_isolation_pass": true
+    },
+    "Rerank (Cross-Scored)": {
+      "scored_queries": 61,
+      "hit_rate_at_1": 0.4098,
+      "hit_rate_at_3": 0.459,
+      "hit_rate_at_5": 0.4754,
+      "mrr": 0.4358,
+      "ndcg_at_5": 0.442,
+      "latency_p50_ms": 0.76,
+      "latency_p95_ms": 0.94,
+      "tenant_leaks": 0,
+      "tenant_isolation_pass": true
+    }
+  }
+}
