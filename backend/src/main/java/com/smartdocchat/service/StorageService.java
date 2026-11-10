@@ -1,5 +1,13 @@
 package com.smartdocchat.service;
 
+import com.azure.core.util.BinaryData;
+import com.azure.core.util.Context;
+import com.azure.identity.DefaultAzureCredentialBuilder;
+import com.azure.storage.blob.BlobClient;
+import com.azure.storage.blob.BlobContainerClient;
+import com.azure.storage.blob.BlobServiceClientBuilder;
+import com.azure.storage.blob.models.BlobHttpHeaders;
+import com.azure.storage.blob.options.BlockBlobSimpleUploadOptions;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -24,9 +32,10 @@ import java.util.EnumSet;
 /**
  * StorageService — abstraction over file storage backends.
  *
- * <p>Three providers are supported, selected by {@code STORAGE_PROVIDER} env var:
+ * <p>Storage providers are selected by {@code STORAGE_PROVIDER}:
  * <ul>
  *   <li><b>local</b> — writes to {@code uploads/} on the local filesystem (dev/test)</li>
+ *   <li><b>blob</b> — Azure Blob Storage using managed identity (production)</li>
  *   <li><b>r2</b> — uploads to Cloudflare R2 (S3-compatible, production, free 10 GB tier,
  *       no egress fees, no 7-day activity requirement)</li>
  *   <li><b>supabase</b> — legacy Supabase Storage via REST API (kept for compatibility)</li>
@@ -70,8 +79,20 @@ public class StorageService {
     @Value("${storage.r2.endpoint:}")
     private String r2Endpoint;
 
+    // ── Azure Blob config ────────────────────────────────────────────────────
+    @Value("${storage.azure.account-url:}")
+    private String azureStorageAccountUrl;
+
+    @Value("${storage.azure.container:}")
+    private String azureStorageContainer;
+
+    @Value("${storage.azure.managed-identity-client-id:}")
+    private String azureManagedIdentityClientId;
+
     // Lazy-initialized S3 client (package-private for test injection)
     S3Client r2Client;
+
+    private volatile BlobContainerClient azureBlobContainerClient;
 
     // ── Local config ──────────────────────────────────────────────────────────
     @Value("${storage.local.upload-dir:uploads}")
@@ -100,7 +121,13 @@ public class StorageService {
         if ("supabase".equalsIgnoreCase(provider)) {
             return uploadToSupabase(fileName, file.getBytes(), file.getContentType());
         }
-        return uploadToLocal(fileName, file.getBytes());
+        if ("blob".equalsIgnoreCase(provider)) {
+            return uploadToAzureBlob(fileName, file.getBytes(), file.getContentType());
+        }
+        if ("local".equalsIgnoreCase(provider)) {
+            return uploadToLocal(fileName, file.getBytes());
+        }
+        throw unsupportedProvider();
     }
 
     /**
@@ -114,7 +141,13 @@ public class StorageService {
         if ("supabase".equalsIgnoreCase(provider)) {
             return downloadFromSupabase(storagePath);
         }
-        return downloadFromLocal(storagePath);
+        if ("blob".equalsIgnoreCase(provider)) {
+            return downloadFromAzureBlob(storagePath);
+        }
+        if ("local".equalsIgnoreCase(provider)) {
+            return downloadFromLocal(storagePath);
+        }
+        throw unsupportedProvider();
     }
 
     /**
@@ -125,9 +158,54 @@ public class StorageService {
             deleteFromR2(storagePath);
         } else if ("supabase".equalsIgnoreCase(provider)) {
             deleteFromSupabase(storagePath);
-        } else {
+        } else if ("blob".equalsIgnoreCase(provider)) {
+            deleteFromAzureBlob(storagePath);
+        } else if ("local".equalsIgnoreCase(provider)) {
             deleteFromLocal(storagePath);
+        } else {
+            throw unsupportedProvider();
         }
+    }
+
+    private IllegalStateException unsupportedProvider() {
+        return new IllegalStateException("Unsupported storage provider: " + provider);
+    }
+
+    private BlobContainerClient getAzureBlobContainerClient() {
+        BlobContainerClient client = azureBlobContainerClient;
+        if (client == null) {
+            synchronized (this) {
+                client = azureBlobContainerClient;
+                if (client == null) {
+                    if (azureStorageAccountUrl == null || azureStorageAccountUrl.isBlank()
+                            || azureStorageContainer == null || azureStorageContainer.isBlank()) {
+                        throw new IllegalStateException(
+                                "Azure Blob account URL and container must be configured for STORAGE_PROVIDER=blob");
+                    }
+                    String endpoint = azureStorageAccountUrl.strip().replaceAll("/+$", "");
+                    URI endpointUri = URI.create(endpoint);
+                    if (!"https".equalsIgnoreCase(endpointUri.getScheme())
+                            || endpointUri.getHost() == null
+                            || endpointUri.getRawUserInfo() != null
+                            || endpointUri.getQuery() != null
+                            || endpointUri.getFragment() != null) {
+                        throw new IllegalStateException("Azure Blob account URL must be a valid HTTPS endpoint");
+                    }
+
+                    DefaultAzureCredentialBuilder credentialBuilder = new DefaultAzureCredentialBuilder();
+                    if (azureManagedIdentityClientId != null && !azureManagedIdentityClientId.isBlank()) {
+                        credentialBuilder.managedIdentityClientId(azureManagedIdentityClientId);
+                    }
+                    client = new BlobServiceClientBuilder()
+                            .endpoint(endpoint)
+                            .credential(credentialBuilder.build())
+                            .buildClient()
+                            .getBlobContainerClient(azureStorageContainer);
+                    azureBlobContainerClient = client;
+                }
+            }
+        }
+        return client;
     }
 
     // -----------------------------------------------------------------------
@@ -202,6 +280,56 @@ public class StorageService {
         } catch (Exception e) {
             log.error("Error uploading to Cloudflare R2: {}", e.getMessage(), e);
             throw new RuntimeException("Storage upload failed", e);
+        }
+    }
+
+    private String uploadToAzureBlob(String fileName, byte[] bytes, String contentType) {
+        try {
+            BlobClient blobClient = getAzureBlobContainerClient().getBlobClient(fileName);
+            if (contentType != null && !contentType.isBlank()) {
+                BlockBlobSimpleUploadOptions options = new BlockBlobSimpleUploadOptions(BinaryData.fromBytes(bytes))
+                        .setHeaders(new BlobHttpHeaders().setContentType(contentType));
+                blobClient.getBlockBlobClient().uploadWithResponse(options, null, Context.NONE);
+            } else {
+                blobClient.getBlockBlobClient().upload(BinaryData.fromBytes(bytes), true);
+            }
+            log.info("Uploaded document to Azure Blob Storage");
+            return fileName;
+        } catch (RuntimeException e) {
+            log.error("Azure Blob upload failed", e);
+            throw new RuntimeException("Storage upload failed", e);
+        }
+    }
+
+    private File downloadFromAzureBlob(String objectKey) throws IOException {
+        String extension = objectKey.contains(".") ? objectKey.substring(objectKey.lastIndexOf('.')) : ".tmp";
+        Path tempPath = Files.createTempFile(
+                Path.of(System.getProperty("java.io.tmpdir")),
+                "sdc_download_", extension,
+                PosixFilePermissions.asFileAttribute(
+                        EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE)));
+        try {
+            getAzureBlobContainerClient().getBlobClient(objectKey).downloadToFile(tempPath.toString(), true);
+            tempPath.toFile().deleteOnExit();
+            return tempPath.toFile();
+        } catch (RuntimeException e) {
+            try {
+                Files.deleteIfExists(tempPath);
+            } catch (IOException cleanupException) {
+                e.addSuppressed(cleanupException);
+            }
+            log.error("Azure Blob download failed", e);
+            throw new IOException("Storage download failed", e);
+        }
+    }
+
+    private void deleteFromAzureBlob(String objectKey) {
+        try {
+            getAzureBlobContainerClient().getBlobClient(objectKey).deleteIfExists();
+            log.info("Deleted document from Azure Blob Storage");
+        } catch (RuntimeException e) {
+            log.error("Azure Blob delete failed", e);
+            throw new RuntimeException("Storage delete failed", e);
         }
     }
 

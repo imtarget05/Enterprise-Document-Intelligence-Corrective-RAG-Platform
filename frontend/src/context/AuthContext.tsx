@@ -63,13 +63,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setRole(data.role ?? null);
           if (data.token) {
             setToken(data.token);
-            try { sessionStorage.setItem("smartdoc_jwt", data.token); } catch {}
+            try {
+              sessionStorage.setItem("smartdoc_jwt", data.token);
+            } catch {
+              // Authentication can continue with the httpOnly cookie.
+            }
           }
         } else {
           setUsername(null);
           setRole(null);
           setToken(null);
-          try { sessionStorage.removeItem("smartdoc_jwt"); } catch {}
+          try {
+            sessionStorage.removeItem("smartdoc_jwt");
+          } catch {
+            // The cleared in-memory auth state remains authoritative.
+          }
         }
       } catch {
         if (!cancelled) {

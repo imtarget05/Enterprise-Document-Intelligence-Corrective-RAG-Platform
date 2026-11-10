@@ -46,7 +46,7 @@ class JobControllerTest {
         when(jobRepository.findById(999L)).thenReturn(Optional.empty());
 
         ResponseEntity<Map<String, Object>> resp = controller.getJobById(999L, principal("alice"));
-        assertEquals(404, resp.getStatusCodeValue());
+        assertEquals(404, resp.getStatusCode().value());
     }
 
     @Test
@@ -61,7 +61,7 @@ class JobControllerTest {
         when(documentRepository.findByIdAndOwnerUsername(10L, "bob")).thenReturn(Optional.empty());
 
         ResponseEntity<Map<String, Object>> resp = controller.getJobById(1L, principal("bob"));
-        assertEquals(404, resp.getStatusCodeValue());
+        assertEquals(404, resp.getStatusCode().value());
     }
 
     @Test
@@ -80,7 +80,7 @@ class JobControllerTest {
         when(documentRepository.findByIdAndOwnerUsername(10L, "alice")).thenReturn(Optional.of(doc));
 
         ResponseEntity<Map<String, Object>> resp = controller.getJobById(1L, principal("alice"));
-        assertEquals(200, resp.getStatusCodeValue());
+        assertEquals(200, resp.getStatusCode().value());
         assertEquals(1L, resp.getBody().get("id"));
         assertEquals("RUNNING", resp.getBody().get("status"));
     }

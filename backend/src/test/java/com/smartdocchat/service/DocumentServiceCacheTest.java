@@ -4,7 +4,7 @@ import com.smartdocchat.cache.CacheNames;
 import com.smartdocchat.cache.RedisCacheConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.data.redis.DataRedisTest;
+import org.springframework.boot.data.redis.test.autoconfigure.DataRedisTest;
 import org.springframework.cache.CacheManager;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;

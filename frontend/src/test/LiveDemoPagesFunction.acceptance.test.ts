@@ -1,12 +1,29 @@
 import { describe, it, expect } from "vitest";
 import { onRequest } from "../../functions/api/[[path]]";
 
+interface StreamSource {
+  documentTitle?: string;
+  article?: string;
+}
+
+interface StreamCompletion {
+  aiResponse: string;
+  confidence: string;
+  ragStrategy?: string;
+  sourceChunks?: unknown[];
+  sources: StreamSource[];
+}
+
+interface StreamMetadata {
+  confidence: string;
+}
+
 // Helper to parse SSE stream from Cloudflare Pages Function response
 async function parseSseResponse(response: Response) {
   const text = await response.text();
   const lines = text.split("\n");
-  let metadata: any = null;
-  let complete: any = null;
+  let metadata: StreamMetadata | undefined;
+  let complete: StreamCompletion | undefined;
   const chunks: string[] = [];
 
   for (let i = 0; i < lines.length; i++) {
@@ -14,9 +31,7 @@ async function parseSseResponse(response: Response) {
     if (line.startsWith("event: metadata")) {
       const dataLine = lines[i + 1];
       if (dataLine?.startsWith("data: ")) {
-        try {
-          metadata = JSON.parse(dataLine.replace(/^data: /, ""));
-        } catch {}
+        metadata = JSON.parse(dataLine.slice(6)) as StreamMetadata;
       }
     } else if (line.startsWith("event: chunk")) {
       const dataLine = lines[i + 1];
@@ -26,11 +41,13 @@ async function parseSseResponse(response: Response) {
     } else if (line.startsWith("event: complete")) {
       const dataLine = lines[i + 1];
       if (dataLine?.startsWith("data: ")) {
-        try {
-          complete = JSON.parse(dataLine.replace(/^data: /, ""));
-        } catch {}
+        complete = JSON.parse(dataLine.slice(6)) as StreamCompletion;
       }
     }
+  }
+
+  if (!metadata || !complete) {
+    throw new Error("SSE response is missing metadata or complete event");
   }
 
   return { text, metadata, complete, chunks };
@@ -51,13 +68,13 @@ describe("Cloudflare Pages Function Live Demo Acceptance Tests", () => {
 
     const response = await onRequest({
       request,
-      env: {},
+      env: { SANDBOX_MODE: "true" },
       params: { path: ["chat", "ask-stream"] },
       waitUntil: () => {},
       next: () => Promise.resolve(new Response()),
       data: {},
       functionPath: "",
-    } as any);
+    } as Parameters<typeof onRequest>[0]);
 
     expect(response.status).toBe(200);
     const { complete, metadata } = await parseSseResponse(response);
@@ -96,13 +113,13 @@ describe("Cloudflare Pages Function Live Demo Acceptance Tests", () => {
 
     const response = await onRequest({
       request,
-      env: {},
+      env: { SANDBOX_MODE: "true" },
       params: { path: ["chat", "ask-stream"] },
       waitUntil: () => {},
       next: () => Promise.resolve(new Response()),
       data: {},
       functionPath: "",
-    } as any);
+    } as Parameters<typeof onRequest>[0]);
 
     expect(response.status).toBe(200);
     const { complete } = await parseSseResponse(response);
@@ -129,13 +146,13 @@ describe("Cloudflare Pages Function Live Demo Acceptance Tests", () => {
 
     const response = await onRequest({
       request,
-      env: {},
+      env: { SANDBOX_MODE: "true" },
       params: { path: ["chat", "ask-stream"] },
       waitUntil: () => {},
       next: () => Promise.resolve(new Response()),
       data: {},
       functionPath: "",
-    } as any);
+    } as Parameters<typeof onRequest>[0]);
 
     expect(response.status).toBe(200);
     const { complete } = await parseSseResponse(response);
@@ -161,13 +178,13 @@ describe("Cloudflare Pages Function Live Demo Acceptance Tests", () => {
 
     const response = await onRequest({
       request,
-      env: {},
+      env: { SANDBOX_MODE: "true" },
       params: { path: ["chat", "ask-stream"] },
       waitUntil: () => {},
       next: () => Promise.resolve(new Response()),
       data: {},
       functionPath: "",
-    } as any);
+    } as Parameters<typeof onRequest>[0]);
 
     expect(response.status).toBe(200);
     const { complete } = await parseSseResponse(response);
@@ -189,16 +206,16 @@ describe("Cloudflare Pages Function Live Demo Acceptance Tests", () => {
       }),
     });
 
-    // Provide empty env (no GEMINI_API_KEY)
+    // Enable deterministic sandbox responses without providing an API key.
     const response = await onRequest({
       request,
-      env: {},
+      env: { SANDBOX_MODE: "true" },
       params: { path: ["chat", "ask-stream"] },
       waitUntil: () => {},
       next: () => Promise.resolve(new Response()),
       data: {},
       functionPath: "",
-    } as any);
+    } as Parameters<typeof onRequest>[0]);
 
     expect(response.status).toBe(200);
     const { complete } = await parseSseResponse(response);
@@ -220,13 +237,13 @@ describe("Cloudflare Pages Function Live Demo Acceptance Tests", () => {
 
     const response = await onRequest({
       request,
-      env: {},
+      env: { SANDBOX_MODE: "true" },
       params: { path: ["chat", "ask-stream"] },
       waitUntil: () => {},
       next: () => Promise.resolve(new Response()),
       data: {},
       functionPath: "",
-    } as any);
+    } as Parameters<typeof onRequest>[0]);
 
     expect(response.status).toBe(200);
     const { complete } = await parseSseResponse(response);
@@ -246,13 +263,13 @@ describe("Cloudflare Pages Function Live Demo Acceptance Tests", () => {
     });
     const singleRes = await onRequest({
       request: singleReq,
-      env: {},
+      env: { SANDBOX_MODE: "true" },
       params: { path: ["documents", "1"] },
       waitUntil: () => {},
       next: () => Promise.resolve(new Response()),
       data: {},
       functionPath: "",
-    } as any);
+    } as Parameters<typeof onRequest>[0]);
     expect(singleRes.status).toBe(200);
     const singleData = await singleRes.json();
     expect(singleData.success).toBe(true);
@@ -265,13 +282,13 @@ describe("Cloudflare Pages Function Live Demo Acceptance Tests", () => {
     });
     const batchRes = await onRequest({
       request: batchReq,
-      env: {},
+      env: { SANDBOX_MODE: "true" },
       params: { path: ["documents", "batch"] },
       waitUntil: () => {},
       next: () => Promise.resolve(new Response()),
       data: {},
       functionPath: "",
-    } as any);
+    } as Parameters<typeof onRequest>[0]);
     expect(batchRes.status).toBe(200);
     const batchData = await batchRes.json();
     expect(batchData.success).toBe(true);

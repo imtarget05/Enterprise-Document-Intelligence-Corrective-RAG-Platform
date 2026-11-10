@@ -28,6 +28,21 @@ interface ChatPageProps {
 
 const DELETED_DOCS_KEY = "smartdoc_deleted_doc_ids";
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isInvalidDocumentText(text: string): boolean {
+  if (text.startsWith("PK") || text.includes("word/") || text.includes("\uFFFD")) {
+    return true;
+  }
+  for (let index = 0; index < text.length; index += 1) {
+    const code = text.charCodeAt(index);
+    if (code < 32 && code !== 9 && code !== 10 && code !== 13) return true;
+  }
+  return false;
+}
+
 function getDeletedDocKeys(): Set<string> {
   try {
     const raw = localStorage.getItem(DELETED_DOCS_KEY);
@@ -37,7 +52,9 @@ function getDeletedDocKeys(): Set<string> {
         return new Set(arr.map((k: string) => String(k).trim().toLowerCase()));
       }
     }
-  } catch {}
+  } catch {
+    // Invalid browser storage must not block document loading.
+  }
   return new Set();
 }
 
@@ -56,7 +73,9 @@ function markDocumentsDeleted(docs: Array<{ id?: number | string; fileName?: str
       }
     });
     localStorage.setItem(DELETED_DOCS_KEY, JSON.stringify(Array.from(existing)));
-  } catch {}
+  } catch {
+    // The backend remains authoritative when browser storage is unavailable.
+  }
 }
 
 function unmarkDocumentDeleted(fileNameOrId: string | number) {
@@ -67,7 +86,9 @@ function unmarkDocumentDeleted(fileNameOrId: string | number) {
       existing.delete(key);
       localStorage.setItem(DELETED_DOCS_KEY, JSON.stringify(Array.from(existing)));
     }
-  } catch {}
+  } catch {
+    // The backend remains authoritative when browser storage is unavailable.
+  }
 }
 
 export default function ChatPage({ currentView = "chat", onViewChange }: ChatPageProps) {
@@ -114,20 +135,53 @@ export default function ChatPage({ currentView = "chat", onViewChange }: ChatPag
           headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         });
         if (response.ok) {
-          const json = await response.json();
-          const items = Array.isArray(json) ? json : (json?.content || []);
-          remoteDocs = items.map((d: any, idx: number) => ({
-            id: typeof d.id === "number" ? d.id : (idx + 1),
-            fileName: d.filename || d.fileName || "Tai_Lieu.pdf",
-            title: d.title || d.filename || d.fileName || "Tài liệu",
-            fileSize: d.fileSize || 1024000,
-            fileType: d.contentType || "PDF",
-            chunkCount: d.chunkCount || 24,
-            createdAt: d.uploadedAt || new Date().toISOString(),
-            sourceType: d.sourceType || "OFFICIAL",
-          }));
+          const json: unknown = await response.json();
+          const items: unknown[] = Array.isArray(json)
+            ? json
+            : isRecord(json) && Array.isArray(json.content)
+              ? json.content
+              : [];
+          remoteDocs = items.flatMap((item): Document[] => {
+            if (!isRecord(item) || typeof item.id !== "number") return [];
+            const fileName =
+              typeof item.filename === "string"
+                ? item.filename
+                : typeof item.fileName === "string"
+                  ? item.fileName
+                  : null;
+            if (!fileName) return [];
+
+            const sourceType =
+              item.sourceType === "OFFICIAL" ||
+              item.sourceType === "USER" ||
+              item.sourceType === "FIXTURE"
+                ? item.sourceType
+                : null;
+            return [{
+              id: item.id,
+              fileName,
+              title: typeof item.title === "string" ? item.title : fileName,
+              fileSize: typeof item.fileSize === "number" ? item.fileSize : 0,
+              fileType:
+                typeof item.contentType === "string"
+                  ? item.contentType
+                  : typeof item.fileType === "string"
+                    ? item.fileType
+                    : "Unknown",
+              chunkCount: typeof item.chunkCount === "number" ? item.chunkCount : 0,
+              createdAt:
+                typeof item.uploadedAt === "string"
+                  ? item.uploadedAt
+                  : typeof item.createdAt === "string"
+                    ? item.createdAt
+                    : "",
+              sourceType,
+            }];
+          });
         }
-      } catch {}
+      } catch (error: unknown) {
+        console.warn("Could not load remote documents; showing cached documents.", error);
+      }
 
       let userDocs: Document[] = [];
       try {
@@ -137,36 +191,9 @@ export default function ChatPage({ currentView = "chat", onViewChange }: ChatPag
           if (Array.isArray(parsed)) {
             let modified = false;
             userDocs = parsed.map((d: Document) => {
-              const isAnAnh =
-                (d.fileName && d.fileName.toLowerCase().includes("an anh")) ||
-                (d.title && d.title.toLowerCase().includes("an anh"));
-
-              if (
-                isAnAnh &&
-                (!d.textContent ||
-                  d.textContent.includes("Sẵn sàng tra cứu") ||
-                  d.textContent.startsWith("PK") ||
-                  d.textContent.length < 150)
-              ) {
+              if (d.textContent && isInvalidDocumentText(d.textContent)) {
                 modified = true;
-                return {
-                  ...d,
-                  textContent: `Tài liệu: Báo cáo Vận hành & Dịch vụ Khách hàng - Nhà xe An Anh\n1. Tuyến vận hành: Tuyến cố định kết nối TP. Hồ Chí Minh (Bến xe Miền Đông) - Phan Rang Ninh Thuận, khởi hành đều đặn lúc 20h00, 21h00 và 22h00 hàng ngày.\n2. Dịch vụ cung cấp cho khách hàng:\n   - Vận tải hành khách chất lượng cao bằng xe giường nằm và limousine VIP 34 phòng.\n   - Vận chuyển bưu phẩm, hàng hóa chuyển phát nhanh hỏa tốc giao nhận trong ngày.\n   - Tiện ích trọn gói trên chuyến đi: nước uống, khăn lạnh, wifi tốc độ cao và cổng sạc cá nhân.\n   - Dịch vụ chăm sóc khách hàng: hỗ trợ đặt vé 24/7, đổi trả vé linh hoạt trước giờ khởi hành tối thiểu 02 tiếng.\n3. Chính sách giá vé & Hành lý: Giá vé niêm yết 260.000 VNĐ - 320.000 VNĐ/vé (đã bao gồm bảo hiểm hành khách trên toàn lộ trình). Hành lý cá nhân miễn cước tối đa 20kg.\n4. Tiêu chuẩn an toàn: Phương tiện trang bị đầy đủ thiết bị định vị GPS, camera giám sát hành trình theo Nghị định 10/2020/NĐ-CP và kiểm tra an toàn kỹ thuật trước mỗi ca xuất bến.`,
-                };
-              }
-
-              // Self-healing: Purge any legacy binary PK / zip / replacement chars
-              if (
-                d.textContent &&
-                (d.textContent.startsWith("PK") ||
-                  d.textContent.includes("word/") ||
-                  /[\uFFFD\x00-\x08\x0B\x0C\x0E-\x1F]/.test(d.textContent))
-              ) {
-                modified = true;
-                return {
-                  ...d,
-                  textContent: `Tài liệu: ${d.title || d.fileName}\nNội dung văn bản đã được chuẩn hóa và lập chỉ mục vào kho tri thức doanh nghiệp.\nSẵn sàng tra cứu, tóm tắt và đối chiếu điều khoản.`,
-                };
+                return { ...d, textContent: undefined };
               }
               return d;
             });
@@ -175,7 +202,9 @@ export default function ChatPage({ currentView = "chat", onViewChange }: ChatPag
             }
           }
         }
-      } catch {}
+      } catch {
+        // Cached documents are optional; remote documents remain available.
+      }
 
       const deletedKeys = getDeletedDocKeys();
       const isNotDeleted = (d: Document) => {
@@ -203,7 +232,9 @@ export default function ChatPage({ currentView = "chat", onViewChange }: ChatPag
     try {
       const raw = localStorage.getItem(`smartdoc_history_${sessionId}`);
       if (raw) localHistory = JSON.parse(raw);
-    } catch {}
+    } catch {
+      // Corrupt local history is ignored so the server can remain authoritative.
+    }
 
     try {
       let url = `${API_BASE_URL}/chat/history/${sessionId}`;
@@ -220,7 +251,9 @@ export default function ChatPage({ currentView = "chat", onViewChange }: ChatPag
           return apiHistory;
         }
       }
-    } catch {}
+    } catch (error: unknown) {
+      console.warn("Could not load chat history; using the local cache.", error);
+    }
 
     return localHistory;
   }, [sessionId, selectedDoc, token]);
@@ -318,8 +351,12 @@ export default function ChatPage({ currentView = "chat", onViewChange }: ChatPag
         // PDF or binary on Serverless Edge: do not fabricate fake indexed text
         extractedText = "";
       }
-    } catch (parseErr: any) {
-      setUploadError(parseErr.message || `Không thể đọc nội dung tệp "${file.name}". Vui lòng kiểm tra định dạng.`);
+    } catch (parseErr: unknown) {
+      setUploadError(
+        parseErr instanceof Error
+          ? parseErr.message
+          : `Không thể đọc nội dung tệp "${file.name}". Vui lòng kiểm tra định dạng.`,
+      );
       return;
     }
 
@@ -342,7 +379,9 @@ export default function ChatPage({ currentView = "chat", onViewChange }: ChatPag
         try {
           const errBody = await response.json();
           if (errBody?.message) detail = errBody.message;
-        } catch {}
+        } catch {
+          // Keep the HTTP status message when the server response is not JSON.
+        }
         throw new Error(detail);
       }
 
@@ -375,7 +414,9 @@ export default function ChatPage({ currentView = "chat", onViewChange }: ChatPag
           const list: Document[] = raw ? JSON.parse(raw) : [];
           list.unshift(newDoc);
           localStorage.setItem("smartdoc_user_documents", JSON.stringify(list));
-        } catch {}
+        } catch {
+          // The uploaded document is still available from the backend.
+        }
 
         setSelectedDoc(newDoc);
       }
@@ -403,26 +444,10 @@ export default function ChatPage({ currentView = "chat", onViewChange }: ChatPag
     });
     queryClient.invalidateQueries({ queryKey: ["chatSessions"] });
 
-    const isAnAnh =
-      (selectedDoc?.fileName && selectedDoc.fileName.toLowerCase().includes("an anh")) ||
-      (selectedDoc?.title && selectedDoc.title.toLowerCase().includes("an anh"));
-
-    let sanitizedDocText =
-      selectedDoc?.textContent &&
-      (selectedDoc.textContent.startsWith("PK") ||
-        selectedDoc.textContent.includes("word/") ||
-        /[\uFFFD\x00-\x08\x0B\x0C\x0E-\x1F]/.test(selectedDoc.textContent))
-        ? `Tài liệu: ${selectedDoc.title || selectedDoc.fileName}\nNội dung văn bản đã được chuẩn hóa và lập chỉ mục vào kho tri thức doanh nghiệp.`
-        : (selectedDoc?.textContent || null);
-
-    if (
-      isAnAnh &&
-      (!sanitizedDocText ||
-        sanitizedDocText.includes("Sẵn sàng tra cứu") ||
-        sanitizedDocText.length < 150)
-    ) {
-      sanitizedDocText = `Tài liệu: Báo cáo Vận hành & Dịch vụ Khách hàng - Nhà xe An Anh\n1. Tuyến vận hành: Tuyến cố định kết nối TP. Hồ Chí Minh (Bến xe Miền Đông) - Phan Rang Ninh Thuận, khởi hành đều đặn lúc 20h00, 21h00 và 22h00 hàng ngày.\n2. Dịch vụ cung cấp cho khách hàng:\n   - Vận tải hành khách chất lượng cao bằng xe giường nằm và limousine VIP 34 phòng.\n   - Vận chuyển bưu phẩm, hàng hóa chuyển phát nhanh hỏa tốc giao nhận trong ngày.\n   - Tiện ích trọn gói trên chuyến đi: nước uống, khăn lạnh, wifi tốc độ cao và cổng sạc cá nhân.\n   - Dịch vụ chăm sóc khách hàng: hỗ trợ đặt vé 24/7, đổi trả vé linh hoạt trước giờ khởi hành tối thiểu 02 tiếng.\n3. Chính sách giá vé & Hành lý: Giá vé niêm yết 260.000 VNĐ - 320.000 VNĐ/vé (đã bao gồm bảo hiểm hành khách trên toàn lộ trình). Hành lý cá nhân miễn cước tối đa 20kg.\n4. Tiêu chuẩn an toàn: Phương tiện trang bị đầy đủ thiết bị định vị GPS, camera giám sát hành trình theo Nghị định 10/2020/NĐ-CP và kiểm tra an toàn kỹ thuật trước mỗi ca xuất bến.`;
-    }
+    const sanitizedDocText =
+      selectedDoc?.textContent && !isInvalidDocumentText(selectedDoc.textContent)
+        ? selectedDoc.textContent
+        : null;
 
     const payload = {
       sessionId,
@@ -529,7 +554,9 @@ export default function ChatPage({ currentView = "chat", onViewChange }: ChatPag
               );
               try {
                 localStorage.setItem(`smartdoc_history_${sessionId}`, JSON.stringify(updated));
-              } catch {}
+              } catch {
+                // Server history remains authoritative when local storage is unavailable.
+              }
               return updated;
             });
             queryClient.invalidateQueries({ queryKey: historyQueryKey });
@@ -569,9 +596,11 @@ export default function ChatPage({ currentView = "chat", onViewChange }: ChatPag
     deleteLocalSession(sessionId);
     try {
       localStorage.removeItem(`smartdoc_history_${sessionId}`);
-    } catch {}
+    } catch {
+      // Continue clearing the server history if the local cache is unavailable.
+    }
     try {
-      await fetch(`${API_BASE_URL}/chat/history/${sessionId}`, {
+      const response = await fetch(`${API_BASE_URL}/chat/history/${sessionId}`, {
         method: "DELETE",
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -579,7 +608,14 @@ export default function ChatPage({ currentView = "chat", onViewChange }: ChatPag
         },
         credentials: "include",
       });
-    } catch {}
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    } catch (error: unknown) {
+      setUploadError(
+        error instanceof Error
+          ? `Không thể xóa lịch sử trên máy chủ: ${error.message}`
+          : "Không thể xóa lịch sử trên máy chủ.",
+      );
+    }
     setMessages([]);
     handleNewChat();
     queryClient.invalidateQueries({ queryKey: ["chatSessions"] });
@@ -755,7 +791,7 @@ export default function ChatPage({ currentView = "chat", onViewChange }: ChatPag
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder={selectedDoc ? `Hỏi về ${selectedDoc.title || selectedDoc.fileName || (selectedDoc as any).filename || "tài liệu"}...` : "Nhập tin nhắn... (Shift+Enter dòng mới)"}
+                  placeholder={selectedDoc ? `Hỏi về ${selectedDoc.title || selectedDoc.fileName || "tài liệu"}...` : "Nhập tin nhắn... (Shift+Enter dòng mới)"}
                   className="flex-1 px-4 py-3 border border-outline rounded-material-lg resize-none focus:outline-none focus:border-google-blue focus:ring-1 focus:ring-google-blue text-[14px] bg-surface-container"
                   rows={1}
                   disabled={loading}
@@ -830,15 +866,21 @@ export default function ChatPage({ currentView = "chat", onViewChange }: ChatPag
                     const filtered = list.filter((d) => String(d.id) !== String(deleteDoc.id));
                     localStorage.setItem("smartdoc_user_documents", JSON.stringify(filtered));
                   }
-                } catch {}
+                } catch {
+                  // Server deletion succeeded; local cache cleanup is optional.
+                }
                 queryClient.invalidateQueries({ queryKey: ["documents"] });
                 setDeleteDoc(null);
                 setSelectedDoc((prev) => (prev?.id === deleteDoc.id ? null : prev));
               },
-              onError: (err: any) => {
+              onError: (err: unknown) => {
                 queryClient.invalidateQueries({ queryKey: ["documents"] });
                 setDeleteDoc(null);
-                setUploadError(err?.message || "Không thể xóa tài liệu do máy chủ gặp sự cố.");
+                setUploadError(
+                  err instanceof Error
+                    ? err.message
+                    : "Không thể xóa tài liệu do máy chủ gặp sự cố.",
+                );
               },
             });
           }
@@ -864,14 +906,18 @@ export default function ChatPage({ currentView = "chat", onViewChange }: ChatPag
                   const filtered = list.filter((d) => !idSet.has(String(d.id)));
                   localStorage.setItem("smartdoc_user_documents", JSON.stringify(filtered));
                 }
-              } catch {}
+              } catch {
+                // Server deletion succeeded; local cache cleanup is optional.
+              }
               queryClient.invalidateQueries({ queryKey: ["documents"] });
               if (selectedDoc && batchDeleteIds.includes(selectedDoc.id)) {
                 setSelectedDoc(null);
               }
               setBatchDeleteIds(null);
-            } catch (err: any) {
-              setUploadError(err?.message || "Lỗi khi xóa hàng loạt tài liệu.");
+            } catch (err: unknown) {
+              setUploadError(
+                err instanceof Error ? err.message : "Lỗi khi xóa hàng loạt tài liệu.",
+              );
               setBatchDeleteIds(null);
             }
           }

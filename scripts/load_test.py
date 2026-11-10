@@ -10,110 +10,125 @@ Usage:
 
 import argparse
 import asyncio
-import aiohttp
-import time
-import statistics
 import json
+import statistics
+import time
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
+
+import aiohttp
 
 BASE_URL = "http://localhost:8080/api"
 
+
+@dataclass(frozen=True)
+class VirtualUser:
+    user_id: int
+    token: str
+    csrf: str
+    cookies: dict[str, str]
+    doc_id: str
+    source_ip: str
+
+
 class LoadTest:
-    def __init__(self, num_users: int, duration: int, ramp_up: int = 0):
+    def __init__(self, num_users: int, duration: int, ramp_up: int = 0, think_time: float = 2.5):
         self.num_users = num_users
         self.duration = duration
         self.ramp_up = ramp_up
+        self.think_time = think_time
         self.results = []
         self.errors = []
-        self.token = None
-        self.csrf = None
-        self.cookies = None
-        self.doc_id = None
+        self.users: list[VirtualUser] = []
 
     async def setup(self):
-        """Register/login test user and upload test document."""
-        async with aiohttp.ClientSession() as session:
+        """Create isolated users so the load test measures concurrent customers."""
+        self.users = list(await asyncio.gather(
+            *(self.setup_user(user_id) for user_id in range(1, self.num_users + 1))
+        ))
+        print(f"Setup complete: {len(self.users)} isolated users with separate documents")
+
+    async def setup_user(self, user_id: int) -> VirtualUser:
+        """Register/login one virtual user and upload that user's test document."""
+        source_ip = f"127.0.0.{(user_id % 254) + 1}"
+        connector = aiohttp.TCPConnector(local_addr=(source_ip, 0))
+        async with aiohttp.ClientSession(connector=connector) as session:
             # Get CSRF
             async with session.get(f"{BASE_URL}/csrf") as resp:
                 if resp.status != 200:
                     text = await resp.text()
                     raise RuntimeError(f"CSRF fetch failed ({resp.status}): {text}")
                 data = await resp.json()
-                self.csrf = data["token"]
-                # Keep the cookie jar (XSRF-TOKEN cookie): every user_session()
-                # below opens a NEW ClientSession, which would otherwise lose
-                # the CSRF cookie and get HTTP 403 on every POST.
-                self.cookies = session.cookie_jar.filter_cookies(BASE_URL)
+                csrf = data["token"]
+                cookies = {
+                    name: morsel.value
+                    for name, morsel in session.cookie_jar.filter_cookies(BASE_URL).items()
+                }
 
-            # 1. Attempt to register test user (if database is fresh/unseeded)
             user_payload = {
-                "username": "testuser",
+                "username": f"loadtest-{user_id}",
                 "password": "TestPass123!",
-                "email": "testuser@example.com"
+                "email": f"loadtest-{user_id}@example.com",
             }
-            try:
-                async with session.post(
-                    f"{BASE_URL}/auth/register",
-                    json=user_payload,
-                    headers={"X-XSRF-TOKEN": self.csrf}
-                ) as resp:
-                    if resp.status == 200:
-                        data = await resp.json()
-                        self.token = data.get("token")
-                        print("✅ Registered new test user 'testuser'")
-            except Exception as e:
-                print(f"Registration notice: {e}")
+            async with session.post(
+                f"{BASE_URL}/auth/register",
+                json=user_payload,
+                headers={"X-XSRF-TOKEN": csrf},
+            ) as resp:
+                token = None
+                if resp.status == 200:
+                    token = (await resp.json()).get("token")
 
-            # 2. If user already existed or token not returned from register, log in
-            if not self.token:
+            if not token:
                 async with session.post(
                     f"{BASE_URL}/auth/login",
-                    json={"username": "testuser", "password": "TestPass123!"},
-                    headers={"X-XSRF-TOKEN": self.csrf}
+                    json={"username": user_payload["username"], "password": user_payload["password"]},
+                    headers={"X-XSRF-TOKEN": csrf},
                 ) as resp:
                     if resp.status != 200:
                         text = await resp.text()
-                        raise RuntimeError(f"Login failed (HTTP {resp.status}): {text}")
+                        raise RuntimeError(
+                            f"Virtual user {user_id} login failed (HTTP {resp.status}): {text}"
+                        )
                     data = await resp.json()
-                    self.token = data.get("token")
-                    print("✅ Logged in test user 'testuser'")
+                    token = data.get("token")
 
-            if not self.token:
-                raise RuntimeError("Failed to obtain JWT token for load test")
+            if not token:
+                raise RuntimeError(f"Failed to obtain JWT token for virtual user {user_id}")
 
-            # Upload document
             doc_content = "LUẬT DOANH NGHIỆP 2020. Điều 7: Hình thức doanh nghiệp. Điều 10: Thủ tục thành lập."
             data = aiohttp.FormData()
             data.add_field("file", doc_content.encode(), filename="load_test.txt", content_type="text/plain")
 
-            try:
-                async with session.post(f"{BASE_URL}/documents/upload",
-                        data=data,
-                        headers={"Authorization": f"Bearer {self.token}", "X-XSRF-TOKEN": self.csrf}) as resp:
-                    if resp.status == 200:
-                        result = await resp.json()
-                        self.doc_id = result.get("documentId")
-                    else:
-                        text = await resp.text()
-                        print(f"⚠️ Document upload status {resp.status}: {text}")
-            except Exception as e:
-                print(f"⚠️ Document upload notice: {e}")
+            async with session.post(
+                f"{BASE_URL}/documents/upload",
+                data=data,
+                headers={"Authorization": f"Bearer {token}", "X-XSRF-TOKEN": csrf},
+            ) as resp:
+                if resp.status != 200:
+                    text = await resp.text()
+                    raise RuntimeError(
+                        f"Virtual user {user_id} document upload failed "
+                        f"(HTTP {resp.status}): {text}"
+                    )
+                doc_id = (await resp.json()).get("documentId")
+                if not doc_id:
+                    raise RuntimeError(f"Virtual user {user_id} upload returned no document ID")
 
-            print(f"Setup complete: token=...{self.token[-10:]}, doc_id={self.doc_id}")
+        return VirtualUser(user_id, token, csrf, cookies, doc_id, source_ip)
 
-    async def user_session(self, user_id: int):
+    async def user_session(self, user: VirtualUser):
         """Simulate a single user session."""
-        await asyncio.sleep((self.ramp_up / self.num_users) * user_id)  # Ramp up
+        await asyncio.sleep((self.ramp_up / self.num_users) * (user.user_id - 1))
         
         session_start = time.time()
         session_results = []
         
-        # Reuse the setup cookies (XSRF-TOKEN) so CSRF validation passes.
-        async with aiohttp.ClientSession(cookies=self.cookies) as session:
+        connector = aiohttp.TCPConnector(local_addr=(user.source_ip, 0))
+        async with aiohttp.ClientSession(cookies=user.cookies, connector=connector) as session:
             headers = {
-                "Authorization": f"Bearer {self.token}",
-                "X-XSRF-TOKEN": self.csrf,
+                "Authorization": f"Bearer {user.token}",
+                "X-XSRF-TOKEN": user.csrf,
                 "Content-Type": "application/json"
             }
             
@@ -136,8 +151,8 @@ class LoadTest:
                 try:
                     async with session.post(f"{BASE_URL}/chat/ask",
                             json={
-                                "sessionId": f"load-{user_id}",
-                                "documentId": self.doc_id,
+                                "sessionId": f"load-{user.user_id}",
+                                "documentId": user.doc_id,
                                 "message": q,
                                 "mode": "rag"
                             },
@@ -148,7 +163,7 @@ class LoadTest:
                         if resp.status == 200:
                             data = await resp.json()
                             session_results.append({
-                                "user_id": user_id,
+                                "user_id": user.user_id,
                                 "status": 200,
                                 "latency_ms": latency,
                                 "confidence": data.get("confidence", "unknown"),
@@ -156,7 +171,7 @@ class LoadTest:
                             })
                         elif resp.status == 429:
                             session_results.append({
-                                "user_id": user_id,
+                                "user_id": user.user_id,
                                 "status": 429,
                                 "latency_ms": latency,
                                 "confidence": None,
@@ -164,25 +179,25 @@ class LoadTest:
                             })
                         else:
                             self.errors.append({
-                                "user_id": user_id,
+                                "user_id": user.user_id,
                                 "status": resp.status,
                                 "error": await resp.text()
                             })
-                except Exception as e:
+                except (aiohttp.ClientError, asyncio.TimeoutError) as e:
                     self.errors.append({
-                        "user_id": user_id,
+                        "user_id": user.user_id,
                         "status": 0,
                         "error": str(e)
                     })
                 
                 # Small delay between requests (simulate user thinking)
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(self.think_time)
         
         self.results.extend(session_results)
 
     async def run(self):
         """Run the load test."""
-        print(f"\n🚀 Load Test Starting")
+        print("\n🚀 Load Test Starting")
         print(f"   Users: {self.num_users}")
         print(f"   Duration: {self.duration}s")
         print(f"   Ramp-up: {self.ramp_up}s")
@@ -194,7 +209,7 @@ class LoadTest:
         start_time = time.time()
         
         # Launch all users
-        tasks = [self.user_session(i) for i in range(self.num_users)]
+        tasks = [self.user_session(user) for user in self.users]
         await asyncio.gather(*tasks)
         
         total_time = time.time() - start_time
@@ -229,7 +244,7 @@ class LoadTest:
         print()
         
         if latencies:
-            print(f"Latency (successful requests):")
+            print("Latency (successful requests):")
             print(f"  Avg: {statistics.mean(latencies):.0f}ms")
             print(f"  Min: {min(latencies):.0f}ms")
             print(f"  Max: {max(latencies):.0f}ms")
@@ -252,7 +267,8 @@ class LoadTest:
                 "config": {
                     "users": self.num_users,
                     "duration": self.duration,
-                    "ramp_up": self.ramp_up
+                    "ramp_up": self.ramp_up,
+                    "think_time": self.think_time,
                 },
                 "summary": {
                     "total_requests": total_requests,
@@ -276,7 +292,11 @@ if __name__ == "__main__":
     parser.add_argument("--users", type=int, default=10, help="Number of concurrent users")
     parser.add_argument("--duration", type=int, default=30, help="Test duration in seconds")
     parser.add_argument("--ramp-up", type=int, default=0, help="Ramp-up time in seconds")
+    parser.add_argument("--think-time", type=float, default=2.5, help="Pause between user requests")
     args = parser.parse_args()
-    
-    test = LoadTest(args.users, args.duration, args.ramp_up)
+
+    if args.users < 1 or args.duration < 1 or args.ramp_up < 0 or args.think_time < 0:
+        parser.error("users and duration must be positive; ramp-up and think-time cannot be negative")
+
+    test = LoadTest(args.users, args.duration, args.ramp_up, args.think_time)
     asyncio.run(test.run())

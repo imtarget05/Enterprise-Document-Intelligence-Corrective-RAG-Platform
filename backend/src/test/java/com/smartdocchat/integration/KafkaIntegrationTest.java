@@ -13,6 +13,7 @@ import com.smartdocchat.service.DocumentWorkflowClient;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -22,7 +23,7 @@ import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
@@ -30,6 +31,7 @@ import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.annotation.DirtiesContext;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -72,6 +74,9 @@ import static org.mockito.Mockito.when;
     "workflow-completed",
     "document-purged",
     "notification"
+}, brokerProperties = {
+    "offsets.topic.num.partitions=1",
+    "group.initial.rebalance.delay.ms=0"
 })
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @org.springframework.context.annotation.Import(com.smartdocchat.cache.SimpleCacheTestConfig.class)
@@ -92,7 +97,7 @@ class KafkaIntegrationTest {
     @Autowired
     private KafkaProperties kafkaProperties;
 
-    @MockBean
+    @MockitoBean
     private DocumentWorkflowClient documentWorkflowClient;
 
     // Test consumer to capture events
@@ -124,7 +129,7 @@ class KafkaIntegrationTest {
         props.put(JsonDeserializer.TYPE_MAPPINGS, typeMappings);
         props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, "java.util.HashMap");
         props.put("auto.offset.reset", "earliest");
-        props.put("enable.auto.commit", "true");
+        props.put("enable.auto.commit", "false");
 
         // Use default topic names
         documentIngestionTopic = "document-ingestion";
@@ -132,11 +137,19 @@ class KafkaIntegrationTest {
         workflowCompletedTopic = "workflow-completed";
 
         testConsumer = new KafkaConsumer<>(props);
-        testConsumer.subscribe(List.of(
+        List<String> topics = List.of(
                 documentIngestionTopic,
                 documentClassifiedTopic,
                 workflowCompletedTopic
-        ));
+        );
+        List<TopicPartition> partitions = new ArrayList<>();
+        for (String topic : topics) {
+            for (int partition = 0; partition < 3; partition++) {
+                partitions.add(new TopicPartition(topic, partition));
+            }
+        }
+        testConsumer.assign(partitions);
+        testConsumer.seekToBeginning(partitions);
 
         // Start polling in a background thread
         consumerThread = new Thread(() -> {

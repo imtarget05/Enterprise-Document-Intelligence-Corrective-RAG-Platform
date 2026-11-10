@@ -45,7 +45,7 @@ class SearchControllerTest {
                 Map.of("query", "invoice"), null, principal("alice")
         );
 
-        assertEquals(200, resp.getStatusCodeValue());
+        assertEquals(200, resp.getStatusCode().value());
         assertEquals(1, resp.getBody().size());
         assertEquals("test.pdf", resp.getBody().get(0).getFileName());
     }
@@ -59,7 +59,7 @@ class SearchControllerTest {
                 null, "report", principal("alice")
         );
 
-        assertEquals(200, resp.getStatusCodeValue());
+        assertEquals(200, resp.getStatusCode().value());
         assertEquals(1, resp.getBody().size());
         assertEquals("report.docx", resp.getBody().get(0).getFileName());
     }
@@ -71,7 +71,7 @@ class SearchControllerTest {
 
         ResponseEntity<List<DocumentDTO>> resp = controller.searchGet("guide", principal("alice"));
 
-        assertEquals(200, resp.getStatusCodeValue());
+        assertEquals(200, resp.getStatusCode().value());
         assertEquals(1, resp.getBody().size());
     }
 }

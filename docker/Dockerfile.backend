@@ -37,6 +37,7 @@ WORKDIR /app
 
 # Install curl for health checks + tesseract-ocr for PDF OCR fallback
 RUN apt-get update \
+    && apt-get install -y --no-install-recommends --only-upgrade apt libapt-pkg7.0 \
     && apt-get install -y --no-install-recommends curl tesseract-ocr tesseract-ocr-eng tesseract-ocr-vie \
     && rm -rf /var/lib/apt/lists/*
 
@@ -60,6 +61,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=300s --retries=5 \
   CMD curl -f http://localhost:${PORT:-8080}/api/actuator/health || exit 1
 
 # JVM tuning for constrained memory containers (512MB RAM cap on Render free tier)
-ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:+UseSerialGC -Xms128m -Xmx320m -XX:MaxMetaspaceSize=128m -Djava.security.egd=file:/dev/./urandom"
+ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:+UseSerialGC -Xms64m -Xmx256m -XX:MaxMetaspaceSize=192m -XX:ReservedCodeCacheSize=48m -Xss512k -Djava.security.egd=file:/dev/./urandom"
 
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

@@ -46,11 +46,11 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         CookieCsrfTokenRepository csrfTokenRepository = new CookieCsrfTokenRepository();
-        csrfTokenRepository.setCookieHttpOnly(true);
         csrfTokenRepository.setCookiePath("/");
         csrfTokenRepository.setCookieName("XSRF-TOKEN");
         csrfTokenRepository.setHeaderName("X-XSRF-TOKEN");
         csrfTokenRepository.setCookieCustomizer(c -> {
+            c.httpOnly(true);
             if ("prod".equalsIgnoreCase(activeProfile)) {
                 c.sameSite("None").secure(true);
             } else {

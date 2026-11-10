@@ -29,12 +29,12 @@ limit_req_zone $binary_remote_addr zone=upload:10m rate=5r/s;
 resolver 127.0.0.11 valid=10s ipv6=off;
 
 server {
-    listen 80;
+    listen 8080;
     server_name _;
 
     root /usr/share/nginx/html;
     index index.html;
-    set $backend_upstream backend:8080;
+    set $backend_upstream ${BACKEND_UPSTREAM};
 
     # Security headers
     add_header X-Frame-Options "SAMEORIGIN" always;
@@ -75,7 +75,7 @@ server {
 
     # WebSocket proxy
     location /ws/ {
-        proxy_pass http://backend/api/ws/;
+        proxy_pass http://$backend_upstream/api/ws/;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";

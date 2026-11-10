@@ -34,7 +34,19 @@ resource "azurerm_container_app" "api" {
       }
       env {
         name  = "BLOB_CONTAINER_NAME"
-        value = azurerm_storage_container.documents.name
+        value = azapi_resource.documents.name
+      }
+      env {
+        name  = "AZURE_STORAGE_ACCOUNT_URL"
+        value = azurerm_storage_account.storage.primary_blob_endpoint
+      }
+      env {
+        name  = "AZURE_STORAGE_CONTAINER_NAME"
+        value = azapi_resource.documents.name
+      }
+      env {
+        name  = "AZURE_CLIENT_ID"
+        value = azurerm_user_assigned_identity.identity.client_id
       }
       env {
         name  = "AZURE_SEARCH_ENDPOINT"
@@ -98,7 +110,19 @@ resource "azurerm_container_app" "ingestion_worker" {
       }
       env {
         name  = "STORAGE_CONTAINER_NAME"
-        value = azurerm_storage_container.documents.name
+        value = azapi_resource.documents.name
+      }
+      env {
+        name  = "AZURE_STORAGE_ACCOUNT_URL"
+        value = azurerm_storage_account.storage.primary_blob_endpoint
+      }
+      env {
+        name  = "AZURE_STORAGE_CONTAINER_NAME"
+        value = azapi_resource.documents.name
+      }
+      env {
+        name  = "AZURE_CLIENT_ID"
+        value = azurerm_user_assigned_identity.identity.client_id
       }
     }
 

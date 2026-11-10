@@ -52,6 +52,32 @@ spec:
             secretKeyRef:
               name: portfolio-secrets
               key: SPRING_DATASOURCE_PASSWORD
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          valueFrom:
+            secretKeyRef:
+              name: portfolio-secrets
+              key: KAFKA_BOOTSTRAP_SERVERS
+        - name: KAFKA_TOPIC_REPLICATION_FACTOR
+          value: "3"
+        - name: KAFKA_TOPIC_PARTITIONS
+          value: "3"
+        - name: KAFKA_SECURITY_PROTOCOL
+          valueFrom:
+            secretKeyRef:
+              name: portfolio-secrets
+              key: KAFKA_SECURITY_PROTOCOL
+        - name: KAFKA_SASL_MECHANISM
+          valueFrom:
+            secretKeyRef:
+              name: portfolio-secrets
+              key: KAFKA_SASL_MECHANISM
+              optional: true
+        - name: KAFKA_SASL_JAAS_CONFIG
+          valueFrom:
+            secretKeyRef:
+              name: portfolio-secrets
+              key: KAFKA_SASL_JAAS_CONFIG
+              optional: true
         - name: JWT_SECRET
           valueFrom:
             secretKeyRef:
@@ -67,6 +93,36 @@ spec:
           value: "http://smartdoc-agent:9000"
         - name: SPRING_PROFILES_ACTIVE
           value: "prod"
+        - name: STORAGE_PROVIDER
+          value: "r2"
+        - name: R2_ACCOUNT_ID
+          valueFrom:
+            secretKeyRef:
+              name: portfolio-secrets
+              key: R2_ACCOUNT_ID
+        - name: R2_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: portfolio-secrets
+              key: R2_ACCESS_KEY_ID
+        - name: R2_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: portfolio-secrets
+              key: R2_SECRET_ACCESS_KEY
+        - name: REDIS_ENABLED
+          value: "true"
+        - name: REDIS_HOST
+          value: "smartdoc-redis"
+        - name: REDIS_PORT
+          value: "6379"
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: portfolio-secrets
+              key: REDIS_PASSWORD
+        - name: REDIS_SSL_ENABLED
+          value: "false"
         - name: SPRING_FLYWAY_OUT_OF_ORDER
           value: "true"
         - name: JAVA_OPTS
@@ -94,8 +150,19 @@ spec:
             memory: "1024Mi"
         securityContext:
           allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
           capabilities:
             drop: ["ALL"]
+        volumeMounts:
+        - name: uploads
+          mountPath: /app/uploads
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: uploads
+        emptyDir: {}
+      - name: tmp
+        emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

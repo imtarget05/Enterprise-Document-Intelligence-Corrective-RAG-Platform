@@ -122,7 +122,7 @@ describe("AppBar", () => {
   it("promotes the user to ROLE_ADMIN through the RBAC switcher", async () => {
     sessionStorage.setItem("smartdoc_jwt", "test-token");
     const user = userEvent.setup();
-    const { bridgeSpy } = await renderAppBar({});
+    await renderAppBar({});
 
     await waitFor(() => expect(screen.getByText("ROLE_USER")).toBeInTheDocument());
     await user.click(screen.getByText("👑 Admin"));

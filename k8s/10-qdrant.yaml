@@ -17,15 +17,29 @@ spec:
         app: smartdoc-qdrant
         role: vector-db
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: qdrant
-        image: qdrant/qdrant:latest
+        image: qdrant/qdrant:v1.12.4
         imagePullPolicy: IfNotPresent
         ports:
         - name: http
           containerPort: 6333
         - name: grpc
           containerPort: 6334
+        volumeMounts:
+        - name: storage
+          mountPath: /qdrant/storage
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ["ALL"]
         resources:
           requests:
             cpu: "100m"
@@ -45,6 +59,23 @@ spec:
             port: http
           initialDelaySeconds: 10
           periodSeconds: 10
+      volumes:
+      - name: storage
+        persistentVolumeClaim:
+          claimName: smartdoc-qdrant-data
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: smartdoc-qdrant-data
+  namespace: portfolio
+  labels:
+    app: smartdoc-qdrant
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 10Gi
 ---
 apiVersion: v1
 kind: Service

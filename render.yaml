@@ -64,6 +64,16 @@ services:
   envVars:
   - key: SPRING_PROFILES_ACTIVE
     value: prod
+  - key: KAFKA_BOOTSTRAP_SERVERS
+    sync: false
+  - key: KAFKA_TOPIC_REPLICATION_FACTOR
+    value: '3'
+  - key: KAFKA_SECURITY_PROTOCOL
+    sync: false
+  - key: KAFKA_SASL_MECHANISM
+    sync: false
+  - key: KAFKA_SASL_JAAS_CONFIG
+    sync: false
   - key: LLM_BASE_URL
     fromService:
       name: smart-doc-llm-router
