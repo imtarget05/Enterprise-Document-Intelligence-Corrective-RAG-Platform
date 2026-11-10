@@ -76,7 +76,7 @@ tenacity==8.5.0
 sentence-transformers==3.0.1
 
 # MLOps — Experiment Tracking
-mlflow==2.15.0
+mlflow==3.17.2
 
 # Testing
 pytest==8.2.2
