@@ -4,23 +4,119 @@
 
 interface Env {
   BACKEND_URL?: string;
+  GOOGLE_CLIENT_ID?: string;
+  SANDBOX_MODE?: string;
+}
+
+const DEFAULT_BACKEND_URL =
+  "https://smartdoc-api.blackisland-5a3f0246.southeastasia.azurecontainerapps.io/api";
+
+type JsonRecord = Record<string, unknown>;
+
+function isJsonRecord(value: unknown): value is JsonRecord {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function stringValue(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+async function readJsonRecord(request: Request): Promise<JsonRecord> {
+  try {
+    const body: unknown = await request.json();
+    return isJsonRecord(body) ? body : {};
+  } catch (error) {
+    console.warn("Ignoring malformed sandbox JSON request", {
+      error: error instanceof Error ? error.message : "Unknown parse error",
+    });
+    return {};
+  }
+}
+
+async function forwardToBackend(
+  request: Request,
+  backendUrl: string,
+): Promise<Response> {
+  const requestUrl = new URL(request.url);
+  const subPath = requestUrl.pathname.replace(/^\/api/, "");
+  const origin = requestUrl.origin;
+  let backend: URL;
+
+  try {
+    backend = new URL(backendUrl);
+  } catch {
+    return Response.json({ error: "BackendNotConfigured" }, { status: 503 });
+  }
+
+  if (
+    backend.protocol !== "https:" ||
+    backend.username ||
+    backend.password ||
+    backend.search ||
+    backend.hash
+  ) {
+    return Response.json({ error: "BackendConfigurationInvalid" }, { status: 503 });
+  }
+
+  const basePath = backend.pathname.replace(/\/$/, "");
+  const targetUrl = new URL(`${basePath}${subPath}${requestUrl.search}`, backend.origin);
+  const headers = new Headers(request.headers);
+  headers.delete("host");
+  headers.set("X-Forwarded-Host", requestUrl.host);
+  headers.set("X-Forwarded-Proto", "https");
+
+  try {
+    const response = await fetch(targetUrl, {
+      method: request.method,
+      headers,
+      body: ["GET", "HEAD"].includes(request.method) ? undefined : request.body,
+      redirect: "manual",
+    });
+    const responseHeaders = new Headers(response.headers);
+    responseHeaders.set("Access-Control-Allow-Origin", origin);
+    responseHeaders.set("Access-Control-Allow-Credentials", "true");
+
+    return new Response(
+      [204, 205, 304].includes(response.status) ? null : response.body,
+      { status: response.status, headers: responseHeaders },
+    );
+  } catch (error) {
+    console.error("Backend API proxy request failed", {
+      path: requestUrl.pathname,
+      error: error instanceof Error ? error.message : "Unknown fetch error",
+    });
+    return Response.json(
+      { error: "UpstreamUnavailable" },
+      {
+        status: 502,
+        headers: {
+          "Access-Control-Allow-Origin": origin,
+          "Access-Control-Allow-Credentials": "true",
+        },
+      },
+    );
+  }
 }
 
 function sanitizeDocumentText(raw: string, fallbackTitle: string): string {
+  const containsBinaryControl = [...raw].some((character) => {
+    const code = character.charCodeAt(0);
+    return (code >= 0 && code <= 8) || code === 11 || code === 12 || (code >= 14 && code <= 31);
+  });
   if (!raw) return "";
   if (
     raw.startsWith("PK") ||
     raw.includes("word/") ||
     raw.includes(".xml") ||
-    /[\uFFFD\x00-\x08\x0B\x0C\x0E-\x1F]/.test(raw)
+    raw.includes("\uFFFD") ||
+    containsBinaryControl
   ) {
-    let cleaned = raw
-      .replace(/^PK[\s\S]*?(word\/[a-zA-Z0-9_.\/]+\.xml|\.xml)?/gi, "")
-      .replace(/PK[\x00-\x1F\s]*/g, "")
+    const cleaned = raw
+      .replace(/^PK[\s\S]*?(word\/[a-zA-Z0-9_./]+\.xml|\.xml)?/gi, "")
       .replace(/\bPK\b/g, "")
-      .replace(/\/?word\/[a-zA-Z0-9_.\/]+\b/gi, "")
+      .replace(/\/?word\/[a-zA-Z0-9_./]+\b/gi, "")
       .replace(/[a-zA-Z0-9_.]+\.xml\b/gi, "")
-      .replace(/[^\p{L}\p{N}\s.,;:?!_\-\/()""'']/gu, " ")
+      .replace(/[^\p{L}\p{N}\s.,;:?!_()/""'-]/gu, " ")
       .replace(/\b(word|theme|fontTable|settings|webSettings|app|core|docProps|customXml|numbering)[a-zA-Z0-9_.]*\b/gi, "")
       .replace(/\s+/g, " ")
       .trim();
@@ -51,6 +147,13 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     });
   }
 
+  if (context.env.SANDBOX_MODE !== "true") {
+    return forwardToBackend(
+      context.request,
+      context.env.BACKEND_URL || DEFAULT_BACKEND_URL,
+    );
+  }
+
   // 2. CSRF Bootstrap Endpoint (Same-Origin)
   if (subPath === "/csrf") {
     const csrfToken = "xsrf-edge-" + Math.random().toString(36).substring(2);
@@ -74,10 +177,10 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
   // 3b. Google OAuth Authentication Endpoint
   if (subPath === "/auth/google" && context.request.method === "POST") {
-    let reqBody: any = {};
-    try { reqBody = await context.request.json(); } catch {}
+    const reqBody = await readJsonRecord(context.request);
+    const credential = stringValue(reqBody.credential);
 
-    if (!reqBody.credential) {
+    if (!credential) {
       return new Response(JSON.stringify({ error: "InvalidCredential", message: "Google Credential không hợp lệ." }), {
         status: 401,
         headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": url.origin },
@@ -87,9 +190,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     let email = "reviewer@smartdoc.sandbox";
     let name = "Sandbox Reviewer";
 
-    if (typeof reqBody.credential === "string" && reqBody.credential.includes(".")) {
+    if (credential.includes(".")) {
       try {
-        const payloadBase64 = reqBody.credential.split(".")[1];
+        const payloadBase64 = credential.split(".")[1];
         const normalized = payloadBase64.replace(/-/g, "+").replace(/_/g, "/");
         const jsonStr = decodeURIComponent(
           atob(normalized)
@@ -97,14 +200,19 @@ export const onRequest: PagesFunction<Env> = async (context) => {
             .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
             .join("")
         );
-        const claims = JSON.parse(jsonStr);
-        if (claims.email) email = claims.email;
-        if (claims.name) name = claims.name;
-      } catch {
-        if (reqBody.email) email = reqBody.email;
+        const claims: unknown = JSON.parse(jsonStr);
+        if (isJsonRecord(claims)) {
+          email = stringValue(claims.email) || email;
+          name = stringValue(claims.name) || name;
+        }
+      } catch (error) {
+        console.warn("Could not decode sandbox Google credential", {
+          error: error instanceof Error ? error.message : "Unknown decode error",
+        });
+        email = stringValue(reqBody.email) || email;
       }
-    } else if (reqBody.email) {
-      email = reqBody.email;
+    } else {
+      email = stringValue(reqBody.email) || email;
     }
 
     const role = "ROLE_USER"; // Sandbox guest: safe viewer role, not admin
@@ -137,11 +245,15 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     try {
       const formData = await context.request.formData();
       const file = formData.get("file");
-      if (file && typeof file === "object" && "name" in file) {
-        filename = (file as any).name || "";
-        fileSize = (file as any).size || 0;
+      if (file instanceof File) {
+        filename = file.name;
+        fileSize = file.size;
       }
-    } catch {}
+    } catch (error) {
+      console.warn("Could not parse sandbox document upload", {
+        error: error instanceof Error ? error.message : "Unknown form parse error",
+      });
+    }
 
     if (!filename || fileSize === 0) {
       return new Response(
@@ -172,11 +284,10 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
   // 4c. Chat Streaming SSE Endpoint (Contextual RAG & Multi-Step Agent Workflow)
   if ((subPath === "/chat/ask-stream" || subPath === "/chat/stream") && context.request.method === "POST") {
-    let body: any = {};
-    try { body = await context.request.json(); } catch {}
-    const userPrompt = (body.message || "So sánh các điều khoản").trim();
-    const sessionId = body.sessionId || "session-demo";
-    const mode = body.mode || "rag"; // "rag" or "agent"
+    const body = await readJsonRecord(context.request);
+    const userPrompt = stringValue(body.message).trim() || "So sánh các điều khoản";
+    const sessionId = stringValue(body.sessionId) || "session-demo";
+    const mode = stringValue(body.mode) || "rag"; // "rag" or "agent"
     const lowerPrompt = userPrompt.toLowerCase();
     const customDocTitle = body.documentTitle ? String(body.documentTitle).trim() : "";
     const rawDocText = body.documentText ? String(body.documentText).trim() : "";
@@ -222,40 +333,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     let hitlPending: boolean | null = null;
 
     let sourceChunks: string[] = [];
-    let sources: any[] = [];
-
-    // Optional Real Google Gemini LLM API Integration (Securely from Environment Secret)
-    const GEMINI_API_KEY = (context.env?.GEMINI_API_KEY || "").trim();
-    let liveGeminiAnswer = "";
-    if (GEMINI_API_KEY && !customDocText && mode !== "agent") {
-      try {
-        const gRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contents: [
-                {
-                  parts: [
-                    {
-                      text: `Bạn là chuyên gia tư vấn pháp lý và quản trị rủi ro doanh nghiệp SmartDocument AI. Hãy trả lời chi tiết, bám sát pháp luật Việt Nam và ISO 27001 cho câu hỏi: "${userPrompt}"`,
-                    },
-                  ],
-                },
-              ],
-            }),
-          }
-        );
-        if (gRes.ok) {
-          const gJson: any = await gRes.json();
-          const txt = gJson?.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (txt && txt.trim().length > 20) {
-            liveGeminiAnswer = txt.trim();
-          }
-        }
-      } catch {}
-    }
+    let sources: unknown[] = [];
 
     if (mode === "agent") {
       ragStrategy = "agentic";
@@ -684,9 +762,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         ragStrategy = "custom_document";
         const rawTop = (matched.length > 0 ? matched : (docLines.length > 0 ? docLines : [customDocText])).slice(0, 4);
         const topExcerpts = rawTop.map((l: string) =>
-          l.replace(/^PK[\s\S]*?(word\/[a-zA-Z0-9_.\/]+\.xml|\.xml)?/gi, "")
+          l.replace(/^PK[\s\S]*?(word\/[a-zA-Z0-9_./]+\.xml|\.xml)?/gi, "")
            .replace(/\bPK\b/g, "")
-           .replace(/\/?word\/[a-zA-Z0-9_.\/]+\b/gi, "")
+           .replace(/\/?word\/[a-zA-Z0-9_./]+\b/gi, "")
            .replace(/[a-zA-Z0-9_.]+\.xml\b/gi, "")
            .replace(/\s+/g, " ")
            .trim()
@@ -1211,8 +1289,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       );
     }
   }
-  const defaultBackend = "https://smartdoc-api.proudstone-70150af3.southeastasia.azurecontainerapps.io/api";
-  const backendBase = (context.env.BACKEND_URL || defaultBackend).replace(/\/$/, "");
+  const backendBase = (context.env.BACKEND_URL || DEFAULT_BACKEND_URL).replace(/\/$/, "");
   const targetUrl = `${backendBase}${subPath}${url.search}`;
 
   try {
@@ -1244,13 +1321,10 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
   // 5. Resilient Edge Auth Engine (Guarantees Sign-In Works on Any Browser)
   if (subPath === "/auth/login" && context.request.method === "POST") {
-    let reqBody: any = {};
-    try {
-      reqBody = await context.request.json();
-    } catch {}
+    const reqBody = await readJsonRecord(context.request);
 
-    const username = (reqBody.username || "").trim();
-    const password = reqBody.password || "";
+    const username = stringValue(reqBody.username).trim();
+    const password = stringValue(reqBody.password);
 
     // Require both username and password
     if (!username || !password) {
@@ -1302,11 +1376,18 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       let email = "user@smartdoc.sandbox";
       try {
         const payload = tokenStr.split("-").pop() || "";
-        const decoded = JSON.parse(atob(payload));
-        if (decoded.sub) sub = decoded.sub;
-        if (decoded.role) role = decoded.role;
-        email = decoded.sub?.includes("@") ? decoded.sub : `${sub}@smartdoc.ai`;
-      } catch {}
+        const decoded: unknown = JSON.parse(atob(payload));
+        if (!isJsonRecord(decoded)) {
+          throw new Error("Sandbox token payload is not an object");
+        }
+        sub = stringValue(decoded.sub) || sub;
+        role = stringValue(decoded.role) || role;
+        email = sub.includes("@") ? sub : `${sub}@smartdoc.ai`;
+      } catch (error) {
+        console.warn("Could not decode sandbox authentication token", {
+          error: error instanceof Error ? error.message : "Unknown token error",
+        });
+      }
 
       return new Response(
         JSON.stringify({
@@ -1509,8 +1590,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   // 9. Resilient Edge HITL Approvals Queue
   if (subPath.startsWith("/agent/approvals")) {
     if (context.request.method === "POST" && (subPath.includes("/decide") || subPath.includes("/approve") || subPath.includes("/reject"))) {
-      let body: any = {};
-      try { body = await context.request.json(); } catch {}
+      const body = await readJsonRecord(context.request);
       const isReject = subPath.includes("/reject") || body.decision === "REJECT";
       const reqId = subPath.split("/")[3] || "req-hitl-01";
       

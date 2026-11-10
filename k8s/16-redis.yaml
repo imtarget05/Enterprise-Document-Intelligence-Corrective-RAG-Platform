@@ -2,8 +2,8 @@
 # Internal-only ClusterIP: no ingress, no NodePort. Password comes from the
 # portfolio-secrets Secret — add a REDIS_PASSWORD key (URL-safe: no @ : / # ?)
 # or create the Secret with: kubectl -n portfolio create secret generic
-# portfolio-secrets --from-literal=REDIS_PASSWORD='...' (see note in
-# 25-smartdoc-agent.yaml — the agent builds REDIS_URL from the same value).
+# portfolio-secrets --from-literal=REDIS_PASSWORD='...' (backend and agent
+# read the same value).
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -74,6 +74,7 @@ spec:
           mountPath: /data
         securityContext:
           allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
           capabilities:
             drop: ["ALL"]
       volumes:

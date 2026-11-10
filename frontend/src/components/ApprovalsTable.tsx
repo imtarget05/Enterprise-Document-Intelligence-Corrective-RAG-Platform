@@ -27,12 +27,12 @@ export default function ApprovalsTable({ token }: ApprovalsTableProps) {
     decide.mutate(
       { requestId, decision, note: note.trim() || undefined },
       {
-        onSuccess: (data: any) => {
+        onSuccess: (data) => {
           setDecisions((prev) => ({
             ...prev,
             [requestId]: {
               status: decision === "approve" ? "APPROVED" : "REJECTED",
-              message: data?.message || (decision === "approve" ? "✓ Đã duyệt & kích hoạt tác vụ thành công!" : "✕ Đã từ chối tác vụ."),
+              message: data.message || (decision === "approve" ? "✓ Đã ghi nhận phê duyệt." : "✕ Đã từ chối yêu cầu."),
             },
           }));
         },

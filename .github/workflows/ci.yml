@@ -8,7 +8,7 @@ on:
 
 env:
   JAVA_VERSION: '17'
-  NODE_VERSION: '20'
+  NODE_VERSION: '22'
 
 jobs:
   # ═══════════════════════════════════════════════════════════════
@@ -319,6 +319,8 @@ jobs:
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
+    needs: backend-test
+    if: always()
     permissions:
       security-events: write
       actions: read
@@ -333,6 +335,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }} (reuse backend Maven cache)
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'maven'
 
       # ── Secrets scan runs FIRST: TruffleHog never resolves Maven artifacts,
       # so it can never be skipped by the Maven Central 429 below.
@@ -361,10 +370,8 @@ jobs:
         #   * up to 3 online attempts with a CAPPED backoff (300s then 600s —
         #     never the 1800s Retry-After Maven sends back),
         #   * a final attempt with TRIVY_OFFLINE_SCAN=true (air-gap, local
-        #     ~/.m2 only, no remote Maven lookups) plus a ::warning:: that Java
-        #     dependency CVE coverage is degraded for this run,
-        #   * real findings and any non-429 error keep blocking, via the "Gate"
-        #     step at the very end of this job.
+        #     ~/.m2 only, no remote Maven lookups); this is diagnostic only and
+        #     the final gate fails because dependency coverage is incomplete.
         #
         # The step itself always exits 0 and records the scan rc in TRIVY_RC so
         # the SARIF/Semgrep/CodeQL steps below can never be skipped by it.
@@ -414,13 +421,10 @@ jobs:
             TRIVY_OFFLINE_SCAN=true trivy fs --scanners vuln --severity CRITICAL,HIGH \
               --ignore-unfixed --exit-code 1 --format table . 2>&1 | tee trivy.log
             RC=${PIPESTATUS[0]}
-            echo "::warning::Java dependency CVE coverage was degraded this run: Trivy fell back to offline mode after Maven Central returned HTTP 429 (remote parent-pom/BOM resolution skipped)."
+            DEGRADED=1
+            echo "::error::Trivy used offline fallback after Maven Central returned HTTP 429; this scan cannot satisfy the complete dependency-coverage gate."
             if is_rate_limit; then
-              # Still rate-limited even offline: pure infrastructure failure,
-              # never a findings failure - do not keep the pipeline red for it.
-              echo "::warning::Maven rate-limit persisted in offline mode; marking this run's dependency scan degraded instead of failed."
-              RC=0
-              DEGRADED=1
+              echo "::error::Maven rate-limit persisted in offline mode; dependency coverage is incomplete."
             fi
           fi
 
@@ -507,7 +511,8 @@ jobs:
             exit 1
           fi
           if [ "${TRIVY_DEGRADED:-0}" = "1" ]; then
-            echo "::warning::Findings gate only partially evaluated: Java dependency CVE coverage was degraded (offline fallback after Maven Central HTTP 429)."
+            echo "::error::Trivy dependency coverage was incomplete (offline fallback after Maven Central HTTP 429) - blocking."
+            exit 1
           fi
           if [ "${TRIVY_RC}" != "0" ]; then
             echo "::error::Trivy reported CRITICAL/HIGH fixable findings or a scan error (rc=${TRIVY_RC}) - blocking."
@@ -568,7 +573,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ env.NODE_VERSION }}
       - name: Validate OpenAPI spec exists
         run: |
           if [ -f backend/src/main/resources/openapi.yaml ] || [ -f backend/src/main/resources/application.yml ]; then echo "OpenAPI config present"; else echo "No OpenAPI spec, checking controllers"; fi

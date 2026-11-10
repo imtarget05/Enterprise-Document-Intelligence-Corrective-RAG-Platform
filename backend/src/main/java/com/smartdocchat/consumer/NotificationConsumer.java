@@ -11,7 +11,7 @@ import org.springframework.kafka.retrytopic.DltStrategy;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.retry.annotation.Backoff;
+import org.springframework.kafka.annotation.BackOff;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -47,7 +47,7 @@ public class NotificationConsumer {
      */
     @RetryableTopic(
             attempts = "3",
-            backoff = @Backoff(delay = 1000, multiplier = 2),
+            backOff = @BackOff(delay = 1000, multiplier = 2),
             dltTopicSuffix = "-dlq",
             dltStrategy = DltStrategy.FAIL_ON_ERROR,
             include = {Exception.class}

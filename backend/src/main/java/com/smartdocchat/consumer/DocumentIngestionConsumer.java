@@ -18,7 +18,7 @@ import org.springframework.kafka.annotation.RetryableTopic;
 import org.springframework.kafka.retrytopic.DltStrategy;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
-import org.springframework.retry.annotation.Backoff;
+import org.springframework.kafka.annotation.BackOff;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -60,7 +60,7 @@ public class DocumentIngestionConsumer {
      */
     @RetryableTopic(
             attempts = "3",
-            backoff = @Backoff(delay = 1000, multiplier = 2),
+            backOff = @BackOff(delay = 1000, multiplier = 2),
             dltTopicSuffix = "-dlq",
             dltStrategy = DltStrategy.FAIL_ON_ERROR,
             include = {Exception.class}

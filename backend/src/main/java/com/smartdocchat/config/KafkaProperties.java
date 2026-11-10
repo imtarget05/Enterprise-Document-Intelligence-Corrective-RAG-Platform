@@ -21,6 +21,11 @@ import java.util.Map;
 public class KafkaProperties {
 
     private List<String> bootstrapServers;
+    private int topicPartitions = 3;
+    private short topicReplicationFactor = 1;
+    private String securityProtocol = "PLAINTEXT";
+    private String saslMechanism;
+    private String saslJaasConfig;
 
     private final Consumer consumer = new Consumer();
     private final Producer producer = new Producer();

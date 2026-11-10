@@ -43,6 +43,11 @@ spring:
     timeout-per-shutdown-phase: 30s
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    topic-partitions: ${KAFKA_TOPIC_PARTITIONS:3}
+    topic-replication-factor: ${KAFKA_TOPIC_REPLICATION_FACTOR:1}
+    security-protocol: ${KAFKA_SECURITY_PROTOCOL:PLAINTEXT}
+    sasl-mechanism: ${KAFKA_SASL_MECHANISM:}
+    sasl-jaas-config: ${KAFKA_SASL_JAAS_CONFIG:}
     consumer:
       group-id: smartdoc-backend
       auto-offset-reset: earliest
@@ -184,6 +189,10 @@ storage:
     secret-access-key: ${R2_SECRET_ACCESS_KEY:}
     bucket: ${R2_BUCKET_NAME:smart-doc-documents}
     endpoint: ${R2_ENDPOINT:}
+  azure:
+    account-url: ${AZURE_STORAGE_ACCOUNT_URL:}
+    container: ${AZURE_STORAGE_CONTAINER_NAME:}
+    managed-identity-client-id: ${AZURE_CLIENT_ID:}
 # Circuit breaker around LLM router calls (see LlmClient).
 # registerHealthIndicator is off on purpose: an open breaker must not flip
 # /actuator/health DOWN and trigger a platform restart — the state is visible

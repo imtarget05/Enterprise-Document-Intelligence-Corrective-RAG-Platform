@@ -64,6 +64,7 @@ export type ApprovalDecision = "approve" | "reject";
 export interface DecideResult {
   status: string;
   decision: string;
+  message?: string;
   approver?: string;
   request_id?: string;
   workflow_result?: {

@@ -37,7 +37,9 @@ public class SecretStrengthValidator implements InitializingBean {
     @Override
     public void afterPropertiesSet() {
         boolean deployed = Arrays.stream(environment.getActiveProfiles())
-                .anyMatch(profile -> profile.equals("staging") || profile.equals("production"));
+                .anyMatch(profile -> profile.equals("staging")
+                        || profile.equals("prod")
+                        || profile.equals("production"));
         if (!deployed) {
             return;
         }

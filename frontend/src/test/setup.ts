@@ -3,16 +3,20 @@ import "@testing-library/jest-dom/vitest";
 // pdfjs-dist 4.x uses the ES2024 `Promise.withResolvers` API, which jsdom on
 // Node ≤ 20 (CI runner) does not provide. Feature-detected polyfill so the
 // PDF extraction tests are Node-version independent.
-if (typeof Promise.withResolvers !== "function") {
-  Promise.withResolvers = function withResolvers<T>() {
-    let resolve!: (value: T | PromiseLike<T>) => void;
-    let reject!: (reason?: unknown) => void;
-    const promise = new Promise<T>((res, rej) => {
-      resolve = res;
-      reject = rej;
-    });
-    return { promise, resolve, reject };
-  } as typeof Promise.withResolvers;
+if (typeof Reflect.get(Promise, "withResolvers") !== "function") {
+  Object.defineProperty(Promise, "withResolvers", {
+    configurable: true,
+    writable: true,
+    value: function withResolvers<T>() {
+      let resolve!: (value: T | PromiseLike<T>) => void;
+      let reject!: (reason?: unknown) => void;
+      const promise = new Promise<T>((res, rej) => {
+        resolve = res;
+        reject = rej;
+      });
+      return { promise, resolve, reject };
+    },
+  });
 }
 
 if (typeof Element.prototype.scrollIntoView !== "function") {
