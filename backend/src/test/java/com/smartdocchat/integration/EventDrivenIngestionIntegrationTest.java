@@ -275,9 +275,13 @@ class EventDrivenIngestionIntegrationTest {
                    failedEvent.workflowResult().contains("workflow"),
                 "Workflow result should contain error information");
 
-        // Verify document in DB has FAILED status
-        Document savedDoc = documentRepository.findById(document.getId()).orElseThrow();
-        assertNotNull(savedDoc.getWorkflowResult(), "Document should have workflow result");
-        assertEquals("FAILED", savedDoc.getWorkflowStatus(), "Document should have FAILED status");
+        // Verify document in DB has FAILED status (eventual consistency via Kafka consumer)
+        await().atMost(30, TimeUnit.SECONDS)
+                .pollInterval(500, TimeUnit.MILLISECONDS)
+                .untilAsserted(() -> {
+                    Document savedDoc = documentRepository.findById(document.getId()).orElseThrow();
+                    assertNotNull(savedDoc.getWorkflowResult(), "Document should have workflow result");
+                    assertEquals("FAILED", savedDoc.getWorkflowStatus(), "Document should have FAILED status");
+                });
     }
 }
