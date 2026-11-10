@@ -3,6 +3,7 @@ import { cleanup, render, screen, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "../context/AuthContext";
+import JSZip from "jszip";
 import ChatPage from "./ChatPage";
 
 function sseBody(events: string) {
@@ -357,5 +358,148 @@ describe("ChatPage", () => {
       expect(screen.queryByText("Bộ luật Lao động 2019")).toBeNull();
       expect(screen.queryByText("Tiêu chuẩn An toàn thông tin ISO 27001")).toBeNull();
     });
+  });
+
+  function makeUploadTarget(file: File) {
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    return act(async () => {
+      Object.defineProperty(fileInput, "files", { value: [file], configurable: true });
+      fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+  }
+
+  /** jsdom's File lacks Blob.text()/arrayBuffer(); the upload path needs both. */
+  function uploadFile(name: string, mime: string, content: string | ArrayBuffer) {
+    const file = new File([content as BlobPart], name, { type: mime });
+    const textValue = typeof content === "string" ? content : "";
+    const buf = content instanceof ArrayBuffer ? content : new ArrayBuffer(0);
+    Object.defineProperty(file, "text", { value: async () => textValue, configurable: true });
+    Object.defineProperty(file, "arrayBuffer", { value: async () => buf, configurable: true });
+    return file;
+  }
+
+  it("uploads a TXT file, carries its text into the local document record", async () => {
+    const fetchMock = mockFetch({
+      "/api/documents/upload": {
+        ok: true,
+        json: async () => ({
+          success: true,
+          document: { id: 11, filename: "notes.txt", chunkCount: 3 },
+        }),
+      },
+      "/api/documents": { ok: true, json: async () => [] },
+      "/api/chat/history/": { ok: true, json: async () => [] },
+    });
+    renderChatPage();
+    await screen.findByText(/Chào mừng/);
+
+    await makeUploadTarget(uploadFile("notes.txt", "text/plain", "refund window is 30 days"));
+
+    await waitFor(
+      () => {
+        const stored = JSON.parse(localStorage.getItem("smartdoc_user_documents") ?? "[]");
+        expect(stored).toHaveLength(1);
+        expect(stored[0]).toMatchObject({
+          id: 11,
+          fileName: "notes.txt",
+          fileType: "TXT",
+          chunkCount: 3,
+          textContent: "refund window is 30 days",
+          sourceType: "USER",
+        });
+      },
+      { timeout: 2000 },
+    );
+  });
+
+  it("extracts the text of a DOCX upload by parsing word/document.xml", async () => {
+    const zip = new JSZip();
+    zip.file(
+      "word/document.xml",
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p><w:r><w:t>Bien ban hop dong thue xe</w:t></w:r></w:p>
+    <w:p><w:r><w:t>Giai trach nhiem cac ben</w:t></w:r></w:p>
+  </w:body>
+</w:document>`,
+    );
+    const bytes = (await zip.generateAsync({ type: "arraybuffer" })) as ArrayBuffer;
+
+    mockFetch({
+      "/api/documents/upload": {
+        ok: true,
+        json: async () => ({
+          success: true,
+          document: { fileName: "contract.docx", fileSize: 4096 },
+        }),
+      },
+      "/api/documents": { ok: true, json: async () => [] },
+      "/api/chat/history/": { ok: true, json: async () => [] },
+    });
+    renderChatPage();
+    await screen.findByText(/Chào mừng/);
+
+    await makeUploadTarget(
+      uploadFile(
+        "contract.docx",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        bytes,
+      ),
+    );
+
+    await waitFor(() => {
+      const stored = JSON.parse(localStorage.getItem("smartdoc_user_documents") ?? "[]");
+      expect(stored).toHaveLength(1);
+      expect(stored[0].fileType).toBe("DOCX");
+      expect(stored[0].textContent).toBe("Bien ban hop dong thue xe\nGiai trach nhiem cac ben");
+    });
+  });
+
+  it("rejects a corrupt DOCX that cannot yield text", async () => {
+    const zip = new JSZip(); // valid zip, but no word/document.xml
+    zip.file("extra.txt", "nothing useful");
+    const bytes = (await zip.generateAsync({ type: "arraybuffer" })) as ArrayBuffer;
+
+    mockFetch({
+      "/api/documents": { ok: true, json: async () => [] },
+      "/api/chat/history/": { ok: true, json: async () => [] },
+    });
+    renderChatPage();
+    await screen.findByText(/Chào mừng/);
+
+    await makeUploadTarget(
+      uploadFile(
+        "broken.docx",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        bytes,
+      ),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/bị lỗi định dạng hoặc không thể trích xuất văn bản/),
+      ).toBeInTheDocument(),
+    );
+  });
+
+  it("surfaces the 50MB limit when the backend answers 413", async () => {
+    mockFetch({
+      "/api/documents/upload": {
+        ok: false,
+        status: 413,
+        json: async () => ({ message: "Payload Too Large" }),
+      },
+      "/api/documents": { ok: true, json: async () => [] },
+      "/api/chat/history/": { ok: true, json: async () => [] },
+    });
+    renderChatPage();
+    await screen.findByText(/Chào mừng/);
+
+    await makeUploadTarget(new File(["data"], "big.pdf", { type: "application/pdf" }));
+
+    await waitFor(() =>
+      expect(screen.getByText("File too large. Maximum size is 50MB.")).toBeInTheDocument(),
+    );
   });
 });
