@@ -12,7 +12,7 @@ python-multipart==0.0.9
 # NOTE: langgraph 0.2.76 requires langchain-core >= 0.2.43 and
 # langgraph-checkpoint>=2.0.10,<3.0.0 — sqlite checkpoint must stay on 2.x
 # (3.x needs langgraph-checkpoint>=4.1 → ResolutionImpossible in CI/Render).
-langgraph==0.2.76
+langgraph==1.2.14
 langgraph-checkpoint-sqlite==2.0.11
 # aiosqlite 0.22+ REMOVED Connection.is_alive(), which
 # langgraph-checkpoint-sqlite 2.0.11 AsyncSqliteSaver.setup() still calls —
