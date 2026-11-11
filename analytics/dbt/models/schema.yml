@@ -1,0 +1,38 @@
+version: 2
+models:
+  - name: stg_events
+    columns:
+      - name: event_key
+        tests: [unique, not_null]
+      - name: tenant_id
+        tests:
+          - not_null
+          - relationships: {to: "ref('dim_tenant')", field: tenant_id}
+      - name: event_type
+        tests:
+          - accepted_values:
+              values: ["ingestion", "retrieval", "llm_request"]
+      - name: occurred_at
+        tests: [not_null]
+      - name: updated_at
+        tests: [not_null]
+  - name: dim_tenant
+    columns:
+      - name: tenant_id
+        tests: [unique, not_null]
+  - name: daily_metrics
+    columns:
+      - name: executions
+        tests: [not_null]
+  - name: fact_ingestion
+    columns:
+      - name: event_key
+        tests: [unique, not_null]
+  - name: fact_retrieval
+    columns:
+      - name: event_key
+        tests: [unique, not_null]
+  - name: fact_llm_request
+    columns:
+      - name: event_key
+        tests: [unique, not_null]

@@ -86,6 +86,27 @@ jobs:
             --browser-origin https://smart-doc-chatbot.pages.dev \
             --base-url https://smartdoc-api.blackisland-5a3f0246.southeastasia.azurecontainerapps.io/api
 
+      - name: Collect deploy evidence
+        if: env.AZURE_CREDENTIALS != ''
+        env:
+          RESOURCE_GROUP: rg-portfolio-prod
+          APP_NAME: smartdoc-api
+        run: |
+          mkdir -p deploy-evidence
+          ./scripts/health-check.sh > deploy-evidence/health.txt 2>&1 || true
+          {
+            printf 'deploy_time=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            printf 'image_tag=%s\n' "${GITHUB_SHA:-latest}"
+            printf 'app=%s\n' "$APP_NAME"
+            printf 'resource_group=%s\n' "$RESOURCE_GROUP"
+          } > deploy-evidence/deploy.txt
+      - uses: actions/upload-artifact@v4
+        if: env.AZURE_CREDENTIALS != ''
+        with:
+          name: smartdoc-deploy-evidence
+          path: deploy-evidence/
+          if-no-files-found: error
+
       - name: Report agent feature readiness
         if: env.AZURE_CREDENTIALS != ''
         run: |

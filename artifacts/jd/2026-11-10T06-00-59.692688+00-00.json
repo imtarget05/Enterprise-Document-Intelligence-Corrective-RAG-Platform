@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "project": "enterprise",
+  "tier": "local",
+  "runtime": {
+    "collector_executable": "/opt/homebrew/opt/python@3.15/bin/python3.15",
+    "collector_python": "3.15.0 (main, Oct  9 2026, 11:16:41) [Clang 21.0.0 (clang-2100.3.34.2)]",
+    "node": {
+      "exit_code": 0,
+      "output": "v26.5.0"
+    },
+    "java": {
+      "exit_code": 0,
+      "output": "openjdk version \"17.0.20\" 2026-07-21\nOpenJDK Runtime Environment Homebrew (build 17.0.20+0)\nOpenJDK 64-Bit Server VM Homebrew (build 17.0.20+0, mixed mode, sharing)"
+    },
+    "uv": {
+      "exit_code": 0,
+      "output": "uv 0.12.0 (Homebrew 2026-07-28 aarch64-apple-darwin)"
+    },
+    "agent_python": {
+      "exit_code": 0,
+      "output": "/Users/mainguyenbinhtan/Downloads/Phu\u031bo\u031bng Trang/Enterprise-Document-Intelligence-Corrective-RAG-Platform/agent/.venv-jd/bin/python\n3.12.13 (main, Jul 23 2026, 14:33:47) [Clang 22.1.3 ]\n/Users/mainguyenbinhtan/Downloads/Phu\u031bo\u031bng Trang/Enterprise-Document-Intelligence-Corrective-RAG-Platform/agent/.venv-jd/lib/python3.12/site-packages/pytest/__init__.py"
+    },
+    "router_python": {
+      "exit_code": 0,
+      "output": "/Users/mainguyenbinhtan/Downloads/Phu\u031bo\u031bng Trang/Enterprise-Document-Intelligence-Corrective-RAG-Platform/llm-router/.venv/bin/python\n3.12.13 (main, Jul 23 2026, 14:33:47) [Clang 22.1.3 ]\n/Users/mainguyenbinhtan/Downloads/Phu\u031bo\u031bng Trang/Enterprise-Document-Intelligence-Corrective-RAG-Platform/llm-router/.venv/lib/python3.12/site-packages/pytest/__init__.py"
+    }
+  },
+  "started_at": "2026-11-10T06:00:59.692688+00:00",
+  "finished_at": "2026-11-10T06:02:30.435837+00:00",
+  "revision_before": "1f2d7b04b0dcdb209acf94a2af258dcc3e57bd0d",
+  "revision_after": "1f2d7b04b0dcdb209acf94a2af258dcc3e57bd0d",
+  "tracked_diff_sha256_before": "8b355da69089a85f90cd20e5bc1ce9d7f2807cb00b3f30ccc4c056383a7f49db",
+  "working_tree_before": [
+    "M .gitignore",
+    " M backend/src/main/java/com/smartdocchat/consumer/DocumentClassificationConsumer.java",
+    " M backend/src/main/java/com/smartdocchat/consumer/DocumentIngestionConsumer.java",
+    " M backend/src/main/java/com/smartdocchat/consumer/WorkflowCompletionConsumer.java",
+    " M backend/src/main/java/com/smartdocchat/entity/Document.java",
+    " M backend/src/main/java/com/smartdocchat/event/DocumentClassifiedEvent.java",
+    " M backend/src/main/java/com/smartdocchat/event/DocumentIngestedEvent.java",
+    " M backend/src/main/java/com/smartdocchat/event/WorkflowCompletedEvent.java",
+    " M backend/src/main/java/com/smartdocchat/repository/DocumentRepository.java",
+    " M backend/src/main/java/com/smartdocchat/service/DocumentJobService.java",
+    " M backend/src/main/java/com/smartdocchat/service/DocumentService.java",
+    " M backend/src/test/java/com/smartdocchat/consumer/DocumentClassificationConsumerTest.java",
+    " M backend/src/test/java/com/smartdocchat/consumer/DocumentIngestionConsumerTest.java",
+    " M backend/src/test/java/com/smartdocchat/consumer/WorkflowCompletionConsumerTest.java",
+    " M backend/src/test/java/com/smartdocchat/service/DocumentJobServiceTest.java",
+    " M backend/src/test/java/com/smartdocchat/service/DocumentSearchTest.java",
+    " M backend/src/test/java/com/smartdocchat/service/DocumentServiceIdempotencyTest.java",
+    " M backend/src/test/java/com/smartdocchat/service/DocumentServiceOwnerCacheIsolationTest.java",
+    " M backend/src/test/java/com/smartdocchat/service/DocumentServiceTest.java",
+    " M llm-router/requirements.txt",
+    "?? .nvmrc",
+    "?? .python-version",
+    "?? agent/requirements.lock",
+    "?? backend/src/main/java/com/smartdocchat/entity/DocumentOutbox.java",
+    "?? backend/src/main/java/com/smartdocchat/repository/DocumentOutboxRepository.java",
+    "?? backend/src/main/java/com/smartdocchat/service/DocumentIngestionOutbox.java",
+    "?? backend/src/main/java/com/smartdocchat/service/DocumentOutboxRelay.java",
+    "?? backend/src/main/resources/db/migration/V19__document_ingestion_outbox.sql",
+    "?? backend/src/test/java/com/smartdocchat/service/DocumentIngestionOutboxTest.java",
+    "?? docs/JD_INTERVIEW_AUDIT_2026-11-10.md",
+    "?? docs/evidence/",
+    "?? llm-router/requirements.lock",
+    "?? scripts/jd.py",
+    "?? tasks/plan.md",
+    "?? tasks/reviews/jd-phase0-incident-review.md",
+    "?? tasks/todo.md"
+  ],
+  "working_tree_after": [
+    "M .gitignore",
+    " M backend/src/main/java/com/smartdocchat/consumer/DocumentClassificationConsumer.java",
+    " M backend/src/main/java/com/smartdocchat/consumer/DocumentIngestionConsumer.java",
+    " M backend/src/main/java/com/smartdocchat/consumer/WorkflowCompletionConsumer.java",
+    " M backend/src/main/java/com/smartdocchat/entity/Document.java",
+    " M backend/src/main/java/com/smartdocchat/event/DocumentClassifiedEvent.java",
+    " M backend/src/main/java/com/smartdocchat/event/DocumentIngestedEvent.java",
+    " M backend/src/main/java/com/smartdocchat/event/WorkflowCompletedEvent.java",
+    " M backend/src/main/java/com/smartdocchat/repository/DocumentRepository.java",
+    " M backend/src/main/java/com/smartdocchat/service/DocumentJobService.java",
+    " M backend/src/main/java/com/smartdocchat/service/DocumentService.java",
+    " M backend/src/test/java/com/smartdocchat/consumer/DocumentClassificationConsumerTest.java",
+    " M backend/src/test/java/com/smartdocchat/consumer/DocumentIngestionConsumerTest.java",
+    " M backend/src/test/java/com/smartdocchat/consumer/WorkflowCompletionConsumerTest.java",
+    " M backend/src/test/java/com/smartdocchat/integration/FlywayPostgresIntegrationTest.java",
+    " M backend/src/test/java/com/smartdocchat/service/DocumentJobServiceTest.java",
+    " M backend/src/test/java/com/smartdocchat/service/DocumentSearchTest.java",
+    " M backend/src/test/java/com/smartdocchat/service/DocumentServiceIdempotencyTest.java",
+    " M backend/src/test/java/com/smartdocchat/service/DocumentServiceOwnerCacheIsolationTest.java",
+    " M backend/src/test/java/com/smartdocchat/service/DocumentServiceTest.java",
+    " M llm-router/requirements.txt",
+    "?? .nvmrc",
+    "?? .python-version",
+    "?? agent/requirements.lock",
+    "?? backend/src/main/java/com/smartdocchat/entity/DocumentOutbox.java",
+    "?? backend/src/main/java/com/smartdocchat/repository/DocumentOutboxRepository.java",
+    "?? backend/src/main/java/com/smartdocchat/service/DocumentIngestionOutbox.java",
+    "?? backend/src/main/java/com/smartdocchat/service/DocumentOutboxRelay.java",
+    "?? backend/src/main/resources/db/migration/V19__document_ingestion_outbox.sql",
+    "?? backend/src/test/java/com/smartdocchat/service/DocumentIngestionOutboxTest.java",
+    "?? docs/JD_INTERVIEW_AUDIT_2026-11-10.md",
+    "?? docs/evidence/",
+    "?? llm-router/requirements.lock",
+    "?? mcp-gateway/",
+    "?? scripts/jd.py",
+    "?? tasks/plan.md",
+    "?? tasks/reviews/jd-phase0-incident-review.md",
+    "?? tasks/todo.md"
+  ],
+  "concurrent_changes_detected": true,
+  "results": [
+    {
+      "suite": "agent",
+      "command": [
+        "/Users/mainguyenbinhtan/Downloads/Phu\u031bo\u031bng Trang/Enterprise-Document-Intelligence-Corrective-RAG-Platform/agent/.venv-jd/bin/python",
+        "-I",
+        "-m",
+        "pytest",
+        "agent/tests",
+        "tests",
+        "-q",
+        "-m",
+        "not integration and not slow"
+      ],
+      "exit_code": 0,
+      "error": null
+    }
+  ],
+  "limitations": [
+    "Local checks only; not hosted CI, cloud, uptime, cost or RAG quality evidence.",
+    "Untracked file names are recorded but their contents are not included in the tracked diff hash.",
+    "Review and redact artifacts before publication; never collect environment variables or credentials."
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "name": "enterprise-mcp-gateway",
+  "private": true,
+  "type": "module",
+  "version": "1.0.0",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "test": "npm run build && vitest run",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc",
+    "start": "node dist/node.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.2"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.15",
+    "typescript": "5.9.3",
+    "vitest": "5.1.0"
+  }
+}

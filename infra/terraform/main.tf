@@ -64,3 +64,81 @@ resource "azurerm_user_assigned_identity" "identity" {
   location            = azurerm_resource_group.rg.location
   tags                = azurerm_resource_group.rg.tags
 }
+
+# ── Key Vault (secrets: DB conn string, JWT, API keys) ────────────────────────
+resource "azurerm_key_vault" "secrets" {
+  name                        = "smartdoc-kv-${random_string.suffix.result}"
+  location                    = azurerm_resource_group.rg.location
+  resource_group_name         = azurerm_resource_group.rg.name
+  enabled_for_disk_encryption = true
+  purge_protection_enabled    = false
+  soft_delete_retention_days  = 7
+  sku_name                    = "standard"
+  tenant_id                   = data.azurerm_client_config.current.tenant_id
+
+  tags = azurerm_resource_group.rg.tags
+}
+
+# ── Key Vault access policy (UAI reads secrets) ───────────────────────────────
+resource "azurerm_key_vault_access_policy" "secrets" {
+  key_vault_id      = azurerm_key_vault.secrets.id
+  tenant_id         = data.azurerm_client_config.current.tenant_id
+  object_id         = azurerm_user_assigned_identity.identity.principal_id
+  secret_permissions = ["Get", "List"]
+}
+
+# ── Monitor Action Group (deploy/runtime alerts) ──────────────────────────────
+resource "azurerm_monitor_action_group" "alerts" {
+  name                = "smartdoc-ag-alerts"
+  resource_group_name = azurerm_resource_group.rg.name
+  short_name          = "sdocalerts"
+
+  email_receiver {
+    name        = "platform-alerts"
+    email_address = var.alert_email
+  }
+
+  tags = azurerm_resource_group.rg.tags
+}
+
+# ── Monitor Metric Alert: Container App HTTP 5xx ──────────────────────────────
+resource "azurerm_monitor_metric_alert" "http_5xx" {
+  name                = "smartdoc-api-http-5xx"
+  resource_group_name = azurerm_resource_group.rg.name
+  scopes              = [azurerm_container_app.api.id]
+  description         = "Alert when SmartDocument API returns HTTP 5xx"
+  frequency           = "PT1M"
+  window_size         = "PT5M"
+  auto_mitigate       = true
+  severity            = 2
+
+  criteria {
+    metric_namespace = "Microsoft.Insights/containerApps"
+    metric_name      = "requests/failed"
+    aggregation      = "Count"
+    operator         = "GreaterThan"
+    threshold        = 0
+  }
+
+  action {
+    action_group_id = azurerm_monitor_action_group.alerts.id
+  }
+
+  tags = azurerm_resource_group.rg.tags
+}
+
+# ── Outputs ───────────────────────────────────────────────────────────────────
+output "key_vault_name" {
+  description = "Name of the Key Vault holding platform secrets"
+  value       = azurerm_key_vault.secrets.name
+}
+
+output "key_vault_uri" {
+  description = "Key Vault DNS URI"
+  value       = azurerm_key_vault.secrets.vault_uri
+}
+
+output "action_group_id" {
+  description = "Monitor action group id"
+  value       = azurerm_monitor_action_group.alerts.id
+}

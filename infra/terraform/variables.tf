@@ -33,3 +33,9 @@ variable "image_tag_worker" {
   description = "Container image tag for Ingestion Worker"
   default     = "latest"
 }
+
+variable "alert_email" {
+  type        = string
+  description = "Email address receiving Monitor alert notifications"
+  default     = "platform-alerts@example.com"
+}

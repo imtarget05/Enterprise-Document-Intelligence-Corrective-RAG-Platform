@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "project": "enterprise",
+  "tier": "local",
+  "started_at": "2026-11-10T05:53:42.476591+00:00",
+  "finished_at": "2026-11-10T05:53:54.685253+00:00",
+  "revision_before": "1f2d7b04b0dcdb209acf94a2af258dcc3e57bd0d",
+  "revision_after": "1f2d7b04b0dcdb209acf94a2af258dcc3e57bd0d",
+  "tracked_diff_sha256_before": "57957c16afafd8eb8607f1ac10b469724671deeeb9506fa4b76ba34fea5d9e48",
+  "working_tree_before": [
+    "M .gitignore",
+    " M backend/src/test/java/com/smartdocchat/consumer/DocumentIngestionConsumerTest.java",
+    "?? .nvmrc",
+    "?? .python-version",
+    "?? agent/requirements.lock",
+    "?? docs/JD_INTERVIEW_AUDIT_2026-11-10.md",
+    "?? llm-router/requirements.lock",
+    "?? scripts/jd.py"
+  ],
+  "working_tree_after": [
+    "M .gitignore",
+    " M backend/src/test/java/com/smartdocchat/consumer/DocumentIngestionConsumerTest.java",
+    "?? .nvmrc",
+    "?? .python-version",
+    "?? agent/requirements.lock",
+    "?? docs/JD_INTERVIEW_AUDIT_2026-11-10.md",
+    "?? llm-router/requirements.lock",
+    "?? scripts/jd.py"
+  ],
+  "concurrent_changes_detected": false,
+  "results": [
+    {
+      "suite": "router",
+      "command": [
+        "/Users/mainguyenbinhtan/Downloads/Phu\u031bo\u031bng Trang/Enterprise-Document-Intelligence-Corrective-RAG-Platform/llm-router/.venv/bin/python",
+        "-I",
+        "-m",
+        "pytest",
+        "tests",
+        "-q"
+      ],
+      "exit_code": 0,
+      "error": null
+    }
+  ],
+  "limitations": [
+    "Local checks only; not hosted CI, cloud, uptime, cost or RAG quality evidence.",
+    "Untracked file names are recorded but their contents are not included in the tracked diff hash.",
+    "Review and redact artifacts before publication; never collect environment variables or credentials."
+  ]
+}

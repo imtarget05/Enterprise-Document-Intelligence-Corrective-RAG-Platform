@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "project": "enterprise",
+  "tier": "local",
+  "started_at": "2026-11-10T05:55:01.585932+00:00",
+  "finished_at": "2026-11-10T05:55:05.550907+00:00",
+  "revision_before": "1f2d7b04b0dcdb209acf94a2af258dcc3e57bd0d",
+  "revision_after": "1f2d7b04b0dcdb209acf94a2af258dcc3e57bd0d",
+  "tracked_diff_sha256_before": "a42f3c957a30318a252a912af733dd0fb1a44df3314e0a4d7bc248e0481215d7",
+  "working_tree_before": [
+    "M .gitignore",
+    " M backend/src/main/java/com/smartdocchat/consumer/DocumentIngestionConsumer.java",
+    " M backend/src/main/java/com/smartdocchat/service/DocumentService.java",
+    " M backend/src/test/java/com/smartdocchat/consumer/DocumentIngestionConsumerTest.java",
+    " M llm-router/requirements.txt",
+    "?? .nvmrc",
+    "?? .python-version",
+    "?? agent/requirements.lock",
+    "?? docs/JD_INTERVIEW_AUDIT_2026-11-10.md",
+    "?? llm-router/requirements.lock",
+    "?? scripts/jd.py",
+    "?? tasks/plan.md",
+    "?? tasks/todo.md"
+  ],
+  "working_tree_after": [
+    "M .gitignore",
+    " M backend/src/main/java/com/smartdocchat/consumer/DocumentIngestionConsumer.java",
+    " M backend/src/main/java/com/smartdocchat/service/DocumentService.java",
+    " M backend/src/test/java/com/smartdocchat/consumer/DocumentIngestionConsumerTest.java",
+    " M llm-router/requirements.txt",
+    "?? .nvmrc",
+    "?? .python-version",
+    "?? agent/requirements.lock",
+    "?? docs/JD_INTERVIEW_AUDIT_2026-11-10.md",
+    "?? llm-router/requirements.lock",
+    "?? scripts/jd.py",
+    "?? tasks/plan.md",
+    "?? tasks/todo.md"
+  ],
+  "concurrent_changes_detected": false,
+  "results": [
+    {
+      "suite": "router",
+      "command": [
+        "/Users/mainguyenbinhtan/Downloads/Phu\u031bo\u031bng Trang/Enterprise-Document-Intelligence-Corrective-RAG-Platform/llm-router/.venv/bin/python",
+        "-I",
+        "-m",
+        "pytest",
+        "tests",
+        "-q"
+      ],
+      "exit_code": 0,
+      "error": null
+    }
+  ],
+  "limitations": [
+    "Local checks only; not hosted CI, cloud, uptime, cost or RAG quality evidence.",
+    "Untracked file names are recorded but their contents are not included in the tracked diff hash.",
+    "Review and redact artifacts before publication; never collect environment variables or credentials."
+  ]
+}

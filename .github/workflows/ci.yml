@@ -609,3 +609,36 @@ jobs:
           tags: smartdoc-frontend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # ════════════════════════════════════════════════════════════════
+  # IaC validation (Terraform + Bicep)
+  # ════════════════════════════════════════════════════════════════
+  iac-validate:
+    name: IaC Validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.0
+
+      - name: Terraform init & validate
+        run: |
+          terraform init
+          terraform validate
+        working-directory: infra/terraform
+
+      - name: Install Bicep CLI
+        run: |
+          curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64
+          chmod +x bicep
+          sudo mv bicep /usr/local/bin/bicep
+          bicep --version
+
+      - name: Bicep build
+        run: bicep build main.bicep --outfile /dev/null
+        working-directory: infra/bicep
+
