@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: portfolio
+  namespace: argocd
+spec:
+  description: Portfolio (Enterprise SmartDocument) workloads
+  sourceRepos:
+    - https://github.com/imtarget05/Enterprise-Document-Intelligence-Corrective-RAG-Platform.git
+  destinations:
+    - namespace: portfolio
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  roles:
+    - name: deployer
+      description: Can sync and manage portfolio applications
+      policies:
+        - p, proj:portfolio:deployer, applications, */*, portfolio/*, allow
+      groups:
+        - portfolio-deployers
