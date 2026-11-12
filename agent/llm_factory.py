@@ -33,6 +33,8 @@ except ImportError:
         def invoke(self, *args, **kwargs):
             raise RuntimeError("langchain_openai is not installed")
 
+from langchain_community.chat_models import ChatOllama as RouterChatOllama
+
 from settings import settings
 
 
@@ -83,7 +85,8 @@ class LLMFactory:
                 model=LLMFactory.model_for_task(task),
                 temperature=temperature,
             )
-        return ChatOllama(
+        return RouterChatOllama(
+            headers={"X-Internal-Token": settings.internal_service_token},
             base_url=settings.llm_base_url,
             model=settings.llm_chat_model,
             temperature=temperature,

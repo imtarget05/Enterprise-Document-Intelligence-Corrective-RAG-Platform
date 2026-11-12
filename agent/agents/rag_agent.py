@@ -249,6 +249,7 @@ class RagAgent:
         current_query = query
 
         for iteration in range(max_reformulations + 1):
+            variants = []
             if iteration > 0:
                 variants = await self._reformulate_query(current_query)
                 if not variants:

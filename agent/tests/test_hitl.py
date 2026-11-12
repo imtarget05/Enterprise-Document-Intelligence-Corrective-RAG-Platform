@@ -427,7 +427,7 @@ class _FakeWorkflow:
     def __init__(self, result):
         self._result = result
 
-    async def ainvoke(self, inputs):
+    async def ainvoke(self, inputs, config=None):
         return dict(self._result)
 
 
@@ -688,7 +688,7 @@ class _CapturingWorkflow:
         self._result = result
         self.inputs = []
 
-    async def ainvoke(self, inputs):
+    async def ainvoke(self, inputs, config=None):
         self.inputs.append(dict(inputs))
         return dict(self._result)
 
