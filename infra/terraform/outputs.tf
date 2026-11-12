@@ -20,7 +20,7 @@ output "storage_account_name" {
 
 output "documents_container_name" {
   description = "Name of the documents container"
-  value       = azurerm_storage_container.documents.name
+  value       = azapi_resource.documents.name
 }
 
 output "search_service_name" {

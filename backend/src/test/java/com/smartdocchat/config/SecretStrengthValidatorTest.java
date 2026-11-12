@@ -23,6 +23,12 @@ class SecretStrengthValidatorTest {
     }
 
     @Test
+    void committedDevSecretIsRejectedInProdProfile() {
+        assertThrows(IllegalStateException.class,
+                () -> validator("prod", SecretStrengthValidator.DEV_ONLY_JWT_SECRET).afterPropertiesSet());
+    }
+
+    @Test
     void committedDevSecretIsRejectedInStaging() {
         assertThrows(IllegalStateException.class,
                 () -> validator("staging", SecretStrengthValidator.DEV_ONLY_JWT_SECRET).afterPropertiesSet());
@@ -33,12 +39,19 @@ class SecretStrengthValidatorTest {
         assertThrows(IllegalStateException.class,
                 () -> validator("production", "").afterPropertiesSet());
         assertThrows(IllegalStateException.class,
+                () -> validator("prod", "").afterPropertiesSet());
+        assertThrows(IllegalStateException.class,
                 () -> validator("staging", "  ").afterPropertiesSet());
     }
 
     @Test
     void strongSecretIsAcceptedInProduction() {
         assertDoesNotThrow(() -> validator("production", STRONG_SECRET).afterPropertiesSet());
+    }
+
+    @Test
+    void strongSecretIsAcceptedInProdProfile() {
+        assertDoesNotThrow(() -> validator("prod", STRONG_SECRET).afterPropertiesSet());
     }
 
     @Test

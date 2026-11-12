@@ -43,7 +43,7 @@ class AgentControllerTest {
         ResponseEntity<Map<String, Object>> result = controller.invokeAgent(
                 user("alice"), Map.of("message", "send email", "session_id", "s1"));
 
-        assertEquals(200, result.getStatusCodeValue());
+        assertEquals(200, result.getStatusCode().value());
         Map<String, Object> body = result.getBody();
         assertEquals("⏸ approval needed", body.get("answer"));
         assertEquals("trace-1", body.get("trace_id"));
@@ -62,7 +62,7 @@ class AgentControllerTest {
         ResponseEntity<Map<String, Object>> result = controller.invokeAgent(
                 user("alice"), Map.of("message", "hello"));
 
-        assertEquals(200, result.getStatusCodeValue());
+        assertEquals(200, result.getStatusCode().value());
         assertEquals(false, result.getBody().get("hitl_pending"));
         assertEquals("", result.getBody().get("hitl_approval_id"));
     }
@@ -74,7 +74,7 @@ class AgentControllerTest {
         ResponseEntity<Map<String, Object>> result = controller.invokeAgent(
                 user("alice"), Map.of("message", "  "));
 
-        assertEquals(400, result.getStatusCodeValue());
+        assertEquals(400, result.getStatusCode().value());
     }
 
     @Test
@@ -86,7 +86,7 @@ class AgentControllerTest {
         ResponseEntity<Map<String, Object>> result = controller.invokeAgent(
                 user("alice"), Map.of("message", "hi", "session_id", "s1"));
 
-        assertEquals(502, result.getStatusCodeValue());
+        assertEquals(502, result.getStatusCode().value());
     }
 
     @Test
@@ -94,6 +94,6 @@ class AgentControllerTest {
         AgentController controller = new AgentController(agentClient);
         ResponseEntity<Map<String, Object>> result = controller.invokeAgent(
                 null, Map.of("message", "read private document"));
-        assertEquals(401, result.getStatusCodeValue());
+        assertEquals(401, result.getStatusCode().value());
     }
 }

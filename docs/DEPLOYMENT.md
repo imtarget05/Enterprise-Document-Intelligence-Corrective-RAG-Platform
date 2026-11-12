@@ -1,8 +1,11 @@
-# Deployment Guide — 100% Free Tier
+# Deployment Guide — portfolio/free-tier setup
 
-Hệ thống deploy trọn vẹn trên hạ tầng miễn phí. Không có service nào mất phí,
-không có trial hết hạn (trừ những mục đã ghi chú). Vận hành theo blueprint:
-`render.yaml` được Render đọc trực tiếp từ repo (Render Dashboard → **New → Blueprint**).
+Blueprint dưới đây dành cho demo/portfolio, không phải production có SLA: free
+services có thể spin down, giới hạn quota và không bảo đảm HA. Keycloak dùng
+`dev-file`, nên không được dùng cấu hình đó cho danh tính production. Production
+cần dịch vụ always-on, database/cache có backup và recovery đã diễn tập, cùng
+smoke test có xác thực trên hạ tầng thật. Không coi việc deploy thành công là
+bằng chứng production-ready.
 
 ## Tổng quan hạ tầng
 
@@ -21,7 +24,7 @@ không có trial hết hạn (trừ những mục đã ghi chú). Vận hành th
 | Frontend | Cloudflare Pages | Unlimited bandwidth | Deploy qua `.github/workflows/pages.yml` |
 | Observability | Langfuse Cloud (free) + GitHub Actions | — | Opt-in qua LANGFUSE_* keys |
 
-Flyway Community (migration V1→V17) là **thư viện trong backend jar** — miễn phí
+Flyway Community (migration V1→V23) chạy tự động khi backend khởi động — miễn phí
 vĩnh viễn, không giới hạn số migration, không cần account. Index partial unique
 V17 là tính năng PostgreSQL tiêu chuẩn.
 
@@ -36,8 +39,13 @@ V17 là tính năng PostgreSQL tiêu chuẩn.
 3. **Cloudflare R2**: Dashboard → R2 → Create bucket `smart-doc-documents` →
    API token (Object Read & Write) → copy Account ID + Access Key ID + Secret.
 4. **Upstash**: upstash.com → Redis (Regional) → copy host, port 6379, password.
-5. **Cloudflare Workers AI**: Dashboard → Workers AI → tạo API token (Workers AI edit).
-6. **Render**: render.com → sign in bằng GitHub (grant repo access).
+5. **Kafka-compatible broker**: provision an externally reachable production
+   cluster and set `KAFKA_SECURITY_PROTOCOL` to its client protocol. For SASL
+   brokers, also configure `KAFKA_SASL_MECHANISM` and
+   `KAFKA_SASL_JAAS_CONFIG` as secrets. Create application topics with at least
+   three replicas; missing topics use replication factor 3 by default in `prod`.
+6. **Cloudflare Workers AI**: Dashboard → Workers AI → tạo API token (Workers AI edit).
+7. **Render**: render.com → sign in bằng GitHub (grant repo access).
 
 ### 2. Deploy blueprint trên Render
 
@@ -51,6 +59,9 @@ ROUTER_INTERNAL_TOKEN                              # random 32+ chars
 REDIS_URL                                          # Upstash rediss://... (llm-router + agent HITL store)
 LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY           # opt-in
 SPRING_DATASOURCE_URL/USERNAME/PASSWORD            # Neon (backend)
+KAFKA_BOOTSTRAP_SERVERS                            # managed Kafka broker (backend)
+KAFKA_SECURITY_PROTOCOL                            # usually SSL or SASL_SSL
+# KAFKA_SASL_MECHANISM, KAFKA_SASL_JAAS_CONFIG     # required only for SASL brokers
 R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY
 QDRANT_HOST, QDRANT_API_KEY
 JWT_SECRET                                         # random 64+ chars
@@ -73,11 +84,17 @@ forwarded-IP normalization is later enabled, restrict Uvicorn's trust to a
 verified ingress and add proxy-boundary tests before deploying it.
 headers from arbitrary peers.
 
-Backend tự chạy Flyway V1→V17 lúc start (`application-prod.yml`: Flyway enabled,
+Backend tự chạy Flyway V1→V23 lúc start (`application-prod.yml`: Flyway enabled,
 `ddl-auto=validate`). Sau khi `smartdoc-keycloak` healthy:
 
 - Đặt `SSO_OIDC_ENABLED=true`, `SSO_OIDC_ISSUER_URI=https://smartdoc-keycloak.onrender.com/realms/smartdoc`,
   tạo realm `smartdoc` + client trong Keycloak admin console.
+
+The backend's actuator health endpoint does not prove that Kafka events are
+being delivered or consumed. Before treating a deployment as production-ready,
+run an authenticated upload-to-ingestion flow, verify consumer completion and
+failure/retry behavior, and confirm the broker's TLS/authentication and topic
+replication settings with the selected provider.
 
 ### 3. Deploy frontend lên Cloudflare Pages
 
@@ -89,9 +106,40 @@ hoàn tất thành công trên `main`; có thể dispatch thủ công. Cần set
 | `CLOUDFLARE_API_TOKEN` | secret | Pages edit + Workers AI token |
 | `CLOUDFLARE_ACCOUNT_ID` | secret | Cloudflare Account ID |
 | `VITE_API_URL` | build env | `https://smartdoc-api.blackisland-5a3f0246.southeastasia.azurecontainerapps.io/api` |
+| `BACKEND_URL` | Pages runtime variable | HTTPS API base URL; defaults to the canonical Azure API above |
+| `SANDBOX_MODE` | Pages runtime variable | Leave unset or set to `false` in production. Set to `true` only for an isolated demo environment. |
 
 Workflow tự tạo Pages project (`smart-doc-chatbot`) và deploy `frontend/dist`.
 SPA fallback (`public/_redirects`) + security headers (`public/_headers`) đã có sẵn.
+The Pages Function proxies every production `/api/*` request to the configured
+backend and returns upstream errors instead of fabricating authentication,
+uploads, chat, or approval success. Sandbox fixtures are available only when
+`SANDBOX_MODE=true`; never enable that variable for the production Pages
+environment.
+
+### 3.1 Self-managed containers/Kubernetes
+
+The frontend container runs as the `nginx` user on port `8080`. Configure
+`BACKEND_UPSTREAM` to the backend service address (Compose sets
+`smart-document:8080`; Kubernetes sets `smartdoc-backend:8080`). The Kubernetes
+Qdrant and Redis workloads use persistent volume claims; provision a StorageClass
+that supports `ReadWriteOnce`, monitor capacity, and verify backup/restore before
+using persistent data. Qdrant requests 10 GiB and Redis requests 2 GiB.
+For the checked-in Kubernetes profile, `portfolio-secrets` must include
+`SMARTDOC_JDBC_URL`, the Spring datasource username/password,
+`KAFKA_BOOTSTRAP_SERVERS`, `KAFKA_SECURITY_PROTOCOL`, and (for SASL brokers)
+`KAFKA_SASL_MECHANISM` / `KAFKA_SASL_JAAS_CONFIG` for the required external Kafka-compatible broker,
+`JWT_SECRET`,
+`INTERNAL_SERVICE_TOKEN`, `REDIS_PASSWORD`, `AGENT_DATABASE_URL` (PostgreSQL),
+and the three `R2_*` credentials. The backend uses R2 and shared Redis; the
+agent uses PostgreSQL checkpoints and Redis-backed approvals.
+The broker must support the configured three-replica topic factor, and its
+TLS/SASL client properties must be configured for the chosen provider.
+
+The checked-in Kubernetes image names are development placeholders. Before
+applying the manifests to production, publish the reviewed images and replace
+mutable `latest` tags with immutable release tags or image digests. Supply
+Kubernetes secrets through the platform secret manager; do not commit them.
 
 ### 4. CORS (quan trọng)
 
@@ -153,4 +201,3 @@ Ordered steps to bring the production chain back (dashboard work + this repo's c
 6. **Frontend**: Pages and Docker build-args target the Azure API after CI;
    after a successful CI-gated Pages deployment, run `python scripts/production_smoke.py`
    (health → register/login → upload → chat) must pass.
-

@@ -1,5 +1,10 @@
 package com.smartdocchat.service;
 
+import com.azure.core.util.BinaryData;
+import com.azure.storage.blob.BlobClient;
+import com.azure.storage.blob.BlobContainerClient;
+import com.azure.storage.blob.options.BlockBlobSimpleUploadOptions;
+import com.azure.storage.blob.specialized.BlockBlobClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -220,5 +225,108 @@ class StorageServiceTest {
         verify(client).deleteObject(captor.capture());
         assertEquals("docs", captor.getValue().bucket());
         assertEquals("uuid.pdf", captor.getValue().key());
+    }
+
+    // -----------------------------------------------------------------------
+    // Azure Blob provider tests
+    // -----------------------------------------------------------------------
+
+    private BlobClient setUpAzureBlobProvider() {
+        BlobContainerClient containerClient = mock(BlobContainerClient.class);
+        BlobClient blobClient = mock(BlobClient.class);
+        when(containerClient.getBlobClient(any(String.class))).thenReturn(blobClient);
+        ReflectionTestUtils.setField(storageService, "provider", "blob");
+        ReflectionTestUtils.setField(storageService, "azureBlobContainerClient", containerClient);
+        return blobClient;
+    }
+
+    @Test
+    void azureBlobUploadUsesOpaqueKeyAndContentType() throws Exception {
+        BlobClient blobClient = setUpAzureBlobProvider();
+        BlockBlobClient blockBlobClient = mock(BlockBlobClient.class);
+        when(blobClient.getBlockBlobClient()).thenReturn(blockBlobClient);
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "uuid.pdf", "application/pdf", "content".getBytes(StandardCharsets.UTF_8));
+
+        assertEquals("uuid.pdf", storageService.upload("uuid.pdf", file));
+
+        ArgumentCaptor<BlockBlobSimpleUploadOptions> optionsCaptor =
+                ArgumentCaptor.forClass(BlockBlobSimpleUploadOptions.class);
+        verify(blockBlobClient).uploadWithResponse(optionsCaptor.capture(), eq(null), any());
+        assertEquals("content",
+                new String(optionsCaptor.getValue().getData().toBytes(), StandardCharsets.UTF_8));
+        assertEquals("application/pdf", optionsCaptor.getValue().getHeaders().getContentType());
+    }
+
+    @Test
+    void azureBlobDownloadWritesTempFile() throws Exception {
+        BlobClient blobClient = setUpAzureBlobProvider();
+        org.mockito.Mockito.doAnswer(invocation -> {
+            Files.write(Path.of((String) invocation.getArgument(0)),
+                    "bytes".getBytes(StandardCharsets.UTF_8));
+            return null;
+        }).when(blobClient).downloadToFile(any(String.class), eq(true));
+
+        File file = storageService.download("uuid.pdf");
+        try {
+            assertTrue(file.getName().contains("sdc_download_"));
+            assertEquals("bytes", new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8));
+        } finally {
+            Files.deleteIfExists(file.toPath());
+        }
+    }
+
+    @Test
+    void azureBlobDownloadSurfacesClientFailureAsIOException() {
+        BlobClient blobClient = setUpAzureBlobProvider();
+        doThrow(new RuntimeException("not found"))
+                .when(blobClient).downloadToFile(any(String.class), eq(true));
+
+        assertThrows(IOException.class, () -> storageService.download("missing.pdf"));
+    }
+
+    @Test
+    void azureBlobDeleteUsesIdempotentDelete() {
+        BlobClient blobClient = setUpAzureBlobProvider();
+
+        storageService.delete("uuid.pdf");
+
+        verify(blobClient).deleteIfExists();
+    }
+
+    @Test
+    void azureBlobDeleteSurfacesClientFailure() {
+        BlobClient blobClient = setUpAzureBlobProvider();
+        doThrow(new RuntimeException("storage unavailable")).when(blobClient).deleteIfExists();
+
+        assertThrows(RuntimeException.class, () -> storageService.delete("uuid.pdf"));
+    }
+
+    @Test
+    void blobProviderWithMissingConfigurationDoesNotWriteToLocalStorage(@org.junit.jupiter.api.io.TempDir Path tempDir) {
+        ReflectionTestUtils.setField(storageService, "provider", "blob");
+        ReflectionTestUtils.setField(storageService, "localUploadDir", tempDir.toString());
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "uuid.pdf", "application/pdf", "content".getBytes(StandardCharsets.UTF_8));
+
+        assertThrows(RuntimeException.class, () -> storageService.upload("uuid.pdf", file));
+        assertTrue(isDirectoryEmpty(tempDir));
+    }
+
+    @Test
+    void unsupportedProviderFailsClosed() {
+        ReflectionTestUtils.setField(storageService, "provider", "typo");
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "uuid.pdf", "application/pdf", "content".getBytes(StandardCharsets.UTF_8));
+
+        assertThrows(IllegalStateException.class, () -> storageService.upload("uuid.pdf", file));
+    }
+
+    private boolean isDirectoryEmpty(Path path) {
+        try (var files = Files.list(path)) {
+            return files.findAny().isEmpty();
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
     }
 }

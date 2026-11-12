@@ -51,7 +51,7 @@ class AgentApprovalControllerTest {
 
         ResponseEntity<?> result = controller.listApprovals();
 
-        assertEquals(200, result.getStatusCodeValue());
+        assertEquals(200, result.getStatusCode().value());
         assertEquals(queue, result.getBody());
     }
 
@@ -62,7 +62,7 @@ class AgentApprovalControllerTest {
 
         ResponseEntity<?> result = controller.listApprovals();
 
-        assertEquals(404, result.getStatusCodeValue());
+        assertEquals(404, result.getStatusCode().value());
     }
 
     @Test
@@ -71,7 +71,7 @@ class AgentApprovalControllerTest {
 
         ResponseEntity<?> result = controller.listApprovals();
 
-        assertEquals(502, result.getStatusCodeValue());
+        assertEquals(502, result.getStatusCode().value());
     }
 
     @Test
@@ -81,7 +81,7 @@ class AgentApprovalControllerTest {
 
         ResponseEntity<?> result = controller.getApproval("hitl-1");
 
-        assertEquals(200, result.getStatusCodeValue());
+        assertEquals(200, result.getStatusCode().value());
         assertEquals(detail, result.getBody());
     }
 
@@ -92,7 +92,7 @@ class AgentApprovalControllerTest {
 
         ResponseEntity<?> result = controller.approve("hitl-1", Map.of("note", "ok"), principal());
 
-        assertEquals(200, result.getStatusCodeValue());
+        assertEquals(200, result.getStatusCode().value());
         verify(agentClient).approveAction("hitl-1", "boss", "ok");
     }
 
@@ -103,7 +103,7 @@ class AgentApprovalControllerTest {
 
         ResponseEntity<?> result = controller.approve("hitl-1", null, principal());
 
-        assertEquals(200, result.getStatusCodeValue());
+        assertEquals(200, result.getStatusCode().value());
         verify(agentClient).approveAction("hitl-1", "boss", null);
     }
 
@@ -114,7 +114,7 @@ class AgentApprovalControllerTest {
 
         ResponseEntity<?> result = controller.approve("hitl-1", Map.of(), principal());
 
-        assertEquals(503, result.getStatusCodeValue());
+        assertEquals(503, result.getStatusCode().value());
     }
 
     @Test
@@ -124,7 +124,7 @@ class AgentApprovalControllerTest {
 
         ResponseEntity<?> result = controller.reject("hitl-9", Map.of(), principal());
 
-        assertEquals(200, result.getStatusCodeValue());
+        assertEquals(200, result.getStatusCode().value());
         assertEquals(decided, result.getBody());
         verify(agentClient).rejectAction("hitl-9", "boss", null);
     }

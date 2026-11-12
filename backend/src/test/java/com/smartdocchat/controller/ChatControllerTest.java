@@ -54,7 +54,7 @@ class ChatControllerTest {
 
         ResponseEntity<ChatResponse> result = controller.askQuestion(request(), principal());
 
-        assertEquals(200, result.getStatusCodeValue());
+        assertEquals(200, result.getStatusCode().value());
         assertEquals("hi", result.getBody().getAiResponse());
     }
 
@@ -65,7 +65,7 @@ class ChatControllerTest {
 
         ResponseEntity<ChatResponse> result = controller.askQuestion(request(), principal());
 
-        assertEquals(500, result.getStatusCodeValue());
+        assertEquals(500, result.getStatusCode().value());
     }
 
     @Test

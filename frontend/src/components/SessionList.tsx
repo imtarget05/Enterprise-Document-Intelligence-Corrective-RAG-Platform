@@ -16,12 +16,14 @@ export default function SessionList({ activeSessionId, onSelectSession, onResetS
   const queryClient = useQueryClient();
   const authCtx = React.useContext(AuthContext);
   const token = authCtx?.token ?? null;
+  const [actionError, setActionError] = React.useState<string | null>(null);
 
   const handleDeleteSession = async (e: React.MouseEvent, sessionId: string) => {
     e.stopPropagation();
+    setActionError(null);
     deleteLocalSession(sessionId);
     try {
-      await fetch(`${API_BASE_URL}/chat/history/${sessionId}`, {
+      const response = await fetch(`${API_BASE_URL}/chat/history/${sessionId}`, {
         method: "DELETE",
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -29,7 +31,14 @@ export default function SessionList({ activeSessionId, onSelectSession, onResetS
         },
         credentials: "include",
       });
-    } catch {}
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    } catch (error: unknown) {
+      setActionError(
+        error instanceof Error
+          ? `Không thể xóa lịch sử trên máy chủ: ${error.message}`
+          : "Không thể xóa lịch sử trên máy chủ.",
+      );
+    }
     queryClient.invalidateQueries({ queryKey: ["chatSessions"] });
     if (activeSessionId === sessionId && onResetSession) {
       onResetSession();
@@ -38,6 +47,7 @@ export default function SessionList({ activeSessionId, onSelectSession, onResetS
 
   const handleClearAllSessions = async () => {
     if (!window.confirm("Bạn có chắc muốn xóa toàn bộ lịch sử các cuộc trò chuyện?")) return;
+    setActionError(null);
     try {
       const allIds = (sessions || []).map((s) => s.sessionId);
       allIds.push("session-default-01");
@@ -47,7 +57,7 @@ export default function SessionList({ activeSessionId, onSelectSession, onResetS
       localStorage.setItem("smartdoc_deleted_sessions", JSON.stringify(combined));
 
       localStorage.removeItem("smartdoc_sessions");
-      await fetch(`${API_BASE_URL}/chat/history`, {
+      const response = await fetch(`${API_BASE_URL}/chat/history`, {
         method: "DELETE",
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -55,7 +65,14 @@ export default function SessionList({ activeSessionId, onSelectSession, onResetS
         },
         credentials: "include",
       });
-    } catch {}
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    } catch (error: unknown) {
+      setActionError(
+        error instanceof Error
+          ? `Không thể xóa lịch sử: ${error.message}`
+          : "Không thể xóa lịch sử.",
+      );
+    }
     queryClient.invalidateQueries({ queryKey: ["chatSessions"] });
     if (onResetSession) {
       onResetSession();
@@ -66,12 +83,17 @@ export default function SessionList({ activeSessionId, onSelectSession, onResetS
     return <p className="px-3 py-2 text-[12px] text-onsurface-muted">Đang tải...</p>;
   }
 
-  if (sessions.length === 0) {
+  if (sessions.length === 0 && !actionError) {
     return null;
   }
 
   return (
     <div className="mt-4 border-t border-outline/40 pt-3">
+      {actionError && (
+        <p role="alert" className="px-3 py-2 text-[12px] text-rose-700">
+          {actionError}
+        </p>
+      )}
       <div className="flex items-center justify-between px-3 py-1">
         <p className="text-[11px] text-onsurface-muted font-medium uppercase tracking-wider">
           Cuộc trò chuyện gần đây ({sessions.length})

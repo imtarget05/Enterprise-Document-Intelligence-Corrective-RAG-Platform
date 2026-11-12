@@ -5,6 +5,10 @@ terraform {
       source  = "hashicorp/azurerm"
       version = "~> 3.100"
     }
+    azapi = {
+      source  = "Azure/azapi"
+      version = "~> 2.13"
+    }
     random = {
       source  = "hashicorp/random"
       version = "~> 3.6"
@@ -50,11 +54,44 @@ resource "azurerm_log_analytics_workspace" "logs" {
   tags                = azurerm_resource_group.rg.tags
 }
 
+resource "azurerm_virtual_network" "env" {
+  name                = "smartdoc-vnet-${random_string.suffix.result}"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  address_space       = var.vnet_address_space
+  tags                = azurerm_resource_group.rg.tags
+}
+
+resource "azurerm_subnet" "container_apps" {
+  name                 = "container-apps"
+  resource_group_name  = azurerm_resource_group.rg.name
+  virtual_network_name = azurerm_virtual_network.env.name
+  address_prefixes     = [var.container_apps_subnet_address_prefix]
+
+  delegation {
+    name = "container-apps"
+    service_delegation {
+      name    = "Microsoft.App/environments"
+      actions = ["Microsoft.Network/virtualNetworks/subnets/join/action"]
+    }
+  }
+}
+
+resource "azurerm_subnet" "private_endpoints" {
+  name                 = "private-endpoints"
+  resource_group_name  = azurerm_resource_group.rg.name
+  virtual_network_name = azurerm_virtual_network.env.name
+  address_prefixes     = [var.private_endpoints_subnet_address_prefix]
+
+  private_endpoint_network_policies = "Disabled"
+}
+
 resource "azurerm_container_app_environment" "env" {
   name                       = "smartdoc-cae-env"
   resource_group_name        = azurerm_resource_group.rg.name
   location                   = azurerm_resource_group.rg.location
   log_analytics_workspace_id = azurerm_log_analytics_workspace.logs.id
+  infrastructure_subnet_id   = azurerm_subnet.container_apps.id
   tags                       = azurerm_resource_group.rg.tags
 }
 

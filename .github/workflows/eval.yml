@@ -26,7 +26,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
@@ -44,7 +44,7 @@ jobs:
         run: |
           nohup python eval/mock_ollama.py > /tmp/mock_ollama.log 2>&1 &
           nohup python eval/mock_backend.py > /tmp/mock_backend.log 2>&1 &
-          for i in $(seq 1 30); do
+          for _ in $(seq 1 30); do
             if curl -sf http://127.0.0.1:11434/api/health > /dev/null && \
                curl -sf http://127.0.0.1:8081/api/actuator/health > /dev/null; then
               echo "✅ Local LLM stack is up"
@@ -105,7 +105,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
@@ -136,7 +136,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
@@ -160,7 +160,7 @@ jobs:
         run: |
           pip install --quiet fastapi uvicorn
           nohup python eval/mock_backend.py > /tmp/mock_backend.log 2>&1 &
-          for i in $(seq 1 30); do
+          for _ in $(seq 1 30); do
             curl -sf http://127.0.0.1:8081/api/actuator/health > /dev/null && { echo "✅ mock backend up"; exit 0; }
             sleep 2
           done

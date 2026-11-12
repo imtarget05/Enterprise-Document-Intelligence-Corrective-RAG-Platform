@@ -1,7 +1,11 @@
 FROM eclipse-temurin:17-jre
 WORKDIR /app
 COPY deploy-jar/app.jar app.jar
-RUN mkdir -p /app/uploads /app/logs && chmod -R 777 /app/uploads /app/logs
+RUN groupadd --system appgroup \
+    && useradd --system --gid appgroup appuser \
+    && mkdir -p /app/uploads /app/logs \
+    && chown -R appuser:appgroup /app
 EXPOSE 8080
 ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+USER appuser
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

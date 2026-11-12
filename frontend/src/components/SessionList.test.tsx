@@ -104,6 +104,31 @@ describe("SessionList", () => {
     expect(onResetSession).toHaveBeenCalledTimes(1);
   });
 
+  it("reports a failed server-side session deletion", async () => {
+    const now = new Date().toISOString();
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.includes("/chat/sessions")) {
+        return new Response(
+          JSON.stringify({
+            sessions: [
+              { sessionId: "s1", lastMessage: "hello", messageCount: 2, createdAt: now, updatedAt: now },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      return new Response("unavailable", { status: 503 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderSessionList({ activeSessionId: "s1", onSelectSession: vi.fn() });
+
+    const row = (await screen.findByText("🕐 hello")).closest('[role="button"]')!;
+    await userEvent.click(within(row).getByLabelText("Xóa cuộc trò chuyện"));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("HTTP 503");
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/chat/history/s1"))).toBe(true);
+  });
+
   it("does not reset the chat when a non-active session is deleted", async () => {
     const now = new Date().toISOString();
     mockSessions({

@@ -1,6 +1,6 @@
 # Agent service (LangGraph orchestrator + HITL governance gate).
 # Replicas share the approval queue through smartdoc-redis (16-redis.yaml),
-# so a paused action survives pod restarts and is visible to every replica.
+# while PostgreSQL-backed checkpoints preserve graph state across restarts.
 # REDIS_URL is composed from the same portfolio-secrets REDIS_PASSWORD the
 # redis Deployment uses — Kubernetes expands $(...) against earlier env
 # entries, so keep REDIS_PASSWORD first. The Spring backend reaches this
@@ -46,6 +46,11 @@ spec:
         env:
         - name: APP_ENV
           value: "production"
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: portfolio-secrets
+              key: AGENT_DATABASE_URL
         - name: AGENT_PORT
           value: "9000"
         - name: REDIS_PASSWORD
@@ -91,8 +96,15 @@ spec:
             memory: "2Gi"
         securityContext:
           allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
           capabilities:
             drop: ["ALL"]
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: tmp
+        emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

@@ -121,6 +121,85 @@ describe("ChatPage", () => {
     );
   });
 
+  it("does not invent document content when chatting about a cached document", async () => {
+    const user = userEvent.setup();
+    const events = 'event: complete\ndata: {"id":1,"sessionId":"s","userMessage":"question","aiResponse":"No evidence."}\n\n';
+    localStorage.setItem(
+      "smartdoc_user_documents",
+      JSON.stringify([
+        {
+          id: 8,
+          fileName: "An Anh operations.pdf",
+          title: "An Anh operations",
+          fileSize: 0,
+          fileType: "PDF",
+          chunkCount: 0,
+          createdAt: "2026-01-01T00:00:00Z",
+          sourceType: "USER",
+        },
+      ]),
+    );
+    const fetchMock = mockFetch({
+      "/api/documents": { ok: true, json: async () => [] },
+      "/api/chat/history/": { ok: true, json: async () => [] },
+      "/api/chat/ask-stream": { ok: true, body: sseBody(events) },
+    });
+
+    renderChatPage();
+    await user.click(await screen.findByText("An Anh operations"));
+    await user.type(screen.getByPlaceholderText(/Hỏi về An Anh operations/), "What is the policy?");
+    await user.keyboard("{enter}");
+
+    await waitFor(() => {
+      const call = fetchMock.mock.calls.find((args: unknown[]) =>
+        String(args[0]).includes("/api/chat/ask-stream"),
+      );
+      const init = call?.[1] as RequestInit | undefined;
+      const body = JSON.parse(String(init?.body)) as { documentText: string | null };
+      expect(body.documentText).toBeNull();
+    });
+  });
+
+  it("does not send cached binary document data as evidence", async () => {
+    const user = userEvent.setup();
+    const events = 'event: complete\ndata: {"id":1,"sessionId":"s","userMessage":"question","aiResponse":"No evidence."}\n\n';
+    localStorage.setItem(
+      "smartdoc_user_documents",
+      JSON.stringify([
+        {
+          id: 9,
+          fileName: "legacy.pdf",
+          title: "Legacy PDF",
+          fileSize: 0,
+          fileType: "PDF",
+          chunkCount: 0,
+          createdAt: "2026-01-01T00:00:00Z",
+          sourceType: "USER",
+          textContent: "PK\u0000\u0001binary",
+        },
+      ]),
+    );
+    const fetchMock = mockFetch({
+      "/api/documents": { ok: true, json: async () => [] },
+      "/api/chat/history/": { ok: true, json: async () => [] },
+      "/api/chat/ask-stream": { ok: true, body: sseBody(events) },
+    });
+
+    renderChatPage();
+    await user.click(await screen.findByText("Legacy PDF"));
+    await user.type(screen.getByPlaceholderText(/Hỏi về Legacy PDF/), "Summarize this document");
+    await user.keyboard("{enter}");
+
+    await waitFor(() => {
+      const call = fetchMock.mock.calls.find((args: unknown[]) =>
+        String(args[0]).includes("/api/chat/ask-stream"),
+      );
+      const init = call?.[1] as RequestInit | undefined;
+      const body = JSON.parse(String(init?.body)) as { documentText: string | null };
+      expect(body.documentText).toBeNull();
+    });
+  });
+
   it("renders an inline error when the stream fails (HTTP error)", async () => {
     const user = userEvent.setup();
     mockFetch({
@@ -379,7 +458,7 @@ describe("ChatPage", () => {
   }
 
   it("uploads a TXT file, carries its text into the local document record", async () => {
-    const fetchMock = mockFetch({
+    mockFetch({
       "/api/documents/upload": {
         ok: true,
         json: async () => ({

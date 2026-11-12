@@ -55,7 +55,7 @@ test.describe('Chat UI after login', () => {
     await page.getByPlaceholder('Email hoặc tên đăng nhập').fill('testuser@test.local');
     await page.getByPlaceholder('Mật khẩu', { exact: true }).fill('TestPass123!');
     await page.getByRole('button', { name: 'Tiếp tục', exact: true }).click();
-    await page.waitForLoadState('networkidle');
+    await expect(page.getByLabel('Menu người dùng')).toBeVisible();
   }
 
   test('renders app bar, sidebar and welcome screen', async ({ page }) => {

@@ -50,7 +50,9 @@ export function saveLocalSession(session: Partial<ChatSession> & { sessionId: st
       });
     }
     localStorage.setItem("smartdoc_sessions", JSON.stringify(list));
-  } catch {}
+  } catch {
+    // Local session persistence is optional; the server remains authoritative.
+  }
 }
 
 export function deleteLocalSession(sessionId: string) {
@@ -68,7 +70,9 @@ export function deleteLocalSession(sessionId: string) {
       const filtered = list.filter((s) => s.sessionId !== sessionId);
       localStorage.setItem("smartdoc_sessions", JSON.stringify(filtered));
     }
-  } catch {}
+  } catch {
+    // Local session persistence is optional; the server remains authoritative.
+  }
 }
 
 export function useChatSessions() {
@@ -79,7 +83,9 @@ export function useChatSessions() {
       try {
         const rawDeleted = localStorage.getItem("smartdoc_deleted_sessions");
         if (rawDeleted) deletedSet = JSON.parse(rawDeleted);
-      } catch {}
+      } catch {
+        // Corrupt local deletion state is ignored so remote sessions can load.
+      }
 
       let apiSessions: ChatSession[] = [];
       try {
@@ -91,7 +97,9 @@ export function useChatSessions() {
           const data: SessionsResponse = await res.json();
           apiSessions = (data.sessions ?? []).filter((s) => !deletedSet.includes(s.sessionId));
         }
-      } catch {}
+      } catch {
+        // Use the cached session list when the API is unavailable.
+      }
 
       let localSessions: ChatSession[] = [];
       try {
@@ -101,7 +109,9 @@ export function useChatSessions() {
             (s) => !deletedSet.includes(s.sessionId)
           );
         }
-      } catch {}
+      } catch {
+        // Ignore inaccessible or corrupt local cache and use remote sessions.
+      }
 
       // Merge and deduplicate by sessionId
       const map = new Map<string, ChatSession>();
