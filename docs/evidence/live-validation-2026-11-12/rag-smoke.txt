@@ -1,0 +1,11 @@
+PASS | BACKEND HEALTH   (attempt 1)
+PASS | CSRF              
+PASS | JWT               (200, cookie)
+PASS | DOC UPLOAD        (docId=3)
+PASS | OWNER ISOLATION   (anon GET -> 403)
+PASS | CHAT              (3.4s, strategy=direct)
+PASS | ROUTER AUTH       
+PASS | LLM RESPONSE      (requires fixture answer Paris and successful strategy)
+   answer[:160]: Không tìm thấy thông tin trong tài liệu liên quan đến thuật ngữ pháp lý hoặc quy định cụ thể nào về vị trí của Tháp Eiffel. Tuy nhiên, theo tài liệu cung cấp, T
+
+OVERALL           PASS
