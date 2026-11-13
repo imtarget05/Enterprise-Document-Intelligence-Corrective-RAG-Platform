@@ -17,6 +17,16 @@ bounded; REMOVE / BLOCKED = do not claim without the stated evidence.
 | Production deps vulnerability posture | `npm audit --omit=dev` → 0 vulnerabilities; remaining advisories dev-only (breaking-change fixes) | `npm audit --omit=dev`; `npm audit` | VERIFIED as documented |
 | Kubernetes Cloud-Native topology | `k8s/10-qdrant.yaml`, `k8s/15-llm-router.yaml`, `k8s/20-smartdoc-backend.yaml`, `k8s/30-smartdoc-frontend.yaml` (Deployments, Services, HPA, Probes, non-root securityContext) | `python3 -c 'import yaml, glob; [list(yaml.safe_load_all(open(f))) for f in glob.glob("k8s/*.yaml")]'` | VERIFIED (all YAMLs valid) |
 
+## 2026-11-13 update — production infrastructure rows
+
+| CV claim | Evidence (file:line / artifact) | Reproduce command | Status |
+|---|---|---|---|
+| Production frontend on Cloudflare Pages | `https://smart-doc-chatbot.pages.dev` (project `smart-doc-chatbot`, CLOUDFLARE_PAGES_PROJECT var); deployed via OAuth `wrangler pages deploy` from `frontend/dist`; `release.json` stamped with deploy SHA | `curl -s https://smart-doc-chatbot.pages.dev/release.json` → SHA of main | VERIFIED (2026-11-13, homepage 200 + release.json matches `0c7dcf36`) |
+| Keycloak SSO on Render with durable Postgres (Neon) | `docker/Dockerfile.keycloak` (PORT-aware entrypoint `sh -c ... ${PORT:-8080}`); service `smartdoc-keycloak` on Render; `KC_DB=postgres` against Neon project `smartdoc-keycloak` (`bold-dew-42291496`) — realm survives container restarts; autodeploy disabled (manual deploys) | `curl -s https://smartdoc-keycloak.onrender.com/realms/smartdoc` → 200; redeploy and re-check → still 200 (durable) | VERIFIED (2026-11-13, deploy `dep-dbripmd9` live) |
+| OIDC confidential client for backend (SSO wired) | realm `smartdoc`, client `smartdoc-backend` (confidential, service accounts, redirect URIs for pages + backend); client secret injected via Render env `SSO_OIDC_CLIENT_SECRET`; backend env `SSO_OIDC_ENABLED=true`, `SSO_OIDC_ISSUER_URI=https://smartdoc-keycloak.onrender.com/realms/smartdoc` | OAuth2 client-credentials grant against `realms/smartdoc/protocol/openid-connect/token` returns access_token | VERIFIED (2026-11-13, run 43456038045) |
+| Backend on Render with SSO env | `https://smartdoc-backend-2hhz.onrender.com` service `smartdoc-backend`; 24 env vars incl. SSO block; `/api/actuator/health` 200 after SSO wiring | `curl -s https://smartdoc-backend-2hhz.onrender.com/api/actuator/health` | VERIFIED (2026-11-13) |
+
 Known limitations: live benchmark execution requires running LLM provider or local Ollama;
-production Qdrant Cloud requires API key credentials.
+production Qdrant Cloud requires API key credentials. Keycloak runs on Render free tier
+(cold start ~30–60 s on first request; Neon compute scales to zero between requests).
 
