@@ -16,6 +16,8 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v4
+      - name: Normalize image repository
+        run: echo "IMAGE_REPOSITORY=${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Log in to GHCR
@@ -30,7 +32,7 @@ jobs:
           context: ./backend
           file: ./backend/Dockerfile
           push: true
-          tags: ${{ env.REGISTRY }}/${{ github.repository }}/smartdoc-backend:${{ github.sha }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_REPOSITORY }}/smartdoc-backend:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -41,6 +43,8 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v4
+      - name: Normalize image repository
+        run: echo "IMAGE_REPOSITORY=${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Log in to GHCR
@@ -55,7 +59,7 @@ jobs:
           context: ./agent
           file: ./agent/Dockerfile
           push: true
-          tags: ${{ env.REGISTRY }}/${{ github.repository }}/smartdoc-agent:${{ github.sha }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_REPOSITORY }}/smartdoc-agent:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -66,6 +70,8 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v4
+      - name: Normalize image repository
+        run: echo "IMAGE_REPOSITORY=${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Log in to GHCR
@@ -80,7 +86,7 @@ jobs:
           context: ./llm-router
           file: ./llm-router/Dockerfile
           push: true
-          tags: ${{ env.REGISTRY }}/${{ github.repository }}/smartdoc-llm-router:${{ github.sha }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_REPOSITORY }}/smartdoc-llm-router:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -92,6 +98,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+      - name: Normalize image repository
+        run: echo "IMAGE_REPOSITORY=${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
       - name: Azure Login
         uses: azure/login@v2
         with:
@@ -101,7 +109,7 @@ jobs:
         with:
           resourceGroup: ${{ secrets.AZURE_RESOURCE_GROUP }}
           containerAppName: smartdoc-backend
-          image: ghcr.io/${{ github.repository }}/smartdoc-backend:${{ github.sha }}
+          image: ghcr.io/${{ env.IMAGE_REPOSITORY }}/smartdoc-backend:${{ github.sha }}
           registryUrl: ghcr.io
           registryUsername: ${{ github.actor }}
           registryPassword: ${{ secrets.GITHUB_TOKEN }}
@@ -122,7 +130,7 @@ jobs:
         with:
           resourceGroup: ${{ secrets.AZURE_RESOURCE_GROUP }}
           containerAppName: smartdoc-agent
-          image: ghcr.io/${{ github.repository }}/smartdoc-agent:${{ github.sha }}
+          image: ghcr.io/${{ env.IMAGE_REPOSITORY }}/smartdoc-agent:${{ github.sha }}
           registryUrl: ghcr.io
           registryUsername: ${{ github.actor }}
           registryPassword: ${{ secrets.GITHUB_TOKEN }}
@@ -144,7 +152,7 @@ jobs:
         with:
           resourceGroup: ${{ secrets.AZURE_RESOURCE_GROUP }}
           containerAppName: smartdoc-llm-router
-          image: ghcr.io/${{ github.repository }}/smartdoc-llm-router:${{ github.sha }}
+          image: ghcr.io/${{ env.IMAGE_REPOSITORY }}/smartdoc-llm-router:${{ github.sha }}
           registryUrl: ghcr.io
           registryUsername: ${{ github.actor }}
           registryPassword: ${{ secrets.GITHUB_TOKEN }}

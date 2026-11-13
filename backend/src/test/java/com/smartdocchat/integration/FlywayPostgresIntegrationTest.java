@@ -117,6 +117,15 @@ class FlywayPostgresIntegrationTest {
     }
 
     @Test
+    void documentWorkflowStatusColumnMatchesEntity() {
+        Integer length = jdbc.queryForObject(
+                "SELECT character_maximum_length FROM information_schema.columns "
+                + "WHERE table_schema='public' AND table_name='documents' "
+                + "AND column_name='workflow_status'", Integer.class);
+        assertEquals(20, length, "Document.workflowStatus must survive schema validation");
+    }
+
+    @Test
     void realInsertAndSelectRoundTrip() {
         String uniqueUser = "it_user_" + System.nanoTime();
         jdbc.update("INSERT INTO users (username, password, role, enabled) VALUES (?,?,?,?)",

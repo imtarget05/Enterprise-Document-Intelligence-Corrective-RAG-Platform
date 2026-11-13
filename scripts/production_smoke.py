@@ -33,6 +33,16 @@ def check(name: str, ok: bool, detail: str = "") -> bool:
     return ok
 
 
+def valid_smoke_answer(response: dict) -> bool:
+    """Require the fixture fact and a successful retrieval/agent strategy."""
+    answer = response.get("aiResponse") or ""
+    return (
+        response.get("ragStrategy") in {"direct", "corrective", "agentic"}
+        and "paris" in answer.casefold()
+        and "temporarily unavailable" not in answer.casefold()
+    )
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Production smoke test")
     ap.add_argument("--base-url", default=DEFAULT_BASE_URL,
@@ -132,6 +142,9 @@ def main() -> int:
     results.append(check("DOC UPLOAD       ",
                          r.status_code == 200 and doc is not None, f"(docId={doc})"))
 
+    if doc is None:
+        return 1
+
     # --- 4. Owner isolation: unauthenticated document access must be rejected
     # NOTE: allow_redirects=False — unauthenticated requests are redirected
     # (302) to the OAuth2 entry point, which lands on accounts.google.com with
@@ -172,7 +185,8 @@ def main() -> int:
         results.append(check("LLM RESPONSE     ", False))
         return 1
     results.append(check("ROUTER AUTH      ", True))
-    results.append(check("LLM RESPONSE     ", True))
+    results.append(check("LLM RESPONSE     ", valid_smoke_answer(response),
+                         "(requires fixture answer Paris and successful strategy)"))
     if args.mode == "agent":
         results.append(check("AGENT PATH       ", strategy == "agentic",
                              f"(strategy={strategy}; fallback RAG is not agent success)"))

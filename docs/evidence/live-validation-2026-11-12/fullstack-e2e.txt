@@ -1,0 +1,10 @@
+
+Running 2 tests using 1 worker
+
+(node:20588) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/2] [chromium] › e2e/fullstack-smoke.spec.ts:93:7 › full-stack API smoke › csrf → register → login yields a bearer token
+[2/2] [chromium] › e2e/fullstack-smoke.spec.ts:99:7 › full-stack API smoke › authenticated user uploads a document and receives an evidence-backed answer
+  2 passed (1.3s)

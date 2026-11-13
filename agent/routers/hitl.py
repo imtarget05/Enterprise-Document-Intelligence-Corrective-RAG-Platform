@@ -131,7 +131,11 @@ async def approve_action(request_id: str, req: ApprovalDecisionRequest):
          "hitl_approval_id": request_id}
     )
     try:
-        result = await state._workflow.ainvoke(workflow_input)
+        result = await state._workflow.ainvoke(
+            workflow_input, config=state.workflow_config(
+                workflow_input["user_id"], workflow_input["session_id"]
+            )
+        )
         await hitl_store.complete(request_id, result)
         return {
             "status": "ok",

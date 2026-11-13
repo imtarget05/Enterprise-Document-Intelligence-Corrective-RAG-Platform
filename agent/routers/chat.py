@@ -143,7 +143,8 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                         "use_web_search": use_web_search,
                         "hybrid_search_enabled": True,
                         "ab_config": ab_config,
-                    }
+                    },
+                    config=state.workflow_config(user_id, session_id),
                 )
 
                 answer = result.get("final_answer", "")
@@ -295,7 +296,8 @@ async def invoke_agent(req: AgentRequest, request: Request):
                     "use_web_search": req.use_web_search,
                     "hybrid_search_enabled": True,
                     "ab_config": ab_config,
-                }
+                },
+                config=state.workflow_config(req.user_id, req.session_id),
             )
 
         latency_ms = (time.monotonic() - start_time) * 1000
@@ -462,7 +464,8 @@ async def stream_events(req: AgentRequest):
                     "use_web_search": req.use_web_search,
                     "hybrid_search_enabled": True,
                     "ab_config": ab_config,
-                }
+                },
+                config=state.workflow_config(req.user_id, req.session_id),
             )
 
             answer = result.get("final_answer", "")
