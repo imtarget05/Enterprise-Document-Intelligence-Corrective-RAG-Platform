@@ -22,7 +22,7 @@ jobs:
           render("services/" + KC, method="PATCH", body={"autoDeploy": "no"})
           print("autodeploy -> no")
           # 2) watch the in-progress deploy
-          for i in range(20):
+          for i in range(40):
               deps = render(f"services/{KC}/deploys?limit=1")
               y = deps[0].get("deploy", deps[0])
               print("deploy:", y.get("id","")[:12], y.get("status"), y.get("createdAt"))
@@ -30,7 +30,7 @@ jobs:
                   break
               time.sleep(15)
           else:
-              print("still in progress after 5min")
+              print("still in progress after 10min")
           # 3) final service + last deploy detail
           svc = render("services/" + KC)
           sd = svc.get("serviceDetails") or {}
