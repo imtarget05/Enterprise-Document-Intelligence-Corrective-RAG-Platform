@@ -364,12 +364,14 @@ jobs:
         uses: trufflesecurity/trufflehog@e76dff8a7e57d6df0c60ad8cbf5d5cba505a8fc9 # v3.99.2
 
       - name: Install Trivy (pinned version, cached binary)
+        if: always()
         uses: aquasecurity/setup-trivy@v0.3.1
         with:
           version: v0.75.0
           cache: true
 
       - name: Run Trivy vulnerability scanner (blocking, table output)
+        if: always()
         # Blocking gate: --exit-code 1 fails the job on CRITICAL/HIGH fixable
         # findings (ignore-unfixed skips CVEs with no patch available yet —
         # nothing actionable, so they must not block merges).
