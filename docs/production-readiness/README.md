@@ -46,3 +46,12 @@ Scope: Enterprise RAG, IncidentIQ, QuanLyKho
 - Commits: `type(scope): summary` + `Signed-off-by`
 - File size: < 800 lines per source file
 - Error handling: no silent swallows; server-side detailed logs
+
+## Security follow-up — 2026-11-13
+
+See [security gate review](SECURITY_REVIEW_2026-11-13.md) and
+[local Trivy result](TRIVY_2026-11-13.json). The complete current agent suite
+passes 356 tests with one skip. Release commits scan clean, but historical
+credential findings remain blocking. The discovered Azure app is a quickstart
+placeholder, not a working EDI production backend. These conditions prevent
+claiming full production readiness.

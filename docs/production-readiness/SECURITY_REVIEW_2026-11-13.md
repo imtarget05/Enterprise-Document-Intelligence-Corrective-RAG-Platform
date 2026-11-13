@@ -59,3 +59,20 @@ TRANSFORMERS_OFFLINE=1 python -m pytest agent/tests -q
 ```
 
 Keep raw credential values out of reports, workflow output and committed files.
+
+## Dependency scan completed locally
+
+Trivy 0.74.0 completed successfully: no HIGH/CRITICAL findings with an available
+fix in its resolved inventory (533 packages across five manifests: agent and
+router requirements, Airflow requirements, backend POM and frontend lockfile).
+Development npm dependencies were excluded by the scanner default. This result
+is scoped to that inventory and configuration; it does not replace the separate
+secret-history scan. CI pins Trivy 0.75.0 and must pass on its own. See
+`TRIVY_2026-11-13.json` for targets and counts.
+
+The historical Google key check returned HTTP 403 / ACCESS_DENIED. This is
+inconclusive for revocation; it is not a reason to allowlist the credential.
+The historical `7171d55` commit explicitly describes an intentional secret leak
+test marked DO NOT MERGE. No exception was introduced for it.
+
+The revised release CI was started as run `43364700019`.
