@@ -4,58 +4,43 @@ jobs:
   fix-verify:
     runs-on: ubuntu-latest
     steps:
-      - name: Render — create smartdoc-keycloak if missing, deploy, poll health
+      - name: Render — patch dockerfilePath, deploy, poll health
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-          KC_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}
         run: |
           set -euo pipefail
           SERVICES=$(curl -s -H "Authorization: Bearer $RENDER_API_KEY" "https://api.render.com/v1/services?limit=100")
           SVC=$(echo "$SERVICES" | python3 -c 'import json,sys; ss=json.load(sys.stdin); m=[s["service"] for s in ss if s["service"]["name"]=="smartdoc-keycloak"]; print(json.dumps(m[0]) if m else "")')
-          OWNER_ID=$(echo "$SERVICES" | python3 -c 'import json,sys; ss=json.load(sys.stdin); print(ss[0]["service"]["ownerId"] if ss else "")')
-          echo "owner id: $OWNER_ID"
-          if [ -z "$SVC" ]; then
-            echo "== creating smartdoc-keycloak service"
-            cat > /tmp/create.json <<'EOFJSON'
+          [ -n "$SVC" ] || { echo "::error::smartdoc-keycloak not found"; exit 1; }
+          SID=$(echo "$SVC" | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')
+          echo "service id: $SID"
+          echo "== current dockerfilePath:"
+          echo "$SVC" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["serviceDetails"].get("envSpecificDetails",{}))'
+          echo "== patching dockerfilePath"
+          cat > /tmp/patch.json <<'EOFJSON'
           {
-            "type": "web_service",
-            "name": "smartdoc-keycloak",
-            "ownerId": "REPLACE_OWNER",
-            "repo": "https://github.com/imtarget05/Enterprise-Document-Intelligence-Corrective-RAG-Platform",
-            "branch": "main",
-            "autoDeploy": "yes",
-            "envVars": [
-              {"key": "KEYCLOAK_ADMIN", "value": "admin"},
-              {"key": "KEYCLOAK_ADMIN_PASSWORD", "value": "REPLACE_PW"},
-              {"key": "KC_HOSTNAME", "value": "https://smartdoc-keycloak.onrender.com"},
-              {"key": "KC_PROXY", "value": "edge"}
-            ],
             "serviceDetails": {
-              "runtime": "docker",
-              "env": "docker",
-              "plan": "free",
-              "dockerfilePath": "docker/Dockerfile.keycloak",
-              "dockerContext": ".",
-              "healthCheckPath": "/realms/master"
+              "envSpecificDetails": {
+                "dockerfilePath": "docker/Dockerfile.keycloak",
+                "dockerContext": "."
+              }
             }
           }
           EOFJSON
-            KC_ADMIN_PASSWORD="$KC_ADMIN_PASSWORD" OWNER_ID="$OWNER_ID" python3 -c "import pathlib,os,json; p=pathlib.Path('/tmp/create.json'); txt=p.read_text().replace('REPLACE_PW', os.environ['KC_ADMIN_PASSWORD']).replace('REPLACE_OWNER', os.environ['OWNER_ID']); p.write_text(txt); json.loads(txt); print('payload JSON valid')"
-            RESP=$(curl -s -X POST -H "Authorization: Bearer $RENDER_API_KEY" -H "Content-Type: application/json" --data-binary @/tmp/create.json "https://api.render.com/v1/services")
-            echo "raw response:"; echo "$RESP" | head -c 800; echo
-            SVC=$(echo "$RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(json.dumps({"id": d["id"], "name": d["name"], "serviceDetails": {"url": d.get("serviceDetails",{}).get("url")}}) if "id" in d else "")')
-            if [ -z "$SVC" ]; then echo "::error::service creation failed with response above"; exit 1; fi
-          fi
-          SID=$(echo "$SVC" | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')
-          echo "service id: $SID"
-          ST="created"
+          RESP=$(curl -s -X PATCH -H "Authorization: Bearer $RENDER_API_KEY" -H "Content-Type: application/json" --data-binary @/tmp/patch.json "https://api.render.com/v1/services/$SID")
+          echo "$RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print("after patch:", d["serviceDetails"].get("envSpecificDetails",{}))'
+          echo "== triggering deploy"
+          DEPLOY=$(curl -s -X POST -H "Authorization: Bearer $RENDER_API_KEY" -H "Content-Type: application/json" -d '{"clearCache":"no"}' "https://api.render.com/v1/services/$SID/deploys")
+          DID=$(echo "$DEPLOY" | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')
+          echo "deploy id: $DID"
+          ST=""
           for i in $(seq 1 80); do
             sleep 15
-            ST=$(curl -s -H "Authorization: Bearer $RENDER_API_KEY" "https://api.render.com/v1/services/$SID" | python3 -c 'import json,sys; d=json.load(sys.stdin); print("suspended" if d.get("suspended") else ((d.get("serviceDetails",{}).get("build",{}) or {}).get("status") or "building"))' 2>/dev/null || echo "polling")
-            echo "build attempt $i: $ST"
-            case "$ST" in live) break ;; failed|canceled|suspended) echo "::error::build $ST"; exit 1 ;; esac
+            ST=$(curl -s -H "Authorization: Bearer $RENDER_API_KEY" "https://api.render.com/v1/services/$SID/deploys/$DID" | python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])')
+            echo "deploy attempt $i: $ST"
+            case "$ST" in live) break ;; deploy_failed|build_failed|canceled) echo "::error::deploy $ST"; exit 1 ;; esac
           done
-          [ "$ST" = "live" ] || { echo "::error::service not live (last: $ST)"; exit 1; }
+          [ "$ST" = "live" ] || { echo "::error::deploy did not go live (last: $ST)"; exit 1; }
           echo "== polling health endpoint"
           CODE=000
           for i in $(seq 1 40); do
