@@ -4,9 +4,10 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Fix autodeploy + report keycloak state
+      - name: Wire keycloak to Neon postgres + watch deploy
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          KC_DB_PASSWORD: ${{ secrets.NEON_KC_DB_PASSWORD }}
         run: |
           set -euo pipefail
           export KC=srv-dbra675g1s2s73ft1150
@@ -18,27 +19,47 @@ jobs:
                   data=json.dumps(body).encode() if body else None)
               return json.load(urllib.request.urlopen(req, timeout=30))
           KC = os.environ["KC"]
-          # 1) disable autodeploy — pushes to the app repo must not rebuild keycloak
-          render("services/" + KC, method="PATCH", body={"autoDeploy": "no"})
-          print("autodeploy -> no")
-          # 2) watch the in-progress deploy
+          # 1) read existing env vars, merge DB config
+          resp = json.load(urllib.request.urlopen(urllib.request.Request(
+              f"https://api.render.com/v1/services/{KC}/env-vars", method="GET",
+              headers={"Authorization": "Bearer " + os.environ["RENDER_API_KEY"]}), timeout=30))
+          vars_ = []
+          for item in resp:
+              ev = item.get("envVar", item) if isinstance(item, dict) else {}
+              if isinstance(ev, dict) and ev.get("key"):
+                  vars_.append({"key": ev["key"], "value": ev.get("value"), "sync": ev.get("sync")})
+          have = {v["key"]: v for v in vars_}
+          print("existing keys:", len(vars_), "| KC_DB present:", "KC_DB" in have)
+          newvars = {
+              "KC_DB": {"value": "postgres"},
+              "KC_DB_URL": {"value": "jdbc:postgresql://ep-rough-paper-beefdl2s.c-9.us-east-2.aws.neon.tech/neondb?sslmode=require"},
+              "KC_DB_USERNAME": {"value": "neondb_owner"},
+              "KC_DB_PASSWORD": {"value": os.environ["KC_DB_PASSWORD"]},
+          }
+          for k, v in newvars.items():
+              if k in have:
+                  have[k]["value"] = v["value"]
+              else:
+                  vars_.append({"key": k, "value": v["value"]})
+          # 2) PUT env vars (replaces all) — triggers a deploy
+          r = urllib.request.Request(f"https://api.render.com/v1/services/{KC}/env-vars", method="PUT",
+              headers={"Authorization": "Bearer " + os.environ["RENDER_API_KEY"], "Content-Type": "application/json"},
+              data=json.dumps(vars_).encode())
+          print("env vars put ->", urllib.request.urlopen(r, timeout=30).status)
+          # 3) watch deploys until live
+          target = None
           for i in range(40):
-              deps = render(f"services/{KC}/deploys?limit=1")
-              y = deps[0].get("deploy", deps[0])
-              print("deploy:", y.get("id","")[:12], y.get("status"), y.get("createdAt"))
-              if y.get("status") in ("live", "build_failed", "deploy_failed", "update_failed", "canceled"):
+              deps = render(f"services/{KC}/deploys?limit=2")
+              statuses = [(y.get("deploy", y).get("id","")[:12], y.get("deploy", y).get("status")) for y in deps]
+              print("deploys:", statuses)
+              did, st = statuses[0]
+              if st in ("build_failed", "deploy_failed", "update_failed", "canceled"):
+                  print("FAILED deploy detected:", did); raise SystemExit(1)
+              if st == "live":
+                  target = did
                   break
               time.sleep(15)
-          else:
-              print("still in progress after 10min")
-          # 3) final service + last deploy detail
-          svc = render("services/" + KC)
-          sd = svc.get("serviceDetails") or {}
-          print("autodeploy now:", svc.get("autoDeploy"), "| state:", sd.get("state") or svc.get("state"))
-          d = render(f"services/{KC}/deploys/{y.get('id')}")
-          dd = d.get("deploy", d)
-          for m in dd.get("messages", []):
-              print("msg:", str(m)[:200])
+          print("latest live deploy:", target)
           PY
-          echo "== probe from runner =="
-          curl -s --max-time 60 -o /dev/null -w "realm smartdoc: %{http_code} in %{time_total}s\n" "https://smartdoc-keycloak.onrender.com/realms/smartdoc" || echo "curl exit $?"
+          echo "== probe =="
+          curl -s --max-time 30 -o /dev/null -w "realm master: %{http_code}\n" "https://smartdoc-keycloak.onrender.com/realms/master" || echo "curl exit $?"
