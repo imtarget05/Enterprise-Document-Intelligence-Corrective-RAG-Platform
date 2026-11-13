@@ -1,0 +1,1763 @@
+{
+  "meta": {
+    "base_url": "http://127.0.0.1:8080/api",
+    "document_id": 5,
+    "user": "rag301794496348",
+    "fixture": "rag_nghithu_fixture.txt",
+    "count": 30,
+    "generated_at": "2026-11-12T22:14:47+0700"
+  },
+  "trace": [
+    {
+      "id": "A1",
+      "category": "answered",
+      "question": "Luật Doanh nghiệp 2020 áp dụng từ ngày nào?",
+      "answer_from_backend": "Không tìm thấy thông tin trong tài liệu.",
+      "citations_backend": [
+        {
+          "documentId": 5,
+          "content": "LUẬT DOANH NGHIỆP NĂM 2020 — BỘ PHẦN THIẾT YẾU DÙNG CHO NGHĨA VỤ KIỂM THỬ RAG\n\nPHẦN I — NHỮNG QUY ĐỊNH TỔNG QUÁT",
+          "score": 0.95,
+          "sourceType": "USER",
+          "chunkId": 1,
+          "article": null,
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 2. 3. \"Hợp đồng lao động\" được định nghĩa trong Luật Lao động, không phải bộ\nluật này.\n\nPHẦN II — THÀNH LẬP DOANH NGHIỆP",
+          "score": 0.68,
+          "sourceType": "USER",
+          "chunkId": 8,
+          "article": "2",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 6. 2. Cổ đông không có nghĩa vụ chi trả nợ vay nếu doanh nghiệp phá sản\n(điều này thuộc về pháp luật phá sản).\n\nPHẦN IV — VỀ CĂN BỘ VÀ ĐỊA CHỈ TRỤ SỞ",
+          "score": 0.64,
+          "sourceType": "USER",
+          "chunkId": 22,
+          "article": "6",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        }
+      ],
+      "source_chunks_backend": "LUẬT DOANH NGHIỆP NĂM 2020 — BỘ PHẦN THIẾT YẾU DÙNG CHO NGHĨA VỤ KIỂM THỬ RAG\n\nPHẦN I — NHỮNG QUY ĐỊNH TỔNG QUÁT\n---\nĐiều 2. 3. \"Hợp đồng lao động\" được định nghĩa trong Luật Lao động, không phải bộ\nluật này.\n\nPHẦN II — THÀNH LẬP DOANH NGHIỆP\n---\nĐiều 6. 2. Cổ đông không có nghĩa vụ chi trả nợ vay nếu doanh nghiệp phá sản\n(điều này thuộc về pháp luật phá sản).\n\nPHẦN IV — VỀ CĂN BỘ VÀ ĐỊA CHỈ TRỤ SỞ",
+      "confidence_backend": "high",
+      "confidence_score_backend": 0.95,
+      "rag_strategy_backend": "direct",
+      "latency_ms": 1211,
+      "expected_source_keywords": [
+        "01/01/2021",
+        "áp dụng"
+      ],
+      "expected_section": "Điều 1.2",
+      "expected_answer_hint": "Từ ngày 01/01/2021.",
+      "conflict_note": null,
+      "result_manual": "",
+      "notes_manual": ""
+    },
+    {
+      "id": "A2",
+      "category": "answered",
+      "question": "Theo văn bản này, doanh nghiệp được định nghĩa là gì?",
+      "answer_from_backend": "Không tìm thấy thông tin trong tài liệu.",
+      "citations_backend": [
+        {
+          "documentId": 5,
+          "content": "Điều 1. 1. Văn bản này điều chỉnh hoạt động thành lập, tổ chức, hoạt động, thay đổi,\nhợp nhất, sáp nhập và chấm dứt hoạt động của doanh nghiệp trên lãnh thổ nước CH.",
+          "score": 1.0,
+          "sourceType": "USER",
+          "chunkId": 3,
+          "article": "1",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 2. 3. \"Hợp đồng lao động\" được định nghĩa trong Luật Lao động, không phải bộ\nluật này.\n\nPHẦN II — THÀNH LẬP DOANH NGHIỆP",
+          "score": 0.89,
+          "sourceType": "USER",
+          "chunkId": 8,
+          "article": "2",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 3. 1. Doanh nghiệp thành lập khi có tổ chức kinh tế trở thành cổ đông/\nchủ sở hữu của doanh nghiệp và đáp ứng điều kiện nghiệp vụ theo quy định của\nngành nghề.",
+          "score": 0.76,
+          "sourceType": "USER",
+          "chunkId": 10,
+          "article": "3",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        }
+      ],
+      "source_chunks_backend": "Điều 1. 1. Văn bản này điều chỉnh hoạt động thành lập, tổ chức, hoạt động, thay đổi,\nhợp nhất, sáp nhập và chấm dứt hoạt động của doanh nghiệp trên lãnh thổ nước CH.\n---\nĐiều 2. 3. \"Hợp đồng lao động\" được định nghĩa trong Luật Lao động, không phải bộ\nluật này.\n\nPHẦN II — THÀNH LẬP DOANH NGHIỆP\n---\nĐiều 3. 1. Doanh nghiệp thành lập khi có tổ chức kinh tế trở thành cổ đông/\nchủ sở hữu của doanh nghiệp và đáp ứng điều kiện nghiệp vụ theo quy định của\nngành nghề.",
+      "confidence_backend": "high",
+      "confidence_score_backend": 1.0,
+      "rag_strategy_backend": "direct",
+      "latency_ms": 3854,
+      "expected_source_keywords": [
+        "Doanh nghiệp",
+        "tư cách pháp nhân",
+        "tài sản"
+      ],
+      "expected_section": "Điều 2.1",
+      "expected_answer_hint": "Tổ chức kinh tế có tư cách pháp nhân, có tài sản, hợp pháp độc lập, chịu trách nhiệm bằng tài sản của mình trước nhà nước và các chủ thể khác.",
+      "conflict_note": null,
+      "result_manual": "",
+      "notes_manual": ""
+    },
+    {
+      "id": "A3",
+      "category": "answered",
+      "question": "Hình thức doanh nghiệp nào được nhắc đến trong tài liệu?",
+      "answer_from_backend": "Theo Điều 3.2, các hình thức doanh nghiệp bao gồm: công ty trách nhiệm hữu hạn (TNHH), công ty cổ phần, doanh nghiệp trách nhiệm hữu hạn. Đây là các hình thức doanh nghiệp được nhắc đến trong tài liệu, với các thuật ngữ pháp lý quan trọng như \"trách nhiệm hữu hạn\" và \"cổ phần\".",
+      "citations_backend": [
+        {
+          "documentId": 5,
+          "content": "Điều 3. 2. Các hình thức doanh nghiệp: công ty TNHH, công ty cổ phần, doanh\nnghiệp trách nhiệm hữu hạn.",
+          "score": 1.0,
+          "sourceType": "USER",
+          "chunkId": 11,
+          "article": "3",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 2. 1. \"Doanh nghiệp\" là tổ chức kinh tế có tư cách pháp nhân, có tài sản,\nhợp pháp độc lập, chịu trách nhiệm bằng tài sản của mình trước nhà nước và\ncác chủ thể khác.",
+          "score": 0.59,
+          "sourceType": "USER",
+          "chunkId": 6,
+          "article": "2",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 3. 1. Doanh nghiệp thành lập khi có tổ chức kinh tế trở thành cổ đông/\nchủ sở hữu của doanh nghiệp và đáp ứng điều kiện nghiệp vụ theo quy định của\nngành nghề.",
+          "score": 0.55,
+          "sourceType": "USER",
+          "chunkId": 10,
+          "article": "3",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        }
+      ],
+      "source_chunks_backend": "Điều 3. 2. Các hình thức doanh nghiệp: công ty TNHH, công ty cổ phần, doanh\nnghiệp trách nhiệm hữu hạn.\n---\nĐiều 2. 1. \"Doanh nghiệp\" là tổ chức kinh tế có tư cách pháp nhân, có tài sản,\nhợp pháp độc lập, chịu trách nhiệm bằng tài sản của mình trước nhà nước và\ncác chủ thể khác.\n---\nĐiều 3. 1. Doanh nghiệp thành lập khi có tổ chức kinh tế trở thành cổ đông/\nchủ sở hữu của doanh nghiệp và đáp ứng điều kiện nghiệp vụ theo quy định của\nngành nghề.",
+      "confidence_backend": "high",
+      "confidence_score_backend": 1.0,
+      "rag_strategy_backend": "direct",
+      "latency_ms": 5184,
+      "expected_source_keywords": [
+        "công ty TNHH",
+        "công ty cổ phần",
+        "trách nhiệm hữu hạn"
+      ],
+      "expected_section": "Điều 3.2",
+      "expected_answer_hint": "Công ty TNHH, công ty cổ phần, doanh nghiệp trách nhiệm hữu hạn.",
+      "conflict_note": null,
+      "result_manual": "",
+      "notes_manual": ""
+    },
+    {
+      "id": "A4",
+      "category": "answered",
+      "question": "Ngày nào được coi là ngày có hiệu lực của giấy phép khởi nghiệp?",
+      "answer_from_backend": "Theo Điều 3, khoản 3, ngày có hiệu lực của giấy phép khởi nghiệp là ngày cấp giấy phép, được coi là ngày bắt đầu, không phải ngày nộp hồ sơ. Đây là quy định liên quan đến \"giấy phép khởi nghiệp\", một loại \"giấy phép\" quan trọng trong quá trình thành lập và hoạt động của doanh nghiệp, thể hiện sự cho phép của cơ quan có thẩm quyền đối với việc \"khởi nghiệp\" của một tổ chức hoặc cá nhân.",
+      "citations_backend": [
+        {
+          "documentId": 5,
+          "content": "Điều 3. 3. Ngày có hiệu lực của giấy phép KHỞI NGHIỆP: ngày cấp là ngày bắt\nđầu, không phải ngày nộp hồ sơ.",
+          "score": 1.0,
+          "sourceType": "USER",
+          "chunkId": 12,
+          "article": "3",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 12. 3. Văn bản này có hiệu lực từ 01/01/2021 không thay đổi.\n\nPHÚC BÀY — MÃ TÀU ĐĂNG KÝ TÀI LIỆU NÀY\nMã tài liệu: LN2020-001\nPhiên bản: 1.0, ngày: 2021-01-01\nNgười soạn: Phòng Pháp chế, Bộ Tài chính (giả lập cho mục đích kiểm thử RAG)",
+          "score": 0.61,
+          "sourceType": "USER",
+          "chunkId": 47,
+          "article": "12",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 4. 1. Hồ sơ cần: Giấy đặt tên, Báo cáo tài chính dự kiến, Danh sách tối thiểu\ncổ đông (tối thiểu 3 người), Giấy phép doanh nghiệp (nếu có).",
+          "score": 0.55,
+          "sourceType": "USER",
+          "chunkId": 14,
+          "article": "4",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        }
+      ],
+      "source_chunks_backend": "Điều 3. 3. Ngày có hiệu lực của giấy phép KHỞI NGHIỆP: ngày cấp là ngày bắt\nđầu, không phải ngày nộp hồ sơ.\n---\nĐiều 12. 3. Văn bản này có hiệu lực từ 01/01/2021 không thay đổi.\n\nPHÚC BÀY — MÃ TÀU ĐĂNG KÝ TÀI LIỆU NÀY\nMã tài liệu: LN2020-001\nPhiên bản: 1.0, ngày: 2021-01-01\nNgười soạn: Phòng Pháp chế, Bộ Tài chính (giả lập cho mục đích kiểm thử RAG)\n---\nĐiều 4. 1. Hồ sơ cần: Giấy đặt tên, Báo cáo tài chính dự kiến, Danh sách tối thiểu\ncổ đông (tối thiểu 3 người), Giấy phép doanh nghiệp (nếu có).",
+      "confidence_backend": "high",
+      "confidence_score_backend": 1.0,
+      "rag_strategy_backend": "direct",
+      "latency_ms": 4017,
+      "expected_source_keywords": [
+        "ngày cấp",
+        "khởi nghiệp",
+        "bắt đầu"
+      ],
+      "expected_section": "Điều 3.3",
+      "expected_answer_hint": "Ngày cấp là ngày bắt đầu, không phải ngày nộp hồ sơ.",
+      "conflict_note": null,
+      "result_manual": "",
+      "notes_manual": ""
+    },
+    {
+      "id": "A5",
+      "category": "answered",
+      "question": "Hồ sơ thành lập công ty cổ phần cần nhất định phải có gì (ít nhất)?",
+      "answer_from_backend": "Theo Điều 4, hồ sơ thành lập công ty cổ phần cần nhất định phải có, tuy nhiên tài liệu không cung cấp thông tin chi tiết về các thành phần cụ thể của hồ sơ. Do đó, không thể xác định chính xác các thành phần của hồ sơ thành lập công ty cổ phần dựa trên thông tin cung cấp.",
+      "citations_backend": [
+        {
+          "documentId": 5,
+          "content": "Điều 4. Hồ sơ thành lập công ty cổ phần",
+          "score": 1.0,
+          "sourceType": "USER",
+          "chunkId": 13,
+          "article": "4",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 3. 1. Doanh nghiệp thành lập khi có tổ chức kinh tế trở thành cổ đông/\nchủ sở hữu của doanh nghiệp và đáp ứng điều kiện nghiệp vụ theo quy định của\nngành nghề.",
+          "score": 0.72,
+          "sourceType": "USER",
+          "chunkId": 10,
+          "article": "3",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 8. 3. Tỷ lệ cổ phần biểu quyết tối thiểu của HĐQT: không quy định (theo\nĐiều lệ công ty).\n\nPHẦN VI — VỀ CỔ TỨ",
+          "score": 0.72,
+          "sourceType": "USER",
+          "chunkId": 30,
+          "article": "8",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        }
+      ],
+      "source_chunks_backend": "Điều 4. Hồ sơ thành lập công ty cổ phần\n---\nĐiều 3. 1. Doanh nghiệp thành lập khi có tổ chức kinh tế trở thành cổ đông/\nchủ sở hữu của doanh nghiệp và đáp ứng điều kiện nghiệp vụ theo quy định của\nngành nghề.\n---\nĐiều 8. 3. Tỷ lệ cổ phần biểu quyết tối thiểu của HĐQT: không quy định (theo\nĐiều lệ công ty).\n\nPHẦN VI — VỀ CỔ TỨ",
+      "confidence_backend": "high",
+      "confidence_score_backend": 1.0,
+      "rag_strategy_backend": "direct",
+      "latency_ms": 1971,
+      "expected_source_keywords": [
+        "Giấy đặt tên",
+        "Báo cáo tài chính dự kiến",
+        "Danh sách tối thiểu cổ đông"
+      ],
+      "expected_section": "Điều 4.1",
+      "expected_answer_hint": "Giấy đặt tên, Báo cáo tài chính dự kiến, Danh sách tối thiểu cổ đông (tối thiểu 3 người), Giấy phép doanh nghiệp (nếu có).",
+      "conflict_note": null,
+      "result_manual": "",
+      "notes_manual": ""
+    },
+    {
+      "id": "A6",
+      "category": "answered",
+      "question": "Đơn vị tiền tệ nào được dùng trong báo cáo tài chính theo tài liệu này?",
+      "answer_from_backend": "Theo Điều 4, khoản 2 của tài liệu này, đơn vị tiền tệ sử dụng trong báo cáo tài chính là đồng Việt Nam (VND).",
+      "citations_backend": [
+        {
+          "documentId": 5,
+          "content": "Điều 4. 2. Đơn vị tiền tệ sử dụng trong báo cáo tài chính: đồng Việt Nam (VND).",
+          "score": 1.0,
+          "sourceType": "USER",
+          "chunkId": 15,
+          "article": "4",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 1. 2. Áp dụng kể từ ngày 01/01/2021. Tài liệu này không điều chỉnh hoạt động của\ncơ quan nhà nước, đơn vị sự nghiệp công lập, khoán xã hội.",
+          "score": 0.77,
+          "sourceType": "USER",
+          "chunkId": 4,
+          "article": "1",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 12. 3. Văn bản này có hiệu lực từ 01/01/2021 không thay đổi.\n\nPHÚC BÀY — MÃ TÀU ĐĂNG KÝ TÀI LIỆU NÀY\nMã tài liệu: LN2020-001\nPhiên bản: 1.0, ngày: 2021-01-01\nNgười soạn: Phòng Pháp chế, Bộ Tài chính (giả lập cho mục đích kiểm thử RAG)",
+          "score": 0.53,
+          "sourceType": "USER",
+          "chunkId": 47,
+          "article": "12",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        }
+      ],
+      "source_chunks_backend": "Điều 4. 2. Đơn vị tiền tệ sử dụng trong báo cáo tài chính: đồng Việt Nam (VND).\n---\nĐiều 1. 2. Áp dụng kể từ ngày 01/01/2021. Tài liệu này không điều chỉnh hoạt động của\ncơ quan nhà nước, đơn vị sự nghiệp công lập, khoán xã hội.\n---\nĐiều 12. 3. Văn bản này có hiệu lực từ 01/01/2021 không thay đổi.\n\nPHÚC BÀY — MÃ TÀU ĐĂNG KÝ TÀI LIỆU NÀY\nMã tài liệu: LN2020-001\nPhiên bản: 1.0, ngày: 2021-01-01\nNgười soạn: Phòng Pháp chế, Bộ Tài chính (giả lập cho mục đích kiểm thử RAG)",
+      "confidence_backend": "high",
+      "confidence_score_backend": 1.0,
+      "rag_strategy_backend": "direct",
+      "latency_ms": 2447,
+      "expected_source_keywords": [
+        "đồng Việt Nam",
+        "VND"
+      ],
+      "expected_section": "Điều 4.2",
+      "expected_answer_hint": "Đồng Việt Nam (VND).",
+      "conflict_note": null,
+      "result_manual": "",
+      "notes_manual": ""
+    },
+    {
+      "id": "A7",
+      "category": "answered",
+      "question": "Cổ đông có quyền gì theo tài liệu?",
+      "answer_from_backend": "Theo Điều 5.1, cổ đông có quyền: nhận cổ tức, tham dự Hội đồng quản trị (HĐQT), biểu quyết, khiển đại diện doanh nghiệp, yêu cầu mua lại cổ phần. Đây là các quyền cơ bản của cổ đông trong một doanh nghiệp, thể hiện sự tham gia và kiểm soát của cổ đông đối với hoạt động của doanh nghiệp.",
+      "citations_backend": [
+        {
+          "documentId": 5,
+          "content": "Điều 5. 1. Cổ đông có quyền: nhận cổ tức, tham dự HĐQT, biểu quyết, khiển\nđại diện doanh nghiệp, yêu cầu mua lại cổ phần.",
+          "score": 1.0,
+          "sourceType": "USER",
+          "chunkId": 18,
+          "article": "5",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 5. 2. Cổ đông không có quyền: ra lệnh cho người lao động, ký hợp đồng\nmua bán mà không tuân thủ dịch vụ, tiếp cận tài liệu kế toán mà không có\nquyền được cấp bởi HĐQT.",
+          "score": 1.0,
+          "sourceType": "USER",
+          "chunkId": 19,
+          "article": "5",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 3. 1. Doanh nghiệp thành lập khi có tổ chức kinh tế trở thành cổ đông/\nchủ sở hữu của doanh nghiệp và đáp ứng điều kiện nghiệp vụ theo quy định của\nngành nghề.",
+          "score": 0.68,
+          "sourceType": "USER",
+          "chunkId": 10,
+          "article": "3",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        }
+      ],
+      "source_chunks_backend": "Điều 5. 1. Cổ đông có quyền: nhận cổ tức, tham dự HĐQT, biểu quyết, khiển\nđại diện doanh nghiệp, yêu cầu mua lại cổ phần.\n---\nĐiều 5. 2. Cổ đông không có quyền: ra lệnh cho người lao động, ký hợp đồng\nmua bán mà không tuân thủ dịch vụ, tiếp cận tài liệu kế toán mà không có\nquyền được cấp bởi HĐQT.\n---\nĐiều 3. 1. Doanh nghiệp thành lập khi có tổ chức kinh tế trở thành cổ đông/\nchủ sở hữu của doanh nghiệp và đáp ứng điều kiện nghiệp vụ theo quy định của\nngành nghề.",
+      "confidence_backend": "high",
+      "confidence_score_backend": 1.0,
+      "rag_strategy_backend": "direct",
+      "latency_ms": 2756,
+      "expected_source_keywords": [
+        "cổ tức",
+        "HĐQT",
+        "biểu quyết",
+        "mua lại cổ phần"
+      ],
+      "expected_section": "Điều 5.1",
+      "expected_answer_hint": "Nhận cổ tức, tham dự HĐQT, biểu quyết, khiển đại diện doanh nghiệp, yêu cầu mua lại cổ phần.",
+      "conflict_note": null,
+      "result_manual": "",
+      "notes_manual": ""
+    },
+    {
+      "id": "A8",
+      "category": "answered",
+      "question": "Cổ đông có quyền tiếp cận tài liệu kế toán tự do không?",
+      "answer_from_backend": "Theo Điều 5, khoản 2, cổ đông không có quyền tiếp cận tài liệu kế toán mà không có quyền được cấp bởi Hội đồng quản trị (HĐQT). Điều này cho thấy cổ đông không có quyền tự do tiếp cận tài liệu kế toán, mà chỉ có thể tiếp cận khi được HĐQT cho phép. Thuật ngữ pháp lý quan trọng ở đây là \"Hội đồng quản trị\" (HĐQT) và \"quyền được cấp\" - chỉ ra rằng cổ đông cần có sự cho phép từ HĐQT để tiếp cận tài liệu kế toán.",
+      "citations_backend": [
+        {
+          "documentId": 5,
+          "content": "Điều 5. 2. Cổ đông không có quyền: ra lệnh cho người lao động, ký hợp đồng\nmua bán mà không tuân thủ dịch vụ, tiếp cận tài liệu kế toán mà không có\nquyền được cấp bởi HĐQT.",
+          "score": 1.0,
+          "sourceType": "USER",
+          "chunkId": 19,
+          "article": "5",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 5. 1. Cổ đông có quyền: nhận cổ tức, tham dự HĐQT, biểu quyết, khiển\nđại diện doanh nghiệp, yêu cầu mua lại cổ phần.",
+          "score": 0.88,
+          "sourceType": "USER",
+          "chunkId": 18,
+          "article": "5",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 4. 1. Hồ sơ cần: Giấy đặt tên, Báo cáo tài chính dự kiến, Danh sách tối thiểu\ncổ đông (tối thiểu 3 người), Giấy phép doanh nghiệp (nếu có).",
+          "score": 0.65,
+          "sourceType": "USER",
+          "chunkId": 14,
+          "article": "4",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        }
+      ],
+      "source_chunks_backend": "Điều 5. 2. Cổ đông không có quyền: ra lệnh cho người lao động, ký hợp đồng\nmua bán mà không tuân thủ dịch vụ, tiếp cận tài liệu kế toán mà không có\nquyền được cấp bởi HĐQT.\n---\nĐiều 5. 1. Cổ đông có quyền: nhận cổ tức, tham dự HĐQT, biểu quyết, khiển\nđại diện doanh nghiệp, yêu cầu mua lại cổ phần.\n---\nĐiều 4. 1. Hồ sơ cần: Giấy đặt tên, Báo cáo tài chính dự kiến, Danh sách tối thiểu\ncổ đông (tối thiểu 3 người), Giấy phép doanh nghiệp (nếu có).",
+      "confidence_backend": "high",
+      "confidence_score_backend": 1.0,
+      "rag_strategy_backend": "direct",
+      "latency_ms": 2586,
+      "expected_source_keywords": [
+        "không có quyền",
+        "tài liệu kế toán",
+        "HĐQT"
+      ],
+      "expected_section": "Điều 5.2",
+      "expected_answer_hint": "Không — chỉ khi được cấp bởi HĐQT.",
+      "conflict_note": null,
+      "result_manual": "",
+      "notes_manual": ""
+    },
+    {
+      "id": "A9",
+      "category": "answered",
+      "question": "Cổ đông chịu trách nhiệm bằng tài sản gì?",
+      "answer_from_backend": "Theo Điều 6, khoản 1, cổ đông chịu trách nhiệm bằng \"cổ phần\" đã đưa ra, không phải tài sản riêng. Đây là một thuật ngữ pháp lý quan trọng, thể hiện trách nhiệm hữu hạn của cổ đông trong công ty cổ phần.",
+      "citations_backend": [
+        {
+          "documentId": 5,
+          "content": "Điều 2. 1. \"Doanh nghiệp\" là tổ chức kinh tế có tư cách pháp nhân, có tài sản,\nhợp pháp độc lập, chịu trách nhiệm bằng tài sản của mình trước nhà nước và\ncác chủ thể khác.",
+          "score": 1.0,
+          "sourceType": "USER",
+          "chunkId": 6,
+          "article": "2",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 6. 1. Cổ đông chịu trách nhiệm bằng cổ phần đã đưa ra, không phải tài sản\nriêng.",
+          "score": 1.0,
+          "sourceType": "USER",
+          "chunkId": 21,
+          "article": "6",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 5. 2. Cổ đông không có quyền: ra lệnh cho người lao động, ký hợp đồng\nmua bán mà không tuân thủ dịch vụ, tiếp cận tài liệu kế toán mà không có\nquyền được cấp bởi HĐQT.",
+          "score": 0.71,
+          "sourceType": "USER",
+          "chunkId": 19,
+          "article": "5",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        }
+      ],
+      "source_chunks_backend": "Điều 2. 1. \"Doanh nghiệp\" là tổ chức kinh tế có tư cách pháp nhân, có tài sản,\nhợp pháp độc lập, chịu trách nhiệm bằng tài sản của mình trước nhà nước và\ncác chủ thể khác.\n---\nĐiều 6. 1. Cổ đông chịu trách nhiệm bằng cổ phần đã đưa ra, không phải tài sản\nriêng.\n---\nĐiều 5. 2. Cổ đông không có quyền: ra lệnh cho người lao động, ký hợp đồng\nmua bán mà không tuân thủ dịch vụ, tiếp cận tài liệu kế toán mà không có\nquyền được cấp bởi HĐQT.",
+      "confidence_backend": "high",
+      "confidence_score_backend": 1.0,
+      "rag_strategy_backend": "direct",
+      "latency_ms": 1687,
+      "expected_source_keywords": [
+        "cổ phần đã đưa ra",
+        "không phải tài sản riêng"
+      ],
+      "expected_section": "Điều 6.1",
+      "expected_answer_hint": "Bằng cổ phần đã đưa ra, không phải tài sản riêng.",
+      "conflict_note": null,
+      "result_manual": "",
+      "notes_manual": ""
+    },
+    {
+      "id": "A10",
+      "category": "answered",
+      "question": "Địa chỉ trụ sở chính của doanh nghiệp phải như thế nào?",
+      "answer_from_backend": "Theo Điều 7, khoản 2, địa chỉ trụ sở chính của doanh nghiệp phải là \"địa chỉ thực tế có thể liên lạc được, không phải địa chỉ ảo\". Điều này có nghĩa là doanh nghiệp phải có một địa chỉ cụ thể, xác định và có thể liên lạc được, không được sử dụng địa chỉ ảo hoặc không tồn tại.",
+      "citations_backend": [
+        {
+          "documentId": 5,
+          "content": "Điều 6. 2. Cổ đông không có nghĩa vụ chi trả nợ vay nếu doanh nghiệp phá sản\n(điều này thuộc về pháp luật phá sản).\n\nPHẦN IV — VỀ CĂN BỘ VÀ ĐỊA CHỈ TRỤ SỞ",
+          "score": 1.0,
+          "sourceType": "USER",
+          "chunkId": 22,
+          "article": "6",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 7. 1. Doanh nghiệp phải có địa chỉ trụ sở chính và tiến hành đăng ký với\nSở Thuế.",
+          "score": 1.0,
+          "sourceType": "USER",
+          "chunkId": 24,
+          "article": "7",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 7. 2. Địa chỉ trụ sở chính phải là địa chỉ thực tế có thể liên lạc được, không\nphải địa chỉ ảo.",
+          "score": 1.0,
+          "sourceType": "USER",
+          "chunkId": 25,
+          "article": "7",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        }
+      ],
+      "source_chunks_backend": "Điều 6. 2. Cổ đông không có nghĩa vụ chi trả nợ vay nếu doanh nghiệp phá sản\n(điều này thuộc về pháp luật phá sản).\n\nPHẦN IV — VỀ CĂN BỘ VÀ ĐỊA CHỈ TRỤ SỞ\n---\nĐiều 7. 1. Doanh nghiệp phải có địa chỉ trụ sở chính và tiến hành đăng ký với\nSở Thuế.\n---\nĐiều 7. 2. Địa chỉ trụ sở chính phải là địa chỉ thực tế có thể liên lạc được, không\nphải địa chỉ ảo.",
+      "confidence_backend": "high",
+      "confidence_score_backend": 1.0,
+      "rag_strategy_backend": "direct",
+      "latency_ms": 4869,
+      "expected_source_keywords": [
+        "thực tế",
+        "liên lạc được",
+        "địa chỉ ảo"
+      ],
+      "expected_section": "Điều 7.2",
+      "expected_answer_hint": "Phải là địa chỉ thực tế có thể liên lạc được, không phải địa chỉ ảo.",
+      "conflict_note": null,
+      "result_manual": "",
+      "notes_manual": ""
+    },
+    {
+      "id": "A11",
+      "category": "answered",
+      "question": "HĐQT có bao nhiêu thành viên tối thiểu và nhiệm kỳ tối đa?",
+      "answer_from_backend": "Theo Điều 8, khoản 1, Hội đồng quản trị (HĐQT) có từ 03 thành viên trở lên, với nhiệm kỳ tối đa là 05 năm.",
+      "citations_backend": [
+        {
+          "documentId": 5,
+          "content": "Điều 8. 1. HĐQT có từ 03 thành viên trở lên, nhiệm kỳ tối đa 05 năm.",
+          "score": 1.0,
+          "sourceType": "USER",
+          "chunkId": 28,
+          "article": "8",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 4. 1. Hồ sơ cần: Giấy đặt tên, Báo cáo tài chính dự kiến, Danh sách tối thiểu\ncổ đông (tối thiểu 3 người), Giấy phép doanh nghiệp (nếu có).",
+          "score": 0.55,
+          "sourceType": "USER",
+          "chunkId": 14,
+          "article": "4",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 8. 3. Tỷ lệ cổ phần biểu quyết tối thiểu của HĐQT: không quy định (theo\nĐiều lệ công ty).\n\nPHẦN VI — VỀ CỔ TỨ",
+          "score": 0.48,
+          "sourceType": "USER",
+          "chunkId": 30,
+          "article": "8",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        }
+      ],
+      "source_chunks_backend": "Điều 8. 1. HĐQT có từ 03 thành viên trở lên, nhiệm kỳ tối đa 05 năm.\n---\nĐiều 4. 1. Hồ sơ cần: Giấy đặt tên, Báo cáo tài chính dự kiến, Danh sách tối thiểu\ncổ đông (tối thiểu 3 người), Giấy phép doanh nghiệp (nếu có).\n---\nĐiều 8. 3. Tỷ lệ cổ phần biểu quyết tối thiểu của HĐQT: không quy định (theo\nĐiều lệ công ty).\n\nPHẦN VI — VỀ CỔ TỨ",
+      "confidence_backend": "high",
+      "confidence_score_backend": 1.0,
+      "rag_strategy_backend": "direct",
+      "latency_ms": 1134,
+      "expected_source_keywords": [
+        "03 thành viên",
+        "nhiệm kỳ tối đa",
+        "05 năm"
+      ],
+      "expected_section": "Điều 8.1",
+      "expected_answer_hint": "Tối thiểu 03 thành viên, nhiệm kỳ tối đa 05 năm.",
+      "conflict_note": null,
+      "result_manual": "",
+      "notes_manual": ""
+    },
+    {
+      "id": "A12",
+      "category": "answered",
+      "question": "Theo điều lệ, cổ tức được chia theo gì?",
+      "answer_from_backend": "Theo Điều 9, khoản 1, cổ tức được chia theo tỷ lệ cổ phần đã góp, trừ khi Điều lệ có quy định khác. Trong trường hợp này, thuật ngữ pháp lý quan trọng là \"cổ tức\" và \"cổ phần\", và việc chia cổ tức được thực hiện dựa trên tỷ lệ góp vốn của cổ đông trong công ty cổ phần.",
+      "citations_backend": [
+        {
+          "documentId": 5,
+          "content": "Điều 9. 1. Cổ tức chia theo tỷ lệ cổ phần đã góp, trừ khi Điều lệ có quy định\nkhác.",
+          "score": 1.0,
+          "sourceType": "USER",
+          "chunkId": 32,
+          "article": "9",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 8. 3. Tỷ lệ cổ phần biểu quyết tối thiểu của HĐQT: không quy định (theo\nĐiều lệ công ty).\n\nPHẦN VI — VỀ CỔ TỨ",
+          "score": 0.88,
+          "sourceType": "USER",
+          "chunkId": 30,
+          "article": "8",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 5. 1. Cổ đông có quyền: nhận cổ tức, tham dự HĐQT, biểu quyết, khiển\nđại diện doanh nghiệp, yêu cầu mua lại cổ phần.",
+          "score": 0.56,
+          "sourceType": "USER",
+          "chunkId": 18,
+          "article": "5",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        }
+      ],
+      "source_chunks_backend": "Điều 9. 1. Cổ tức chia theo tỷ lệ cổ phần đã góp, trừ khi Điều lệ có quy định\nkhác.\n---\nĐiều 8. 3. Tỷ lệ cổ phần biểu quyết tối thiểu của HĐQT: không quy định (theo\nĐiều lệ công ty).\n\nPHẦN VI — VỀ CỔ TỨ\n---\nĐiều 5. 1. Cổ đông có quyền: nhận cổ tức, tham dự HĐQT, biểu quyết, khiển\nđại diện doanh nghiệp, yêu cầu mua lại cổ phần.",
+      "confidence_backend": "high",
+      "confidence_score_backend": 1.0,
+      "rag_strategy_backend": "direct",
+      "latency_ms": 3243,
+      "expected_source_keywords": [
+        "tỷ lệ cổ phần đã góp"
+      ],
+      "expected_section": "Điều 9.1",
+      "expected_answer_hint": "Theo tỷ lệ cổ phần đã góp, trừ khi Điều lệ có quy định khác.",
+      "conflict_note": null,
+      "result_manual": "",
+      "notes_manual": ""
+    },
+    {
+      "id": "A13",
+      "category": "answered",
+      "question": "Khi nào cổ tức được phân phối?",
+      "answer_from_backend": "Theo Điều 9, khoản 2, cổ tức được phân phối khi doanh nghiệp có lợi nhuận sau khi thanh toán thuế thu nhập doanh nghiệp, và việc phân phối này không phải thực hiện mỗi năm. Điều này liên quan đến thuật ngữ pháp lý \"cổ tức\" và \"thuế thu nhập doanh nghiệp\", trong đó cổ tức là phần lợi nhuận được chia cho các cổ đông theo tỷ lệ cổ phần đã góp, trừ khi Điều lệ có quy định khác như quy định tại khoản 1 của Điều 9.",
+      "citations_backend": [
+        {
+          "documentId": 5,
+          "content": "Điều 9. 2. Cổ tức không phải trả mỗi năm, chỉ phân phối khi doanh nghiệp có lợi\nnhuận sau khi thanh toán thuế thu nhập doanh nghiệp.",
+          "score": 1.0,
+          "sourceType": "USER",
+          "chunkId": 33,
+          "article": "9",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 9. Phân phối cổ tức",
+          "score": 0.95,
+          "sourceType": "USER",
+          "chunkId": 31,
+          "article": "9",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 9. 1. Cổ tức chia theo tỷ lệ cổ phần đã góp, trừ khi Điều lệ có quy định\nkhác.",
+          "score": 0.89,
+          "sourceType": "USER",
+          "chunkId": 32,
+          "article": "9",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        }
+      ],
+      "source_chunks_backend": "Điều 9. 2. Cổ tức không phải trả mỗi năm, chỉ phân phối khi doanh nghiệp có lợi\nnhuận sau khi thanh toán thuế thu nhập doanh nghiệp.\n---\nĐiều 9. Phân phối cổ tức\n---\nĐiều 9. 1. Cổ tức chia theo tỷ lệ cổ phần đã góp, trừ khi Điều lệ có quy định\nkhác.",
+      "confidence_backend": "high",
+      "confidence_score_backend": 1.0,
+      "rag_strategy_backend": "direct",
+      "latency_ms": 14621,
+      "expected_source_keywords": [
+        "có lợi nhuận",
+        "thanh toán thuế"
+      ],
+      "expected_section": "Điều 9.2",
+      "expected_answer_hint": "Khi doanh nghiệp có lợi nhuận sau khi thanh toán thuế thu nhập doanh nghiệp.",
+      "conflict_note": null,
+      "result_manual": "",
+      "notes_manual": ""
+    },
+    {
+      "id": "A14",
+      "category": "answered",
+      "question": "Báo cáo tài chính năm bao gồm những thành phần gì?",
+      "answer_from_backend": "Không tìm thấy thông tin trong tài liệu.",
+      "citations_backend": [
+        {
+          "documentId": 5,
+          "content": "Điều 4. 2. Đơn vị tiền tệ sử dụng trong báo cáo tài chính: đồng Việt Nam (VND).",
+          "score": 1.0,
+          "sourceType": "USER",
+          "chunkId": 15,
+          "article": "4",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 9. 3. Cổ đông phải chờ đến HĐ nghiêm túc của năm mới nhận cổ tức.\n\nPHẦN VII — VỀ BÁO CÁO TÀI CHÍNH",
+          "score": 1.0,
+          "sourceType": "USER",
+          "chunkId": 34,
+          "article": "9",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 10. 1. Doanh nghiệp ra báo cáo tài chính hàng năm, 6 tháng lần lượt.",
+          "score": 1.0,
+          "sourceType": "USER",
+          "chunkId": 36,
+          "article": "10",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        }
+      ],
+      "source_chunks_backend": "Điều 4. 2. Đơn vị tiền tệ sử dụng trong báo cáo tài chính: đồng Việt Nam (VND).\n---\nĐiều 9. 3. Cổ đông phải chờ đến HĐ nghiêm túc của năm mới nhận cổ tức.\n\nPHẦN VII — VỀ BÁO CÁO TÀI CHÍNH\n---\nĐiều 10. 1. Doanh nghiệp ra báo cáo tài chính hàng năm, 6 tháng lần lượt.",
+      "confidence_backend": "high",
+      "confidence_score_backend": 1.0,
+      "rag_strategy_backend": "direct",
+      "latency_ms": 1301,
+      "expected_source_keywords": [
+        "Bảng cân đối",
+        "Kết quả hoạt động",
+        "Lưu chuyển tiền mặt",
+        "Ghi chú"
+      ],
+      "expected_section": "Điều 10.2",
+      "expected_answer_hint": "Bảng cân đối, Báo cáo kết quả hoạt động, Báo cáo lưu chuyển tiền mặt, Ghi chú.",
+      "conflict_note": null,
+      "result_manual": "",
+      "notes_manual": ""
+    },
+    {
+      "id": "A15",
+      "category": "answered",
+      "question": "Ghi chú báo cáo tài chính cần ghi rõ điều gì?",
+      "answer_from_backend": "Theo Điều 10, khoản 3, Ghi chú báo cáo tài chính cần bao gồm các thông tin quan trọng như: phương pháp kế toán, chi tiết của các mục lớn, cam kết và điều kiện chưa ghi nhận, các biến động trong năm. Đây là những thuật ngữ pháp lý quan trọng trong lĩnh vực kế toán và báo cáo tài chính, giúp đảm bảo tính minh bạch và chính xác của báo cáo tài chính doanh nghiệp.",
+      "citations_backend": [
+        {
+          "documentId": 5,
+          "content": "Điều 4. 1. Hồ sơ cần: Giấy đặt tên, Báo cáo tài chính dự kiến, Danh sách tối thiểu\ncổ đông (tối thiểu 3 người), Giấy phép doanh nghiệp (nếu có).",
+          "score": 1.0,
+          "sourceType": "USER",
+          "chunkId": 14,
+          "article": "4",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 10. 2. Báo cáo năm bao gồm: Bảng cân đối, Báo cáo kết quả hoạt động,\nBáo cáo lưu chuyển tiền mặt, Ghi chú.",
+          "score": 1.0,
+          "sourceType": "USER",
+          "chunkId": 37,
+          "article": "10",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 10. 3. Ghi chú báo cáo tài chính cần bao gồm: phương pháp kế toán, chi tiết\ncủa các mục lớn, cam kết và điều kiện chưa ghi nhận, các biến động trong năm.",
+          "score": 1.0,
+          "sourceType": "USER",
+          "chunkId": 38,
+          "article": "10",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        }
+      ],
+      "source_chunks_backend": "Điều 4. 1. Hồ sơ cần: Giấy đặt tên, Báo cáo tài chính dự kiến, Danh sách tối thiểu\ncổ đông (tối thiểu 3 người), Giấy phép doanh nghiệp (nếu có).\n---\nĐiều 10. 2. Báo cáo năm bao gồm: Bảng cân đối, Báo cáo kết quả hoạt động,\nBáo cáo lưu chuyển tiền mặt, Ghi chú.\n---\nĐiều 10. 3. Ghi chú báo cáo tài chính cần bao gồm: phương pháp kế toán, chi tiết\ncủa các mục lớn, cam kết và điều kiện chưa ghi nhận, các biến động trong năm.",
+      "confidence_backend": "high",
+      "confidence_score_backend": 1.0,
+      "rag_strategy_backend": "direct",
+      "latency_ms": 1935,
+      "expected_source_keywords": [
+        "phương pháp kế toán",
+        "cam kết",
+        "biến động"
+      ],
+      "expected_section": "Điều 10.3",
+      "expected_answer_hint": "Phương pháp kế toán, chi tiết các mục lớn, cam kết và điều kiện chưa ghi nhận, các biến động trong năm.",
+      "conflict_note": null,
+      "result_manual": "",
+      "notes_manual": ""
+    },
+    {
+      "id": "U1",
+      "category": "unanswerable",
+      "question": "Doanh nghiệp cần nộp hồ sơ gì để được cấp giấy phép xuất khẩu vàng?",
+      "answer_from_backend": "Theo Điều 4.3, hồ sơ không cần nộp \"Giấy phép xuất khẩu vàng\" để được cấp giấy phép doanh nghiệp. Điều này có nghĩa là doanh nghiệp không cần phải nộp giấy phép xuất khẩu vàng trong hồ sơ của mình.\n\nTuy nhiên, để trả lời chính xác câu hỏi về hồ sơ cần nộp để được cấp giấy phép xuất khẩu vàng, cần lưu ý rằng tài liệu không cung cấp thông tin cụ thể về hồ sơ cần nộp cho mục đích này. Do đó, dựa trên thông tin có sẵn:\n\nKhông tìm thấy thông tin trong tài liệu về hồ sơ cần nộp để được cấp giấy phép xuất khẩu vàng.",
+      "citations_backend": [
+        {
+          "documentId": 5,
+          "content": "Điều 3. 3. Ngày có hiệu lực của giấy phép KHỞI NGHIỆP: ngày cấp là ngày bắt\nđầu, không phải ngày nộp hồ sơ.",
+          "score": 0.98,
+          "sourceType": "USER",
+          "chunkId": 12,
+          "article": "3",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 4. 1. Hồ sơ cần: Giấy đặt tên, Báo cáo tài chính dự kiến, Danh sách tối thiểu\ncổ đông (tối thiểu 3 người), Giấy phép doanh nghiệp (nếu có).",
+          "score": 0.98,
+          "sourceType": "USER",
+          "chunkId": 14,
+          "article": "4",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 4. 3. Hồ sơ không cần: Giấy phép xuất khẩu vàng, đăng ký giải thưởng quốc\ngiới.\n\nPHẦN III — VỀ CỔ GIẢI",
+          "score": 0.88,
+          "sourceType": "USER",
+          "chunkId": 16,
+          "article": "4",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        }
+      ],
+      "source_chunks_backend": "Điều 3. 3. Ngày có hiệu lực của giấy phép KHỞI NGHIỆP: ngày cấp là ngày bắt\nđầu, không phải ngày nộp hồ sơ.\n---\nĐiều 4. 1. Hồ sơ cần: Giấy đặt tên, Báo cáo tài chính dự kiến, Danh sách tối thiểu\ncổ đông (tối thiểu 3 người), Giấy phép doanh nghiệp (nếu có).\n---\nĐiều 4. 3. Hồ sơ không cần: Giấy phép xuất khẩu vàng, đăng ký giải thưởng quốc\ngiới.\n\nPHẦN III — VỀ CỔ GIẢI",
+      "confidence_backend": "high",
+      "confidence_score_backend": 0.98,
+      "rag_strategy_backend": "direct",
+      "latency_ms": 9178,
+      "expected_source_keywords": [
+        "xuất khẩu vàng"
+      ],
+      "expected_section": "KHÔNG CÓ",
+      "expected_answer_hint": null,
+      "conflict_note": null,
+      "result_manual": "",
+      "notes_manual": ""
+    },
+    {
+      "id": "U2",
+      "category": "unanswerable",
+      "question": "Nghĩa vụ cụ thể của cổ đông khi doanh nghiệp nợ vay ngân hàng 10 tỷ là gì?",
+      "answer_from_backend": "Theo Điều 6.2, cổ đông không có nghĩa vụ chi trả nợ vay nếu doanh nghiệp phá sản. Điều này áp dụng cho trường hợp doanh nghiệp nợ vay ngân hàng 10 tỷ, nghĩa là cổ đông không phải chịu trách nhiệm về khoản nợ này. Thuật ngữ pháp lý quan trọng ở đây là \"cổ đông\" và \"phá sản\", liên quan đến trách nhiệm của cổ đông trong trường hợp doanh nghiệp gặp khó khăn tài chính.",
+      "citations_backend": [
+        {
+          "documentId": 5,
+          "content": "Điều 6. 2. Cổ đông không có nghĩa vụ chi trả nợ vay nếu doanh nghiệp phá sản\n(điều này thuộc về pháp luật phá sản).\n\nPHẦN IV — VỀ CĂN BỘ VÀ ĐỊA CHỈ TRỤ SỞ",
+          "score": 1.0,
+          "sourceType": "USER",
+          "chunkId": 22,
+          "article": "6",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 3. 1. Doanh nghiệp thành lập khi có tổ chức kinh tế trở thành cổ đông/\nchủ sở hữu của doanh nghiệp và đáp ứng điều kiện nghiệp vụ theo quy định của\nngành nghề.",
+          "score": 0.75,
+          "sourceType": "USER",
+          "chunkId": 10,
+          "article": "3",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 6. Nghĩa vụ cổ đông",
+          "score": 0.68,
+          "sourceType": "USER",
+          "chunkId": 20,
+          "article": "6",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        }
+      ],
+      "source_chunks_backend": "Điều 6. 2. Cổ đông không có nghĩa vụ chi trả nợ vay nếu doanh nghiệp phá sản\n(điều này thuộc về pháp luật phá sản).\n\nPHẦN IV — VỀ CĂN BỘ VÀ ĐỊA CHỈ TRỤ SỞ\n---\nĐiều 3. 1. Doanh nghiệp thành lập khi có tổ chức kinh tế trở thành cổ đông/\nchủ sở hữu của doanh nghiệp và đáp ứng điều kiện nghiệp vụ theo quy định của\nngành nghề.\n---\nĐiều 6. Nghĩa vụ cổ đông",
+      "confidence_backend": "high",
+      "confidence_score_backend": 1.0,
+      "rag_strategy_backend": "direct",
+      "latency_ms": 4711,
+      "expected_source_keywords": [
+        "nợ vay",
+        "ngân hàng"
+      ],
+      "expected_section": "KHÔNG CÓ",
+      "expected_answer_hint": null,
+      "conflict_note": null,
+      "result_manual": "",
+      "notes_manual": ""
+    },
+    {
+      "id": "U3",
+      "category": "unanswerable",
+      "question": "Mức phí công bố thông tin doanh nghiệp hằng năm là bao nhiêu?",
+      "answer_from_backend": "Không tìm thấy thông tin trong tài liệu.",
+      "citations_backend": [
+        {
+          "documentId": 5,
+          "content": "Điều 1. 1. Văn bản này điều chỉnh hoạt động thành lập, tổ chức, hoạt động, thay đổi,\nhợp nhất, sáp nhập và chấm dứt hoạt động của doanh nghiệp trên lãnh thổ nước CH.",
+          "score": 0.64,
+          "sourceType": "USER",
+          "chunkId": 3,
+          "article": "1",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 12. 3. Văn bản này có hiệu lực từ 01/01/2021 không thay đổi.\n\nPHÚC BÀY — MÃ TÀU ĐĂNG KÝ TÀI LIỆU NÀY\nMã tài liệu: LN2020-001\nPhiên bản: 1.0, ngày: 2021-01-01\nNgười soạn: Phòng Pháp chế, Bộ Tài chính (giả lập cho mục đích kiểm thử RAG)",
+          "score": 0.64,
+          "sourceType": "USER",
+          "chunkId": 47,
+          "article": "12",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 7. 1. Doanh nghiệp phải có địa chỉ trụ sở chính và tiến hành đăng ký với\nSở Thuế.",
+          "score": 0.61,
+          "sourceType": "USER",
+          "chunkId": 24,
+          "article": "7",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        }
+      ],
+      "source_chunks_backend": "Điều 1. 1. Văn bản này điều chỉnh hoạt động thành lập, tổ chức, hoạt động, thay đổi,\nhợp nhất, sáp nhập và chấm dứt hoạt động của doanh nghiệp trên lãnh thổ nước CH.\n---\nĐiều 12. 3. Văn bản này có hiệu lực từ 01/01/2021 không thay đổi.\n\nPHÚC BÀY — MÃ TÀU ĐĂNG KÝ TÀI LIỆU NÀY\nMã tài liệu: LN2020-001\nPhiên bản: 1.0, ngày: 2021-01-01\nNgười soạn: Phòng Pháp chế, Bộ Tài chính (giả lập cho mục đích kiểm thử RAG)\n---\nĐiều 7. 1. Doanh nghiệp phải có địa chỉ trụ sở chính và tiến hành đăng ký với\nSở Thuế.",
+      "confidence_backend": "medium",
+      "confidence_score_backend": 0.68,
+      "rag_strategy_backend": "corrective",
+      "latency_ms": 2242,
+      "expected_source_keywords": [
+        "phí công bố",
+        "hằng năm"
+      ],
+      "expected_section": "KHÔNG CÓ",
+      "expected_answer_hint": null,
+      "conflict_note": null,
+      "result_manual": "",
+      "notes_manual": ""
+    },
+    {
+      "id": "U4",
+      "category": "unanswerable",
+      "question": "Thủ tục thành lập doanh nghiệp tại Việt Nam cần bao nhiêu ngày làm việc?",
+      "answer_from_backend": "Không tìm thấy thông tin trong tài liệu.",
+      "citations_backend": [
+        {
+          "documentId": 5,
+          "content": "Điều 2. 3. \"Hợp đồng lao động\" được định nghĩa trong Luật Lao động, không phải bộ\nluật này.\n\nPHẦN II — THÀNH LẬP DOANH NGHIỆP",
+          "score": 0.83,
+          "sourceType": "USER",
+          "chunkId": 8,
+          "article": "2",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 3. 1. Doanh nghiệp thành lập khi có tổ chức kinh tế trở thành cổ đông/\nchủ sở hữu của doanh nghiệp và đáp ứng điều kiện nghiệp vụ theo quy định của\nngành nghề.",
+          "score": 0.8,
+          "sourceType": "USER",
+          "chunkId": 10,
+          "article": "3",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 9. 2. Cổ tức không phải trả mỗi năm, chỉ phân phối khi doanh nghiệp có lợi\nnhuận sau khi thanh toán thuế thu nhập doanh nghiệp.",
+          "score": 0.75,
+          "sourceType": "USER",
+          "chunkId": 33,
+          "article": "9",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        }
+      ],
+      "source_chunks_backend": "Điều 2. 3. \"Hợp đồng lao động\" được định nghĩa trong Luật Lao động, không phải bộ\nluật này.\n\nPHẦN II — THÀNH LẬP DOANH NGHIỆP\n---\nĐiều 3. 1. Doanh nghiệp thành lập khi có tổ chức kinh tế trở thành cổ đông/\nchủ sở hữu của doanh nghiệp và đáp ứng điều kiện nghiệp vụ theo quy định của\nngành nghề.\n---\nĐiều 9. 2. Cổ tức không phải trả mỗi năm, chỉ phân phối khi doanh nghiệp có lợi\nnhuận sau khi thanh toán thuế thu nhập doanh nghiệp.",
+      "confidence_backend": "high",
+      "confidence_score_backend": 0.83,
+      "rag_strategy_backend": "direct",
+      "latency_ms": 821,
+      "expected_source_keywords": [
+        "ngày làm việc",
+        "thủ tục"
+      ],
+      "expected_section": "KHÔNG CÓ",
+      "expected_answer_hint": null,
+      "conflict_note": null,
+      "result_manual": "",
+      "notes_manual": ""
+    },
+    {
+      "id": "U5",
+      "category": "unanswerable",
+      "question": "Cơ quan nào có thẩm quyền thu hồi giấy phép kinh doanh?",
+      "answer_from_backend": "Không tìm thấy thông tin trong tài liệu.",
+      "citations_backend": [
+        {
+          "documentId": 5,
+          "content": "Điều 2. 1. \"Doanh nghiệp\" là tổ chức kinh tế có tư cách pháp nhân, có tài sản,\nhợp pháp độc lập, chịu trách nhiệm bằng tài sản của mình trước nhà nước và\ncác chủ thể khác.",
+          "score": 0.71,
+          "sourceType": "USER",
+          "chunkId": 6,
+          "article": "2",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 4. 1. Hồ sơ cần: Giấy đặt tên, Báo cáo tài chính dự kiến, Danh sách tối thiểu\ncổ đông (tối thiểu 3 người), Giấy phép doanh nghiệp (nếu có).",
+          "score": 0.55,
+          "sourceType": "USER",
+          "chunkId": 14,
+          "article": "4",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 5. 1. Cổ đông có quyền: nhận cổ tức, tham dự HĐQT, biểu quyết, khiển\nđại diện doanh nghiệp, yêu cầu mua lại cổ phần.",
+          "score": 0.55,
+          "sourceType": "USER",
+          "chunkId": 18,
+          "article": "5",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        }
+      ],
+      "source_chunks_backend": "Điều 2. 1. \"Doanh nghiệp\" là tổ chức kinh tế có tư cách pháp nhân, có tài sản,\nhợp pháp độc lập, chịu trách nhiệm bằng tài sản của mình trước nhà nước và\ncác chủ thể khác.\n---\nĐiều 4. 1. Hồ sơ cần: Giấy đặt tên, Báo cáo tài chính dự kiến, Danh sách tối thiểu\ncổ đông (tối thiểu 3 người), Giấy phép doanh nghiệp (nếu có).\n---\nĐiều 5. 1. Cổ đông có quyền: nhận cổ tức, tham dự HĐQT, biểu quyết, khiển\nđại diện doanh nghiệp, yêu cầu mua lại cổ phần.",
+      "confidence_backend": "high",
+      "confidence_score_backend": 0.97,
+      "rag_strategy_backend": "corrective",
+      "latency_ms": 1967,
+      "expected_source_keywords": [
+        "thu hồi",
+        "thẩm quyền"
+      ],
+      "expected_section": "KHÔNG CÓ",
+      "expected_answer_hint": null,
+      "conflict_note": null,
+      "result_manual": "",
+      "notes_manual": ""
+    },
+    {
+      "id": "U6",
+      "category": "unanswerable",
+      "question": "Doanh nghiệp nhỏ và vừa được định nghĩa theo tiêu chí vốn và lao động như thế nào?",
+      "answer_from_backend": "Không tìm thấy thông tin trong tài liệu.",
+      "citations_backend": [
+        {
+          "documentId": 5,
+          "content": "Điều 2. 3. \"Hợp đồng lao động\" được định nghĩa trong Luật Lao động, không phải bộ\nluật này.\n\nPHẦN II — THÀNH LẬP DOANH NGHIỆP",
+          "score": 0.98,
+          "sourceType": "USER",
+          "chunkId": 8,
+          "article": "2",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 3. 1. Doanh nghiệp thành lập khi có tổ chức kinh tế trở thành cổ đông/\nchủ sở hữu của doanh nghiệp và đáp ứng điều kiện nghiệp vụ theo quy định của\nngành nghề.",
+          "score": 0.72,
+          "sourceType": "USER",
+          "chunkId": 10,
+          "article": "3",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 6. 2. Cổ đông không có nghĩa vụ chi trả nợ vay nếu doanh nghiệp phá sản\n(điều này thuộc về pháp luật phá sản).\n\nPHẦN IV — VỀ CĂN BỘ VÀ ĐỊA CHỈ TRỤ SỞ",
+          "score": 0.69,
+          "sourceType": "USER",
+          "chunkId": 22,
+          "article": "6",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        }
+      ],
+      "source_chunks_backend": "Điều 2. 3. \"Hợp đồng lao động\" được định nghĩa trong Luật Lao động, không phải bộ\nluật này.\n\nPHẦN II — THÀNH LẬP DOANH NGHIỆP\n---\nĐiều 3. 1. Doanh nghiệp thành lập khi có tổ chức kinh tế trở thành cổ đông/\nchủ sở hữu của doanh nghiệp và đáp ứng điều kiện nghiệp vụ theo quy định của\nngành nghề.\n---\nĐiều 6. 2. Cổ đông không có nghĩa vụ chi trả nợ vay nếu doanh nghiệp phá sản\n(điều này thuộc về pháp luật phá sản).\n\nPHẦN IV — VỀ CĂN BỘ VÀ ĐỊA CHỈ TRỤ SỞ",
+      "confidence_backend": "high",
+      "confidence_score_backend": 0.98,
+      "rag_strategy_backend": "direct",
+      "latency_ms": 1007,
+      "expected_source_keywords": [
+        "doanh nghiệp nhỏ và vừa",
+        "tiêu chí"
+      ],
+      "expected_section": "KHÔNG CÓ",
+      "expected_answer_hint": null,
+      "conflict_note": null,
+      "result_manual": "",
+      "notes_manual": ""
+    },
+    {
+      "id": "U7",
+      "category": "unanswerable",
+      "question": "Doanh nghiệp có phải nộp báo cáo kiểm toán 90 ngày trước đại hội cổ đông không?",
+      "answer_from_backend": "Không tìm thấy thông tin trong tài liệu.",
+      "citations_backend": [
+        {
+          "documentId": 5,
+          "content": "Điều 9. 2. Cổ tức không phải trả mỗi năm, chỉ phân phối khi doanh nghiệp có lợi\nnhuận sau khi thanh toán thuế thu nhập doanh nghiệp.",
+          "score": 0.83,
+          "sourceType": "USER",
+          "chunkId": 33,
+          "article": "9",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 4. 1. Hồ sơ cần: Giấy đặt tên, Báo cáo tài chính dự kiến, Danh sách tối thiểu\ncổ đông (tối thiểu 3 người), Giấy phép doanh nghiệp (nếu có).",
+          "score": 0.73,
+          "sourceType": "USER",
+          "chunkId": 14,
+          "article": "4",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 5. 1. Cổ đông có quyền: nhận cổ tức, tham dự HĐQT, biểu quyết, khiển\nđại diện doanh nghiệp, yêu cầu mua lại cổ phần.",
+          "score": 0.68,
+          "sourceType": "USER",
+          "chunkId": 18,
+          "article": "5",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        }
+      ],
+      "source_chunks_backend": "Điều 9. 2. Cổ tức không phải trả mỗi năm, chỉ phân phối khi doanh nghiệp có lợi\nnhuận sau khi thanh toán thuế thu nhập doanh nghiệp.\n---\nĐiều 4. 1. Hồ sơ cần: Giấy đặt tên, Báo cáo tài chính dự kiến, Danh sách tối thiểu\ncổ đông (tối thiểu 3 người), Giấy phép doanh nghiệp (nếu có).\n---\nĐiều 5. 1. Cổ đông có quyền: nhận cổ tức, tham dự HĐQT, biểu quyết, khiển\nđại diện doanh nghiệp, yêu cầu mua lại cổ phần.",
+      "confidence_backend": "high",
+      "confidence_score_backend": 0.83,
+      "rag_strategy_backend": "direct",
+      "latency_ms": 820,
+      "expected_source_keywords": [
+        "kiểm toán",
+        "90 ngày"
+      ],
+      "expected_section": "KHÔNG CÓ",
+      "expected_answer_hint": null,
+      "conflict_note": null,
+      "result_manual": "",
+      "notes_manual": ""
+    },
+    {
+      "id": "U8",
+      "category": "unanswerable",
+      "question": "Tổ chức kiểm soát nội bộ phải được thành lập theo quy định nào?",
+      "answer_from_backend": "Không tìm thấy thông tin trong tài liệu.",
+      "citations_backend": [
+        {
+          "documentId": 5,
+          "content": "Điều 3. 1. Doanh nghiệp thành lập khi có tổ chức kinh tế trở thành cổ đông/\nchủ sở hữu của doanh nghiệp và đáp ứng điều kiện nghiệp vụ theo quy định của\nngành nghề.",
+          "score": 0.83,
+          "sourceType": "USER",
+          "chunkId": 10,
+          "article": "3",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 2. 3. \"Hợp đồng lao động\" được định nghĩa trong Luật Lao động, không phải bộ\nluật này.\n\nPHẦN II — THÀNH LẬP DOANH NGHIỆP",
+          "score": 0.59,
+          "sourceType": "USER",
+          "chunkId": 8,
+          "article": "2",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 1. 1. Văn bản này điều chỉnh hoạt động thành lập, tổ chức, hoạt động, thay đổi,\nhợp nhất, sáp nhập và chấm dứt hoạt động của doanh nghiệp trên lãnh thổ nước CH.",
+          "score": 0.55,
+          "sourceType": "USER",
+          "chunkId": 3,
+          "article": "1",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        }
+      ],
+      "source_chunks_backend": "Điều 3. 1. Doanh nghiệp thành lập khi có tổ chức kinh tế trở thành cổ đông/\nchủ sở hữu của doanh nghiệp và đáp ứng điều kiện nghiệp vụ theo quy định của\nngành nghề.\n---\nĐiều 2. 3. \"Hợp đồng lao động\" được định nghĩa trong Luật Lao động, không phải bộ\nluật này.\n\nPHẦN II — THÀNH LẬP DOANH NGHIỆP\n---\nĐiều 1. 1. Văn bản này điều chỉnh hoạt động thành lập, tổ chức, hoạt động, thay đổi,\nhợp nhất, sáp nhập và chấm dứt hoạt động của doanh nghiệp trên lãnh thổ nước CH.",
+      "confidence_backend": "high",
+      "confidence_score_backend": 0.83,
+      "rag_strategy_backend": "direct",
+      "latency_ms": 7543,
+      "expected_source_keywords": [
+        "kiểm soát nội bộ"
+      ],
+      "expected_section": "KHÔNG CÓ",
+      "expected_answer_hint": null,
+      "conflict_note": null,
+      "result_manual": "",
+      "notes_manual": ""
+    },
+    {
+      "id": "U9",
+      "category": "unanswerable",
+      "question": "Tỷ lệ biểu quyết tối thiểu để thông qua nghị quyết là bao nhiêu phần trăm?",
+      "answer_from_backend": "Không tìm thấy thông tin trong tài liệu.",
+      "citations_backend": [
+        {
+          "documentId": 5,
+          "content": "Điều 8. 3. Tỷ lệ cổ phần biểu quyết tối thiểu của HĐQT: không quy định (theo\nĐiều lệ công ty).\n\nPHẦN VI — VỀ CỔ TỨ",
+          "score": 1.0,
+          "sourceType": "USER",
+          "chunkId": 30,
+          "article": "8",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 4. 1. Hồ sơ cần: Giấy đặt tên, Báo cáo tài chính dự kiến, Danh sách tối thiểu\ncổ đông (tối thiểu 3 người), Giấy phép doanh nghiệp (nếu có).",
+          "score": 0.55,
+          "sourceType": "USER",
+          "chunkId": 14,
+          "article": "4",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 9. 1. Cổ tức chia theo tỷ lệ cổ phần đã góp, trừ khi Điều lệ có quy định\nkhác.",
+          "score": 0.51,
+          "sourceType": "USER",
+          "chunkId": 32,
+          "article": "9",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        }
+      ],
+      "source_chunks_backend": "Điều 8. 3. Tỷ lệ cổ phần biểu quyết tối thiểu của HĐQT: không quy định (theo\nĐiều lệ công ty).\n\nPHẦN VI — VỀ CỔ TỨ\n---\nĐiều 4. 1. Hồ sơ cần: Giấy đặt tên, Báo cáo tài chính dự kiến, Danh sách tối thiểu\ncổ đông (tối thiểu 3 người), Giấy phép doanh nghiệp (nếu có).\n---\nĐiều 9. 1. Cổ tức chia theo tỷ lệ cổ phần đã góp, trừ khi Điều lệ có quy định\nkhác.",
+      "confidence_backend": "high",
+      "confidence_score_backend": 1.0,
+      "rag_strategy_backend": "direct",
+      "latency_ms": 1063,
+      "expected_source_keywords": [
+        "phần trăm",
+        "biểu quyết"
+      ],
+      "expected_section": "KHÔNG CÓ (Điều 8.3 chỉ nói không quy định, theo Điều lệ)",
+      "expected_answer_hint": null,
+      "conflict_note": null,
+      "result_manual": "",
+      "notes_manual": ""
+    },
+    {
+      "id": "U10",
+      "category": "unanswerable",
+      "question": "Doanh nghiệp phải nộp báo cáo tài chính trước ngày 31/3 hằng năm đúng không?",
+      "answer_from_backend": "Không tìm thấy thông tin trong tài liệu.",
+      "citations_backend": [
+        {
+          "documentId": 5,
+          "content": "Điều 10. 1. Doanh nghiệp ra báo cáo tài chính hàng năm, 6 tháng lần lượt.",
+          "score": 1.0,
+          "sourceType": "USER",
+          "chunkId": 36,
+          "article": "10",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 4. 1. Hồ sơ cần: Giấy đặt tên, Báo cáo tài chính dự kiến, Danh sách tối thiểu\ncổ đông (tối thiểu 3 người), Giấy phép doanh nghiệp (nếu có).",
+          "score": 0.89,
+          "sourceType": "USER",
+          "chunkId": 14,
+          "article": "4",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 9. 3. Cổ đông phải chờ đến HĐ nghiêm túc của năm mới nhận cổ tức.\n\nPHẦN VII — VỀ BÁO CÁO TÀI CHÍNH",
+          "score": 0.74,
+          "sourceType": "USER",
+          "chunkId": 34,
+          "article": "9",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        }
+      ],
+      "source_chunks_backend": "Điều 10. 1. Doanh nghiệp ra báo cáo tài chính hàng năm, 6 tháng lần lượt.\n---\nĐiều 4. 1. Hồ sơ cần: Giấy đặt tên, Báo cáo tài chính dự kiến, Danh sách tối thiểu\ncổ đông (tối thiểu 3 người), Giấy phép doanh nghiệp (nếu có).\n---\nĐiều 9. 3. Cổ đông phải chờ đến HĐ nghiêm túc của năm mới nhận cổ tức.\n\nPHẦN VII — VỀ BÁO CÁO TÀI CHÍNH",
+      "confidence_backend": "high",
+      "confidence_score_backend": 1.0,
+      "rag_strategy_backend": "direct",
+      "latency_ms": 1747,
+      "expected_source_keywords": [
+        "31/3",
+        "nộp báo cáo"
+      ],
+      "expected_section": "KHÔNG CÓ",
+      "expected_answer_hint": null,
+      "conflict_note": null,
+      "result_manual": "",
+      "notes_manual": ""
+    },
+    {
+      "id": "C1",
+      "category": "conflict",
+      "question": "Ngày có hiệu lực của giấy phép khởi nghiệp là ngày cấp hay ngày nộp hồ sơ?",
+      "answer_from_backend": "Theo Điều 3, khoản 3, ngày có hiệu lực của giấy phép khởi nghiệp là ngày cấp, không phải ngày nộp hồ sơ. Tại đây, thuật ngữ pháp lý quan trọng được đề cập là \"giấy phép khởi nghiệp\", một loại giấy phép cần thiết cho việc thành lập và vận hành một doanh nghiệp, và \"ngày cấp\" là thời điểm mà giấy phép này được chính thức cấp cho doanh nghiệp, đánh dấu sự bắt đầu hoạt động hợp pháp của doanh nghiệp đó.",
+      "citations_backend": [
+        {
+          "documentId": 5,
+          "content": "Điều 3. 3. Ngày có hiệu lực của giấy phép KHỞI NGHIỆP: ngày cấp là ngày bắt\nđầu, không phải ngày nộp hồ sơ.",
+          "score": 1.0,
+          "sourceType": "USER",
+          "chunkId": 12,
+          "article": "3",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 4. 1. Hồ sơ cần: Giấy đặt tên, Báo cáo tài chính dự kiến, Danh sách tối thiểu\ncổ đông (tối thiểu 3 người), Giấy phép doanh nghiệp (nếu có).",
+          "score": 0.77,
+          "sourceType": "USER",
+          "chunkId": 14,
+          "article": "4",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 12. 3. Văn bản này có hiệu lực từ 01/01/2021 không thay đổi.\n\nPHÚC BÀY — MÃ TÀU ĐĂNG KÝ TÀI LIỆU NÀY\nMã tài liệu: LN2020-001\nPhiên bản: 1.0, ngày: 2021-01-01\nNgười soạn: Phòng Pháp chế, Bộ Tài chính (giả lập cho mục đích kiểm thử RAG)",
+          "score": 0.7,
+          "sourceType": "USER",
+          "chunkId": 47,
+          "article": "12",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        }
+      ],
+      "source_chunks_backend": "Điều 3. 3. Ngày có hiệu lực của giấy phép KHỞI NGHIỆP: ngày cấp là ngày bắt\nđầu, không phải ngày nộp hồ sơ.\n---\nĐiều 4. 1. Hồ sơ cần: Giấy đặt tên, Báo cáo tài chính dự kiến, Danh sách tối thiểu\ncổ đông (tối thiểu 3 người), Giấy phép doanh nghiệp (nếu có).\n---\nĐiều 12. 3. Văn bản này có hiệu lực từ 01/01/2021 không thay đổi.\n\nPHÚC BÀY — MÃ TÀU ĐĂNG KÝ TÀI LIỆU NÀY\nMã tài liệu: LN2020-001\nPhiên bản: 1.0, ngày: 2021-01-01\nNgười soạn: Phòng Pháp chế, Bộ Tài chính (giả lập cho mục đích kiểm thử RAG)",
+      "confidence_backend": "high",
+      "confidence_score_backend": 1.0,
+      "rag_strategy_backend": "direct",
+      "latency_ms": 2458,
+      "expected_source_keywords": [
+        "ngày cấp",
+        "ngày nộp hồ sơ"
+      ],
+      "expected_section": "Điều 3.3",
+      "expected_answer_hint": null,
+      "conflict_note": "Điều 3.3 nói rõ 'ngày cấp là ngày bắt đầu, không phải ngày nộp hồ sơ' — mô hình phải trả lời đúng một phía theo tài liệu, không được mô hồ.",
+      "result_manual": "",
+      "notes_manual": ""
+    },
+    {
+      "id": "C2",
+      "category": "conflict",
+      "question": "Cổ đông có quyền khiển đại diện doanh nghiệp — liệu mọi cổ đông hay chỉ cổ đông chiếm đa số?",
+      "answer_from_backend": "Theo Điều 5.1, cổ đông có quyền khiển đại diện doanh nghiệp. Tuy nhiên, tài liệu không quy định rõ ràng về việc liệu mọi cổ đông hay chỉ cổ đông chiếm đa số có quyền này. Trong thuật ngữ pháp lý, \"cổ đông\" là người sở hữu cổ phần của một công ty cổ phần, và \"đại diện doanh nghiệp\" thường liên quan đến người đại diện theo pháp luật hoặc người được ủy quyền đại diện cho doanh nghiệp. Vì không có thông tin cụ thể về tỷ lệ sở hữu cổ phần hoặc quy định về việc cổ đông cần phải chiếm đa số để thực hiện quyền này, nên không thể xác định chính xác liệu mọi cổ đông hay chỉ cổ đông chiếm đa số có quyền khiển đại diện doanh nghiệp.",
+      "citations_backend": [
+        {
+          "documentId": 5,
+          "content": "Điều 5. 1. Cổ đông có quyền: nhận cổ tức, tham dự HĐQT, biểu quyết, khiển\nđại diện doanh nghiệp, yêu cầu mua lại cổ phần.",
+          "score": 1.0,
+          "sourceType": "USER",
+          "chunkId": 18,
+          "article": "5",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 5. 2. Cổ đông không có quyền: ra lệnh cho người lao động, ký hợp đồng\nmua bán mà không tuân thủ dịch vụ, tiếp cận tài liệu kế toán mà không có\nquyền được cấp bởi HĐQT.",
+          "score": 0.79,
+          "sourceType": "USER",
+          "chunkId": 19,
+          "article": "5",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 6. 2. Cổ đông không có nghĩa vụ chi trả nợ vay nếu doanh nghiệp phá sản\n(điều này thuộc về pháp luật phá sản).\n\nPHẦN IV — VỀ CĂN BỘ VÀ ĐỊA CHỈ TRỤ SỞ",
+          "score": 0.73,
+          "sourceType": "USER",
+          "chunkId": 22,
+          "article": "6",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        }
+      ],
+      "source_chunks_backend": "Điều 5. 1. Cổ đông có quyền: nhận cổ tức, tham dự HĐQT, biểu quyết, khiển\nđại diện doanh nghiệp, yêu cầu mua lại cổ phần.\n---\nĐiều 5. 2. Cổ đông không có quyền: ra lệnh cho người lao động, ký hợp đồng\nmua bán mà không tuân thủ dịch vụ, tiếp cận tài liệu kế toán mà không có\nquyền được cấp bởi HĐQT.\n---\nĐiều 6. 2. Cổ đông không có nghĩa vụ chi trả nợ vay nếu doanh nghiệp phá sản\n(điều này thuộc về pháp luật phá sản).\n\nPHẦN IV — VỀ CĂN BỘ VÀ ĐỊA CHỈ TRỤ SỞ",
+      "confidence_backend": "high",
+      "confidence_score_backend": 1.0,
+      "rag_strategy_backend": "direct",
+      "latency_ms": 11560,
+      "expected_source_keywords": [
+        "khiển đại diện",
+        "cổ đông"
+      ],
+      "expected_section": "Điều 5.1",
+      "expected_answer_hint": null,
+      "conflict_note": "Tài liệu không làm rõ điều kiện — mô hình phải nêu tài liệu không quy định chi tiết, không suy diễn.",
+      "result_manual": "",
+      "notes_manual": ""
+    },
+    {
+      "id": "C3",
+      "category": "conflict",
+      "question": "Tỷ lệ cổ phần biểu quyết tối thiểu của HĐQT là bao nhiêu — luật có quy định cụ thể không?",
+      "answer_from_backend": "Theo Điều 8.3, tỷ lệ cổ phần biểu quyết tối thiểu của Hội đồng quản trị (HĐQT) không được quy định cụ thể trong luật, mà sẽ được quyết định theo Điều lệ của công ty. Điều này cho phép công ty có thể tự quyết định tỷ lệ cổ phần biểu quyết tối thiểu của HĐQT phù hợp với nhu cầu và mục tiêu của mình, dựa trên nguyên tắc \"trách nhiệm hữu hạn\" và \"quyền cổ đông\" trong công ty cổ phần.",
+      "citations_backend": [
+        {
+          "documentId": 5,
+          "content": "Điều 8. 3. Tỷ lệ cổ phần biểu quyết tối thiểu của HĐQT: không quy định (theo\nĐiều lệ công ty).\n\nPHẦN VI — VỀ CỔ TỨ",
+          "score": 1.0,
+          "sourceType": "USER",
+          "chunkId": 30,
+          "article": "8",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 9. 1. Cổ tức chia theo tỷ lệ cổ phần đã góp, trừ khi Điều lệ có quy định\nkhác.",
+          "score": 1.0,
+          "sourceType": "USER",
+          "chunkId": 32,
+          "article": "9",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 5. 1. Cổ đông có quyền: nhận cổ tức, tham dự HĐQT, biểu quyết, khiển\nđại diện doanh nghiệp, yêu cầu mua lại cổ phần.",
+          "score": 0.83,
+          "sourceType": "USER",
+          "chunkId": 18,
+          "article": "5",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        }
+      ],
+      "source_chunks_backend": "Điều 8. 3. Tỷ lệ cổ phần biểu quyết tối thiểu của HĐQT: không quy định (theo\nĐiều lệ công ty).\n\nPHẦN VI — VỀ CỔ TỨ\n---\nĐiều 9. 1. Cổ tức chia theo tỷ lệ cổ phần đã góp, trừ khi Điều lệ có quy định\nkhác.\n---\nĐiều 5. 1. Cổ đông có quyền: nhận cổ tức, tham dự HĐQT, biểu quyết, khiển\nđại diện doanh nghiệp, yêu cầu mua lại cổ phần.",
+      "confidence_backend": "high",
+      "confidence_score_backend": 1.0,
+      "rag_strategy_backend": "direct",
+      "latency_ms": 3410,
+      "expected_source_keywords": [
+        "biểu quyết",
+        "Điều lệ"
+      ],
+      "expected_section": "Điều 8.3",
+      "expected_answer_hint": null,
+      "conflict_note": "Điều 8.3 ghi 'không quy định (theo Điều lệ công ty)' — mô hình phải thừa nhận luật không chốt con số, không bịa phần trăm.",
+      "result_manual": "",
+      "notes_manual": ""
+    },
+    {
+      "id": "C4",
+      "category": "conflict",
+      "question": "Cổ tức có thể chia giữa năm không, hay phải chờ đến cuối năm?",
+      "answer_from_backend": "Theo Điều 9.2, cổ tức không phải trả mỗi năm, chỉ phân phối khi doanh nghiệp có lợi nhuận sau khi thanh toán thuế thu nhập doanh nghiệp. Điều này cho thấy cổ tức thường được phân phối vào cuối năm, sau khi doanh nghiệp đã xác định được lợi nhuận và hoàn thành nghĩa vụ thuế. Tuy nhiên, không có quy định cụ thể cấm việc chia cổ tức giữa năm, nhưng Điều 9.3 cũng đề cập rằng cổ đông phải chờ đến \"HĐ nghiêm túc của năm\" mới nhận cổ tức, ngụ ý rằng việc chia cổ tức thường diễn ra vào cuối năm hoặc sau khi đã hoàn thành các nghĩa vụ tài chính của năm.\n\nNhư vậy, dựa trên thông tin từ Điều 9, đặc biệt là khoản 2 và 3, có thể thấy rằng việc chia cổ tức thường gắn liền với việc phân phối lợi nhuận sau khi kết thúc năm và hoàn thành nghĩa vụ thuế, nhưng không có quy định tuyệt đối cấm việc chia cổ tức giữa năm nếu doanh nghiệp có quy định khác trong Điều lệ của mình.",
+      "citations_backend": [
+        {
+          "documentId": 5,
+          "content": "Điều 9. 3. Cổ đông phải chờ đến HĐ nghiêm túc của năm mới nhận cổ tức.\n\nPHẦN VII — VỀ BÁO CÁO TÀI CHÍNH",
+          "score": 0.77,
+          "sourceType": "USER",
+          "chunkId": 34,
+          "article": "9",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 9. 2. Cổ tức không phải trả mỗi năm, chỉ phân phối khi doanh nghiệp có lợi\nnhuận sau khi thanh toán thuế thu nhập doanh nghiệp.",
+          "score": 0.73,
+          "sourceType": "USER",
+          "chunkId": 33,
+          "article": "9",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 9. 1. Cổ tức chia theo tỷ lệ cổ phần đã góp, trừ khi Điều lệ có quy định\nkhác.",
+          "score": 0.64,
+          "sourceType": "USER",
+          "chunkId": 32,
+          "article": "9",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        }
+      ],
+      "source_chunks_backend": "Điều 9. 3. Cổ đông phải chờ đến HĐ nghiêm túc của năm mới nhận cổ tức.\n\nPHẦN VII — VỀ BÁO CÁO TÀI CHÍNH\n---\nĐiều 9. 2. Cổ tức không phải trả mỗi năm, chỉ phân phối khi doanh nghiệp có lợi\nnhuận sau khi thanh toán thuế thu nhập doanh nghiệp.\n---\nĐiều 9. 1. Cổ tức chia theo tỷ lệ cổ phần đã góp, trừ khi Điều lệ có quy định\nkhác.",
+      "confidence_backend": "high",
+      "confidence_score_backend": 0.77,
+      "rag_strategy_backend": "direct",
+      "latency_ms": 4066,
+      "expected_source_keywords": [
+        "cổ tức",
+        "cuối năm",
+        "Điều lệ"
+      ],
+      "expected_section": "Điều 9.1 / Điều 9.3",
+      "expected_answer_hint": null,
+      "conflict_note": "Điều 9.1 cho phép 'trừ khi Điều lệ có quy định khác' nhưng Điều 9.3 nói chờ HĐ năm — hai điều này mâu thuẫn nhẹ; mô hình phải chỉ ra cả hai điều.",
+      "result_manual": "",
+      "notes_manual": ""
+    },
+    {
+      "id": "C5",
+      "category": "conflict",
+      "question": "Giám đốc vi phạm có thể bị phạt cao hơn 50 triệu đồng không?",
+      "answer_from_backend": "Theo Điều 11.2, mức phạt đối với cá nhân (giám đốc) gây ra vấn đề là từ 5 triệu đến 50 triệu đồng. Điều này cho thấy mức phạt tối đa đối với cá nhân là 50 triệu đồng.\n\nDo đó, giám đốc vi phạm không thể bị phạt cao hơn 50 triệu đồng theo quy định tại Điều 11.2.",
+      "citations_backend": [
+        {
+          "documentId": 5,
+          "content": "Điều 11. 2. Giám đốc gây ra vấn đề: có thể phạt cá nhân từ 5 triệu đến 50 triệu\nđồng.",
+          "score": 0.86,
+          "sourceType": "USER",
+          "chunkId": 42,
+          "article": "11",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 11. 1. Phạt từ 10 triệu đến 100 triệu đồng cho hành vi vi phạm do tổ chức.",
+          "score": 0.74,
+          "sourceType": "USER",
+          "chunkId": 41,
+          "article": "11",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        },
+        {
+          "documentId": 5,
+          "content": "Điều 10. 4. Báo cáo không cần: Báo cáo giai đoạn giữa năm chi tiết, báo cáo\nmarketing, danh sách nhân viên.\n\nPHẦN VIII — VỀ TRÁCH NHIỆM XỬ LÝ VI PHẠM",
+          "score": 0.55,
+          "sourceType": "USER",
+          "chunkId": 39,
+          "article": "10",
+          "clause": null,
+          "point": null,
+          "documentTitle": null,
+          "documentNumber": null
+        }
+      ],
+      "source_chunks_backend": "Điều 11. 2. Giám đốc gây ra vấn đề: có thể phạt cá nhân từ 5 triệu đến 50 triệu\nđồng.\n---\nĐiều 11. 1. Phạt từ 10 triệu đến 100 triệu đồng cho hành vi vi phạm do tổ chức.\n---\nĐiều 10. 4. Báo cáo không cần: Báo cáo giai đoạn giữa năm chi tiết, báo cáo\nmarketing, danh sách nhân viên.\n\nPHẦN VIII — VỀ TRÁCH NHIỆM XỬ LÝ VI PHẠM",
+      "confidence_backend": "high",
+      "confidence_score_backend": 0.86,
+      "rag_strategy_backend": "direct",
+      "latency_ms": 1860,
+      "expected_source_keywords": [
+        "giám đốc",
+        "phạt",
+        "50 triệu"
+      ],
+      "expected_section": "Điều 11.2",
+      "expected_answer_hint": null,
+      "conflict_note": "Điều 11.2 ghi mức 5–50 triệu cho cá nhân; Điều 11.3 chỉ nói phạt 'tương ứng mức độ' — mô hình phải trả lời theo Điều 11.2, không suy diễn mức cao hơn.",
+      "result_manual": "",
+      "notes_manual": ""
+    }
+  ]
+}

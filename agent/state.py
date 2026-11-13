@@ -5,6 +5,8 @@ Maintains singletons initialized during the FastAPI lifespan.
 
 import contextvars
 import hmac
+import hashlib
+import json
 import logging
 from typing import Any, Optional
 
@@ -132,3 +134,9 @@ def enforce_rate_limit(client_host: str, path: str) -> None:
             detail=f"Rate limit exceeded. Maximum {settings.agent_rate_limit_rpm} requests per minute.",
             headers={"Retry-After": "60"},
         )
+
+
+def workflow_config(user_id: str, session_id: str) -> dict:
+    """Stable checkpoint identity, isolated by both owner and session."""
+    identity = json.dumps([user_id, session_id], ensure_ascii=False).encode("utf-8")
+    return {"configurable": {"thread_id": hashlib.sha256(identity).hexdigest()}}

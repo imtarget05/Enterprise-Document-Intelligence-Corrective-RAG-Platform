@@ -1,5 +1,6 @@
 package com.smartdocchat.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
@@ -10,7 +11,7 @@ import lombok.NoArgsConstructor;
 import java.util.List;
 
 @Data
-@NoArgsConstructor
+@NoArgsConstructor(onConstructor_ = @JsonCreator)
 @AllArgsConstructor
 @Builder
 public class ChatRequest {

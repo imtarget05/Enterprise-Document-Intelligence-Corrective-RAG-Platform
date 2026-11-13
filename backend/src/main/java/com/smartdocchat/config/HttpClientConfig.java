@@ -26,10 +26,17 @@ public class HttpClientConfig {
     public RestTemplate agentRestTemplate(
             RestTemplateBuilder builder,
             @Value("${external-services.connect-timeout-ms:3000}") long connectTimeoutMs,
-            @Value("${agent.timeout-ms:15000}") long agentTimeoutMs) {
+            @Value("${agent.timeout-ms:15000}") long agentTimeoutMs,
+            @Value("${security.internal-token:}") String internalToken) {
         return builder
                 .connectTimeout(Duration.ofMillis(connectTimeoutMs))
                 .readTimeout(Duration.ofMillis(agentTimeoutMs))
+                .additionalInterceptors((request, body, execution) -> {
+                    if (internalToken != null && !internalToken.isBlank()) {
+                        request.getHeaders().set("X-Internal-Token", internalToken);
+                    }
+                    return execution.execute(request, body);
+                })
                 .build();
     }
 }

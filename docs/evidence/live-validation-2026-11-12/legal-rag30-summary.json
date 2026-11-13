@@ -1,0 +1,15 @@
+{
+  "questions": 30,
+  "answers_returned": 30,
+  "strategies": {
+    "direct": 28,
+    "corrective": 2
+  },
+  "responses_with_sources": 30,
+  "semantic_grading": "not completed; see full trace and expected answers",
+  "answered_questions_with_explicit_abstention": [
+    "A1",
+    "A2",
+    "A14"
+  ]
+}

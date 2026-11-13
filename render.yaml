@@ -1,11 +1,15 @@
-# Spin-down prevention (free tier): each web service below declares its own
-# per-service keep-alive flags (keep_alive / auto_stop) — no global kill-switch.
-# Keep-alive pings target each service's own healthCheckPath at least every
-# 5 minutes so the 4 free services never spin down simultaneously:
-#   smart-doc-llm-router -> GET /health/live
-#   smart-doc-backend    -> GET /api/actuator/health
-#   smart-doc-agent      -> GET /health
-#   smartdoc-keycloak    -> GET /realms/master
+# ─────────────────────────────────────────────────────────────────────────────
+# P1.3 — Cloud consolidation (2026-11-12)
+# Azure Container Apps is the CANONICAL production backend (deploy-azure.yml,
+# Cloudflare Pages VITE_API_URL → Azure). This render.yaml file is the RENDER
+# MIRROR kept as documented STANDBY only: autoDeploy is OFF on every service
+# below so a redeploy here cannot drift traffic away from Azure.
+#
+# To fail back to Render: flip `autoDeploy: true` on the services you want to
+# re-enable, point Cloudflare Pages VITE_API_URL at the Render host, and re-run
+# deploy-azure-smoke (docs/P1_FAILOVER.md). Do NOT enable all four at once —
+# the free tier will spin down / 502 intermittently (G3).
+# ─────────────────────────────────────────────────────────────────────────────
 services:
 - type: web
   name: smart-doc-llm-router

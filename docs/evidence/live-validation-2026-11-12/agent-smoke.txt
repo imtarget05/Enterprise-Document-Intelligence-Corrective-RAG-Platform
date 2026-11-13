@@ -1,0 +1,12 @@
+PASS | BACKEND HEALTH   (attempt 1)
+PASS | CSRF              
+PASS | JWT               (200, cookie)
+PASS | DOC UPLOAD        (docId=14)
+PASS | OWNER ISOLATION   (anon GET -> 403)
+PASS | CHAT              (0.2s, strategy=agentic)
+PASS | ROUTER AUTH       
+PASS | LLM RESPONSE      (requires fixture answer Paris and successful strategy)
+PASS | AGENT PATH        (strategy=agentic; fallback RAG is not agent success)
+   answer[:160]: [Deep Reasoning - low document confidence]  The Eiffel Tower is located in Paris, France. Specifically, it is situated in the 7th arrondissement of Paris, on th
+
+OVERALL           PASS

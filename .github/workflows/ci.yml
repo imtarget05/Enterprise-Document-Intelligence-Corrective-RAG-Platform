@@ -1,6 +1,7 @@
 name: CI/CD Pipeline
 
 on:
+  workflow_dispatch:
   push:
     branches: [ main, develop ]
   pull_request:
@@ -203,6 +204,8 @@ jobs:
       # tokens → 401 across the HITL/adk/report endpoint tests. Real credentials
       # are validated at deploy time in production, not in these unit tests.
       APP_ENV: test
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -215,7 +218,9 @@ jobs:
           cache-dependency-path: agent/requirements.txt
 
       - name: Install dependencies
-        run: pip install -r agent/requirements.txt
+        run: |
+          pip install torch==2.15.0+cpu --index-url https://download.pytorch.org/whl/cpu
+          pip install -r agent/requirements.txt
 
       - name: Run agent tests
         working-directory: ./agent
@@ -242,6 +247,7 @@ jobs:
           # eval/eval.py (unit under test) imports `requests` at module load.
           python -m pip install --quiet pytest requests
           python -m pytest eval/tests/test_grader.py -q
+          python -m unittest discover -s scripts/tests
 
   # ═══════════════════════════════════════════════════════════════
   # LLM Judge Mock Evaluation (deterministic, no LLM API)
@@ -298,6 +304,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       APP_ENV: local
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -308,7 +316,9 @@ jobs:
           cache: 'pip'
           cache-dependency-path: agent/requirements.txt
       - name: Install agent dependencies
-        run: pip install -r agent/requirements.txt
+        run: |
+          pip install torch==2.15.0+cpu --index-url https://download.pytorch.org/whl/cpu
+          pip install -r agent/requirements.txt
       - name: Run chaos tests
         working-directory: ./agent
         run: python -m pytest tests/test_chaos.py -v
@@ -354,12 +364,14 @@ jobs:
         uses: trufflesecurity/trufflehog@e76dff8a7e57d6df0c60ad8cbf5d5cba505a8fc9 # v3.99.2
 
       - name: Install Trivy (pinned version, cached binary)
+        if: always()
         uses: aquasecurity/setup-trivy@v0.3.1
         with:
           version: v0.75.0
           cache: true
 
       - name: Run Trivy vulnerability scanner (blocking, table output)
+        if: always()
         # Blocking gate: --exit-code 1 fails the job on CRITICAL/HIGH fixable
         # findings (ignore-unfixed skips CVEs with no patch available yet —
         # nothing actionable, so they must not block merges).
