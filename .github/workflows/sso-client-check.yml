@@ -1,0 +1,17 @@
+name: SSO client check (temp)
+on: workflow_dispatch
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify client_credentials grant
+        env:
+          SSO_CLIENT_SECRET: ${{ secrets.SSO_OIDC_CLIENT_SECRET }}
+          KC_URL: https://smartdoc-keycloak.onrender.com
+        run: |
+          set -euo pipefail
+          RESP=$(curl -s -X POST "$KC_URL/realms/smartdoc/protocol/openid-connect/token" \
+            -d "grant_type=client_credentials" -d "client_id=smartdoc-backend" \
+            --data-urlencode "client_secret=$SSO_CLIENT_SECRET")
+          AT=$(echo "$RESP" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("access_token","")[:20])' 2>/dev/null || echo "")
+          if [ -n "$AT" ]; then echo "TOKEN ACQUIRED: ${AT}..."; echo "SSO CLIENT VERIFIED"; else echo "::error::token request failed:"; echo "$RESP" | head -c 300; exit 1; fi
