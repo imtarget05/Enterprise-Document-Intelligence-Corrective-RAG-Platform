@@ -1,0 +1,35 @@
+# AppProject "portfolio" — scope for SmartDoc GitOps applications.
+#
+# NOTE: destination server is a placeholder for the in-cluster API server
+# (https://kubernetes.default.svc works when Argo CD itself runs on the target
+# cluster). Replace with the real cluster name/server URL when registering
+# external clusters.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: portfolio
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: portfolio
+    app.kubernetes.io/part-of: argocd
+spec:
+  description: GitOps portfolio — SmartDoc (Corrective RAG platform) Helm chart
+  sourceRepos:
+    - https://github.com/imtarget05/Enterprise-Document-Intelligence-Corrective-RAG-Platform.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: smartdoc-prod
+  # Minimal cluster-scoped permissions: only Namespace objects (Argo CD's
+  # CreateNamespace=true sync option creates namespaces for us).
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  namespaceResourceBlacklist:
+    - group: ""
+      kind: ResourceQuota
+  roles:
+    - name: admin
+      policies:
+        - p, proj:portfolio:admin, applications, *, portfolio/*, allow
+      groups:
+        - argocd-admins
