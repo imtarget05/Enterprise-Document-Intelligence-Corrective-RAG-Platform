@@ -1,0 +1,115 @@
+name: SSO setup/verify (temp)
+on: workflow_dispatch
+jobs:
+  sso-setup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Keycloak realm + client + Render backend env
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          KC_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}
+          SSO_CLIENT_SECRET: ${{ secrets.SSO_OIDC_CLIENT_SECRET }}
+          KC_URL: https://smartdoc-keycloak.onrender.com
+          BACKEND_URL: https://smartdoc-backend-2hhz.onrender.com
+        run: |
+          set -euo pipefail
+          TOKEN=$(curl -s -X POST "$KC_URL/realms/master/protocol/openid-connect/token" \
+            -d "grant_type=password" -d "client_id=admin-cli" -d "username=admin" \
+            --data-urlencode "password=$KC_ADMIN_PASSWORD" \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin).get("access_token",""))')
+          [ -n "$TOKEN" ] || { echo "::error::keycloak admin login failed"; exit 1; }
+          AUTH="Authorization: Bearer $TOKEN"
+          echo "admin token acquired"
+
+          echo "== realm smartdoc"
+          REALM_CODE=$(curl -s -o /dev/null -w "%{http_code}" -H "$AUTH" "$KC_URL/admin/realms/smartdoc")
+          if [ "$REALM_CODE" != "200" ]; then
+            CODE=$(curl -s -o /tmp/realm.json -w "%{http_code}" -X POST -H "$AUTH" -H "Content-Type: application/json" \
+              -d '{"realm":"smartdoc","enabled":true,"registrationAllowed":false,"loginWithEmailAllowed":true,"sslRequired":"external"}' \
+              "$KC_URL/admin/realms")
+            echo "create realm -> $CODE"
+            [ "$CODE" = "201" ] || [ "$CODE" = "409" ] || { echo "::error::realm create failed ($CODE)"; cat /tmp/realm.json; exit 1; }
+          else
+            echo "realm already exists"
+          fi
+          RC=$(curl -s -o /dev/null -w "%{http_code}" "$KC_URL/realms/smartdoc")
+          echo "public realm endpoint: $RC"
+
+          echo "== client smartdoc-backend"
+          CID=$(curl -s -H "$AUTH" "$KC_URL/admin/realms/smartdoc/clients?clientId=smartdoc-backend" \
+            | python3 -c 'import json,sys; cs=json.load(sys.stdin); print(cs[0]["id"] if cs else "")')
+          if [ -z "$CID" ]; then
+            cat > /tmp/client.json <<'EOFJSON'
+          {
+            "clientId": "smartdoc-backend",
+            "enabled": true,
+            "protocol": "openid-connect",
+            "publicClient": false,
+            "serviceAccountsEnabled": true,
+            "standardFlowEnabled": true,
+            "directAccessGrantsEnabled": false,
+            "rootUrl": "https://smart-doc-chatbot.pages.dev",
+            "redirectUris": [
+              "https://smart-doc-chatbot.pages.dev/*",
+              "https://smartdoc-backend-2hhz.onrender.com/*"
+            ],
+            "webOrigins": ["https://smart-doc-chatbot.pages.dev"],
+            "secret": "REPLACE_SECRET"
+          }
+          EOFJSON
+            SSO_CLIENT_SECRET="$SSO_CLIENT_SECRET" python3 -c "import pathlib,os; p=pathlib.Path('/tmp/client.json'); p.write_text(p.read_text().replace('REPLACE_SECRET', os.environ['SSO_CLIENT_SECRET']))"
+            python3 -m json.tool /tmp/client.json > /dev/null && echo "client payload valid"
+            CODE=$(curl -s -o /tmp/cc.txt -w "%{http_code}" -X POST -H "$AUTH" -H "Content-Type: application/json" \
+              --data-binary @/tmp/client.json "$KC_URL/admin/realms/smartdoc/clients")
+            echo "create client -> $CODE"
+            [ "$CODE" = "201" ] || { echo "::error::client create failed ($CODE)"; cat /tmp/cc.txt; exit 1; }
+            CID=$(curl -s -H "$AUTH" "$KC_URL/admin/realms/smartdoc/clients?clientId=smartdoc-backend" \
+              | python3 -c 'import json,sys; cs=json.load(sys.stdin); print(cs[0]["id"] if cs else "")')
+          else
+            echo "client exists: $CID"
+          fi
+          SCODE=$(curl -s -o /tmp/sec.txt -w "%{http_code}" -X PUT -H "$AUTH" -H "Content-Type: application/json" \
+            -d "{\"value\":\"$SSO_CLIENT_SECRET\"}" "$KC_URL/admin/realms/smartdoc/clients/$CID/secret")
+          echo "set client secret -> $SCODE"
+          [ "$SCODE" = "204" ] || { echo "::error::set secret failed ($SCODE)"; cat /tmp/sec.txt; exit 1; }
+
+          echo "== render backend env vars"
+          BID=$(curl -s -H "Authorization: Bearer $RENDER_API_KEY" "https://api.render.com/v1/services?limit=100" \
+            | python3 -c 'import json,sys; ss=json.load(sys.stdin); m=[s["service"]["id"] for s in ss if s["service"]["name"]=="smartdoc-backend"]; print(m[0] if m else "")')
+          [ -n "$BID" ] || { echo "::error::smartdoc-backend not found on render"; exit 1; }
+          echo "backend id: $BID"
+          curl -s -H "Authorization: Bearer $RENDER_API_KEY" "https://api.render.com/v1/services/$BID/env-vars" > /tmp/env.json
+          SSO_CLIENT_SECRET="$SSO_CLIENT_SECRET" python3 - <<'PYEOF'
+          import json, os
+          cur = json.load(open('/tmp/env.json'))
+          if isinstance(cur, dict):
+              cur = cur.get("envVars", [])
+          vars_ = {v["key"]: v.get("value", "") for v in cur}
+          issuer = "https://smartdoc-keycloak.onrender.com/realms/smartdoc"
+          vars_.update({
+              "SSO_OIDC_ENABLED": "true",
+              "SSO_OIDC_ISSUER_URI": issuer,
+              "SSO_OIDC_CLIENT_ID": "smartdoc-backend",
+              "SSO_OIDC_CLIENT_SECRET": os.environ["SSO_CLIENT_SECRET"],
+          })
+          payload = [{"key": k, "value": v} for k, v in sorted(vars_.items())]
+          json.dump(payload, open('/tmp/env_new.json', 'w'))
+          print("vars count:", len(payload), "| SSO_OIDC_ENABLED:", vars_["SSO_OIDC_ENABLED"])
+          PYEOF
+          ECODE=$(curl -s -o /tmp/envresp.txt -w "%{http_code}" -X PUT -H "Authorization: Bearer $RENDER_API_KEY" -H "Content-Type: application/json" \
+            --data-binary @/tmp/env_new.json "https://api.render.com/v1/services/$BID/env-vars")
+          echo "env vars put -> $ECODE"
+          [ "$ECODE" = "200" ] || [ "$ECODE" = "201" ] || { echo "::error::env vars update failed ($ECODE)"; head -c 400 /tmp/envresp.txt; exit 1; }
+
+          echo "== waiting for backend redeploy, polling health"
+          CODE=000
+          for i in $(seq 1 40); do
+            sleep 10
+            CODE=$(curl -s -o /tmp/bh.txt -w "%{http_code}" --max-time 10 "$BACKEND_URL/api/actuator/health" || true)
+            echo "backend health attempt $i: $CODE"
+            [ "$CODE" = "200" ] && break
+          done
+          [ "$CODE" = "200" ] || { echo "::error::backend health failed"; head -c 400 /tmp/bh.txt; exit 1; }
+          RC=$(curl -s -o /dev/null -w "%{http_code}" "$KC_URL/realms/smartdoc")
+          echo "FINAL: realm=$RC backend=200 — SSO wired"
+          echo "issuer: https://smartdoc-keycloak.onrender.com/realms/smartdoc"
