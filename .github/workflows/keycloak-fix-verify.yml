@@ -4,34 +4,55 @@ jobs:
   fix-verify:
     runs-on: ubuntu-latest
     steps:
-      - name: Render — find service, deploy latest, poll health
+      - name: Render — create smartdoc-keycloak if missing, deploy, poll health
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          KC_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}
         run: |
           set -euo pipefail
           SERVICES=$(curl -s -H "Authorization: Bearer $RENDER_API_KEY" "https://api.render.com/v1/services?limit=100")
-          echo "$SERVICES" | python3 -c 'import json,sys; [print(s["service"]["id"], s["service"]["name"], s["service"]["serviceDetails"]["url"]) for s in json.load(sys.stdin)]'
           SVC=$(echo "$SERVICES" | python3 -c 'import json,sys; ss=json.load(sys.stdin); m=[s["service"] for s in ss if s["service"]["name"]=="smartdoc-keycloak"]; print(json.dumps(m[0]) if m else "")')
-          if [ -z "$SVC" ]; then echo "::error::smartdoc-keycloak service not found on Render"; exit 1; fi
+          if [ -z "$SVC" ]; then
+            echo "== creating smartdoc-keycloak service"
+            CREATE=$(python3 - <<'PY'
+            import json, os
+            payload = {
+                "type": "web", "name": "smartdoc-keycloak", "plan": "free",
+                "repo": "https://github.com/imtarget05/Enterprise-Document-Intelligence-Corrective-RAG-Platform",
+                "branch": "main", "autoDeploy": True,
+                "dockerfilePath": "docker/Dockerfile.keycloak",
+                "healthCheckPath": "/realms/master",
+                "envVars": [
+                    {"key": "KEYCLOAK_ADMIN", "value": "admin"},
+                    {"key": "KEYCLOAK_ADMIN_PASSWORD", "value": os.environ["KC_ADMIN_PASSWORD"]},
+                    {"key": "KC_HOSTNAME", "value": "https://smartdoc-keycloak.onrender.com"},
+                    {"key": "KC_PROXY", "value": "edge"},
+                ],
+            }
+            print(json.dumps(payload))
+            PY
+            )
+            RESP=$(curl -s -X POST -H "Authorization: Bearer $RENDER_API_KEY" -H "Content-Type: application/json" -d "$CREATE" "https://api.render.com/v1/services")
+            SVC=$(echo "$RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(json.dumps(d) if "id" not in d else json.dumps({"id": d["id"], "name": d["name"], "serviceDetails": {"url": d["serviceDetails"]["url"]}}))')
+            echo "$SVC" | python3 -c 'import json,sys; d=json.load(sys.stdin); print("created:", d.get("id"), d.get("name"))'
+          fi
           SID=$(echo "$SVC" | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')
           echo "service id: $SID"
-          echo "== latest commit on main:"; curl -s -H "Authorization: Bearer $RENDER_API_KEY" "https://api.render.com/v1/services/$SID" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["branch"], d["autoDeploy"], d["suspended"])'
-          DEPLOY=$(curl -s -X POST -H "Authorization: Bearer $RENDER_API_KEY" -H "Content-Type: application/json" -d '{"clearCache":"no"}' "https://api.render.com/v1/services/$SID/deploys")
-          DID=$(echo "$DEPLOY" | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')
-          echo "deploy id: $DID"
-          for i in $(seq 1 60); do
+          ST="created"
+          for i in $(seq 1 80); do
             sleep 15
-            ST=$(curl -s -H "Authorization: Bearer $RENDER_API_KEY" "https://api.render.com/v1/services/$SID/deploys/$DID" | python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])')
+            ST=$(curl -s -H "Authorization: Bearer $RENDER_API_KEY" "https://api.render.com/v1/services/$SID" | python3 -c 'import json,sys; d=json.load(sys.stdin); ss=d.get("serviceDetails",{}).get("build",{}).get("status","building"); print(ss or "building")' 2>/dev/null || echo "polling")
             echo "attempt $i: $ST"
-            case "$ST" in live) break ;; deploy_failed|build_failed|canceled) echo "::error::deploy $ST"; exit 1 ;; esac
+            case "$ST" in live) break ;; failed|canceled) echo "::error::build $ST"; exit 1 ;; esac
           done
-          [ "$ST" = "live" ] || { echo "::error::deploy did not go live"; exit 1; }
-          echo "== waiting for Keycloak to boot, then polling health endpoint"
+          [ "$ST" = "live" ] || { echo "::error::service not live (last: $ST)"; exit 1; }
+          echo "== polling health endpoint"
+          CODE=000
           for i in $(seq 1 40); do
             sleep 10
             CODE=$(curl -s -o /tmp/kc.txt -w "%{http_code}" --max-time 10 "https://smartdoc-keycloak.onrender.com/realms/master" || true)
             echo "attempt $i: /realms/master -> $CODE"
             [ "$CODE" = "200" ] && break
           done
-          [ "$CODE" = "200" ] || { echo "::error::keycloak health failed"; cat /tmp/kc.txt; exit 1; }
+          [ "$CODE" = "200" ] || { echo "::error::keycloak health failed"; head -c 400 /tmp/kc.txt; exit 1; }
           echo "KEYCLOAK HEALTHY — https://smartdoc-keycloak.onrender.com/realms/master"
