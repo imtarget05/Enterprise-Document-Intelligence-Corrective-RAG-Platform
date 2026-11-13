@@ -76,7 +76,7 @@ jobs:
           echo "set client secret (client PUT) -> $SCODE"
           [ "$SCODE" = "204" ] || { echo "::error::set secret failed ($SCODE)"; cat /tmp/sec.txt; exit 1; }
           GOT=$(curl -s -H "$AUTH" "$KC_URL/admin/realms/smartdoc/clients/$CID/secret" \
-            | python3 -c 'import json,sys; print(json.load(sys.stdin).get("value","")[:6]+"..." if json.load(sys.stdin).get("value") else "")' 2>/dev/null || echo "?")
+            | python3 -c 'import json,sys; v=(json.load(sys.stdin).get("value") or ""); print("set, len="+str(len(v)) if v else "EMPTY")')
           echo "secret verify: $GOT"
 
           echo "== render backend env vars"
@@ -89,8 +89,12 @@ jobs:
           import json, os
           cur = json.load(open('/tmp/env.json'))
           if isinstance(cur, dict):
-              cur = cur.get("envVars", [])
-          vars_ = {v["key"]: v.get("value", "") for v in cur}
+              cur = cur.get("envVars") or cur.get("items") or []
+          def unwrap(v):
+              if isinstance(v, dict) and "envVar" in v:
+                  v = v["envVar"]
+              return v
+          vars_ = {unwrap(v)["key"]: unwrap(v).get("value", "") for v in cur}
           issuer = "https://smartdoc-keycloak.onrender.com/realms/smartdoc"
           vars_.update({
               "SSO_OIDC_ENABLED": "true",
