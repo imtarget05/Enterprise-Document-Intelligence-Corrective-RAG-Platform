@@ -14,24 +14,7 @@ jobs:
           SVC=$(echo "$SERVICES" | python3 -c 'import json,sys; ss=json.load(sys.stdin); m=[s["service"] for s in ss if s["service"]["name"]=="smartdoc-keycloak"]; print(json.dumps(m[0]) if m else "")')
           if [ -z "$SVC" ]; then
             echo "== creating smartdoc-keycloak service"
-            CREATE=$(python3 - <<'PY'
-            import json, os
-            payload = {
-                "type": "web", "name": "smartdoc-keycloak", "plan": "free",
-                "repo": "https://github.com/imtarget05/Enterprise-Document-Intelligence-Corrective-RAG-Platform",
-                "branch": "main", "autoDeploy": True,
-                "dockerfilePath": "docker/Dockerfile.keycloak",
-                "healthCheckPath": "/realms/master",
-                "envVars": [
-                    {"key": "KEYCLOAK_ADMIN", "value": "admin"},
-                    {"key": "KEYCLOAK_ADMIN_PASSWORD", "value": os.environ["KC_ADMIN_PASSWORD"]},
-                    {"key": "KC_HOSTNAME", "value": "https://smartdoc-keycloak.onrender.com"},
-                    {"key": "KC_PROXY", "value": "edge"},
-                ],
-            }
-            print(json.dumps(payload))
-            PY
-            )
+            CREATE=$(KC_ADMIN_PASSWORD="$KC_ADMIN_PASSWORD" python3 -c "import json,os; print(json.dumps({'type':'web','name':'smartdoc-keycloak','plan':'free','repo':'https://github.com/imtarget05/Enterprise-Document-Intelligence-Corrective-RAG-Platform','branch':'main','autoDeploy':True,'dockerfilePath':'docker/Dockerfile.keycloak','healthCheckPath':'/realms/master','envVars':[{'key':'KEYCLOAK_ADMIN','value':'admin'},{'key':'KEYCLOAK_ADMIN_PASSWORD','value':os.environ['KC_ADMIN_PASSWORD']},{'key':'KC_HOSTNAME','value':'https://smartdoc-keycloak.onrender.com'},{'key':'KC_PROXY','value':'edge'}]}))")
             RESP=$(curl -s -X POST -H "Authorization: Bearer $RENDER_API_KEY" -H "Content-Type: application/json" -d "$CREATE" "https://api.render.com/v1/services")
             SVC=$(echo "$RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(json.dumps(d) if "id" not in d else json.dumps({"id": d["id"], "name": d["name"], "serviceDetails": {"url": d["serviceDetails"]["url"]}}))')
             echo "$SVC" | python3 -c 'import json,sys; d=json.load(sys.stdin); print("created:", d.get("id"), d.get("name"))'
