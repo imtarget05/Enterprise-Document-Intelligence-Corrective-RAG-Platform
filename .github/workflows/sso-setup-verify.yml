@@ -68,10 +68,16 @@ jobs:
           else
             echo "client exists: $CID"
           fi
+          echo "client id: $CID"
+          curl -s -H "$AUTH" "$KC_URL/admin/realms/smartdoc/clients/$CID" > /tmp/crep.json
+          SSO_CLIENT_SECRET="$SSO_CLIENT_SECRET" python3 -c "import json,os; d=json.load(open('/tmp/crep.json')); d['secret']=os.environ['SSO_CLIENT_SECRET']; json.dump(d, open('/tmp/crep_new.json','w'))"
           SCODE=$(curl -s -o /tmp/sec.txt -w "%{http_code}" -X PUT -H "$AUTH" -H "Content-Type: application/json" \
-            -d "{\"value\":\"$SSO_CLIENT_SECRET\"}" "$KC_URL/admin/realms/smartdoc/clients/$CID/secret")
-          echo "set client secret -> $SCODE"
+            --data-binary @/tmp/crep_new.json "$KC_URL/admin/realms/smartdoc/clients/$CID")
+          echo "set client secret (client PUT) -> $SCODE"
           [ "$SCODE" = "204" ] || { echo "::error::set secret failed ($SCODE)"; cat /tmp/sec.txt; exit 1; }
+          GOT=$(curl -s -H "$AUTH" "$KC_URL/admin/realms/smartdoc/clients/$CID/secret" \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin).get("value","")[:6]+"..." if json.load(sys.stdin).get("value") else "")' 2>/dev/null || echo "?")
+          echo "secret verify: $GOT"
 
           echo "== render backend env vars"
           BID=$(curl -s -H "Authorization: Bearer $RENDER_API_KEY" "https://api.render.com/v1/services?limit=100" \
