@@ -1,0 +1,29 @@
+# smartdoc — values dev (override base)
+namespace: smartdoc-dev
+
+image:
+  tag: latest
+  pullPolicy: Always
+
+backend:
+  replicaCount: 1
+  env:
+    - name: SPRING_PROFILES_ACTIVE
+      value: "dev"
+
+redis:
+  enabled: true
+
+qdrant:
+  enabled: true
+
+secret:
+  stringData:
+    SPRING_DATASOURCE_URL: "jdbc:postgresql://smartdoc-pg.dev:5432/smartdoc"
+    SPRING_DATASOURCE_USERNAME: "smartdoc"
+    SPRING_DATASOURCE_PASSWORD: "CHANGE_ME_DEV"
+    JWT_SECRET: "CHANGE_ME_DEV_JWT"
+    REDIS_PASSWORD: "CHANGE_ME_DEV_REDIS"
+
+ingress:
+  enabled: false

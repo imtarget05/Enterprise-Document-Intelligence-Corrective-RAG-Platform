@@ -1,0 +1,43 @@
+groups:
+  - name: smartdoc-sli
+    rules:
+      - alert: SmartDocHighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate on SmartDoc backend"
+          description: "Error rate exceeds 5% over the last 5m."
+      - alert: SmartDocHighLatencyP95
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High p95 latency on SmartDoc backend"
+          description: "p95 latency exceeds 500ms over the last 10m."
+      - alert: SmartDocApiDown
+        expr: up{job="smartdoc-backend"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "SmartDoc backend is down"
+          description: "SmartDoc backend has been down for more than 2 minutes."
+      - alert: SmartDocHighCPUUsage
+        expr: rate(container_cpu_usage_seconds_total{container="backend"}[5m]) > 0.8
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage on SmartDoc backend"
+          description: "CPU usage exceeds 80% over the last 10m."
+      - alert: SmartDocHighMemoryUsage
+        expr: container_memory_usage_bytes{container="backend"} / kube_pod_container_resource_requests_memory_bytes > 0.85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage on SmartDoc backend"
+          description: "Memory usage exceeds 85% of request over the last 10m."

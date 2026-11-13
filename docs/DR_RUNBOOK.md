@@ -1,43 +1,133 @@
-# DR Runbook — Smart Document Chatbot
+# 20 — Cẩm Nang Sao Lưu Dữ Liệu & Phục Hồi Thảm Họa (Disaster Recovery Runbook) — SmartDoc
 
-## Backup (daily 02:00 UTC)
+> **Mục tiêu**: Đảm bảo hệ thống SmartDoc (Corrective RAG) có khả năng sống sót và phục hồi nguyên vẹn khi xảy ra thảm họa (hỏng phần cứng, lỗi phần mềm, xóa nhầm dữ liệu, hoặc sập toàn bộ Cloud Provider).
 
-```bash
-0 2 * * * /app/scripts/backup.sh /backups >> /var/log/backup.log 2>&1
+---
+
+## 1. Chỉ Số Mục Tiêu An Toàn (SLA & DR Metrics)
+
+| Chỉ số | Định nghĩa | Cam kết mục tiêu SmartDoc |
+| :--- | :--- | :--- |
+| **RPO (Recovery Point Objective)** | Lượng dữ liệu tối đa chấp nhận mất mát khi thảm họa xảy ra | **≤ 5 phút** (chỉ mất các thao tác chưa commit trong 5 phút gần nhất) |
+| **RTO (Recovery Time Objective)** | Thời gian tối đa để khôi phục hệ thống hoạt động trở lại | **≤ 15 phút** đối với lỗi dữ liệu;<br/>**≤ 30 phút** đối với sập toàn bộ cụm Cloud |
+
+---
+
+## 2. Chiến Lược Sao Lưu 3 Lớp (3-Tier Backup Architecture)
+
+```mermaid
+flowchart TD
+    subgraph LiveDB ["PostgreSQL 16 Production"]
+        DB[("Database SmartDoc")]
+    end
+
+    subgraph Tier1 ["Lớp 1: PITR (Point-in-Time Recovery)"]
+        DB -->|Continuous Stream| WAL["Write-Ahead Log (WAL) Archives"]
+        WAL -->|Mỗi 60 giây / 16MB| R2_WAL[("Cloudflare R2 / S3 WAL Bucket")]
+    end
+
+    subgraph Tier2 ["Lớp 2: Daily Encrypted Logical Backup"]
+        DB -->|CronJob 02:00 AM UTC| DUMP["pg_dump -Fc (Custom Binary)"]
+        DUMP --> HASH["Tính SHA-256 Checksum"]
+        HASH --> GPG["Mã hóa AES-256 (GPG)"]
+        GPG --> R2_DUMP[("Cloudflare R2 WORM Storage (30-day Lock)")]
+    end
+
+    subgraph Tier3 ["Lớp 3: Volume Snapshot"]
+        DB -->|Daily Cloud Snapshot| CSI["K8s CSI / Cloud Disk Snapshot"]
+    end
 ```
 
-- Postgres: `pg_dump NEON_DATABASE_URL | gzip > pg_YYYYMMDD.sql.gz` (PITR enabled on Neon)
-- Qdrant: `POST /collections/{documents,supply_chain}/snapshots` (retain 7 days)
-- R2: versioning enabled, lifecycle 30d
+1. **Lớp 1 — Continuous WAL Archiving & PITR**:
+   - Ghi nhận liên tục từng thay đổi (Write-Ahead Logs) đẩy sang Object Storage.
+   - Cho phép phục hồi về thời điểm chính xác đến từng giây.
+2. **Lớp 2 — Daily Encrypted Logical Backup (pg_dump + GPG + WORM)**:
+   - Tự động chạy lúc 02:00 AM UTC qua K8s CronJob.
+   - Mã hóa đối xứng AES-256 bằng khóa GPG trước khi đẩy ra khỏi cụm.
+   - Áp dụng chính sách Object Lock (WORM) trên S3/R2: ngăn chặn bất kỳ ai xóa hoặc sửa file backup trong 30 ngày.
+3. **Lớp 3 — Storage Volume Snapshot**:
+   - Snapshot định kỳ toàn bộ ổ đĩa NVMe của Database để tái tạo nhanh Storage khi cần thiết.
 
-Artifacts: `/backups/pg_*.sql.gz` + Qdrant snapshots on `qdrant:6333/snapshots`
+---
 
-## Restore
+## 3. Kịch Bản Khôi Phục Thảm Họa (Incident Playbooks)
 
-```bash
-./scripts/restore.sh backups/pg_20250101_020000.sql.gz
-# Qdrant: curl -X POST http://qdrant:6333/collections/documents/snapshots/recover -H "api-key: $QDRANT_API_KEY" --data-binary @snapshot
-```
+### Kịch Bản 1: Pod Backend hoặc Agent Bị Crash (OOM / Bug phần mềm)
+- **Cơ chế tự động**: Kubernetes ReplicaSet duy trì Pods cho Backend/Agent. Liveness probe `/api/actuator/health` tự động phát hiện Pod chết và khởi động Pod mới trong 5–10 giây.
+- **Tác động người dùng**: 0 giây gián đoạn. Lưu lượng được Ingress chuyển hướng sang Pod còn lại.
 
-Verify: `psql $NEON_DATABASE_URL -c "select count(*) from documents;"` + `curl $QDRANT_HOST:6333/collections/documents`
+### Kịch Bản 2: Lỗi Bản Cập Nhật Mới Làm Gián Đoạn Nghiệp Vụ (Bad Release)
+- **Cách xử lý**:
+  ```bash
+  # Quay ngược commit trên GitOps repo
+  git revert HEAD -m "revert: rollback release to previous stable version"
+  git push origin main
+  ```
+- **Thời gian khôi phục**: < 30 giây (ArgoCD tự động kéo Pod về image cũ).
 
-## RTO/RPO
+### Kịch Bản 3: Thao Tác Nhầm Làm Hỏng Dữ Liệu Hoặc Xóa Bảng (Data Corruption)
+- **Tình huống**: Admin vô tình chạy lệnh xóa dữ liệu hoặc migration lỗi.
+- **Quy trình xử lý khẩn cấp**:
+  1. **Bật chế độ bảo trì**:
+     ```bash
+     kubectl scale deployment smartdoc-backend --replicas=0 -n smartdoc-prod
+     ```
+  2. **Xác định thời điểm thảm họa**: Ví dụ lỗi xảy ra lúc `2026-10-14 14:15:00 UTC`.
+  3. **Khôi phục Database bằng Point-in-Time Recovery (PITR)**:
+     - Nếu dùng Cloud SQL / RDS: Sử dụng giao diện Console/CLI chọn *Point in time restore* về `14:14:00 UTC`.
+     - Nếu khôi phục từ bản backup hàng ngày:
+       ```bash
+       bash scripts/dr/restore_postgres.sh /path/to/smartdoc_dump_latest.dump.gpg smartdoc
+       ```
+  4. **Kiểm tra tính toàn vẹn**:
+     - Kiểm tra số lượng bảng: `SELECT count(*) FROM information_schema.tables WHERE table_schema='public';`
+     - Kiểm tra phiên bản migration: `SELECT version_num FROM alembic_version;`
+  5. **Mở lại hệ thống**:
+     ```bash
+     kubectl scale deployment smartdoc-backend --replicas=2 -n smartdoc-prod
+     ```
+- **Thời gian khôi phục**: 10 - 15 phút.
 
-- RTO 1h, RPO 24h (daily backup). For RPO 1h, enable Neon logical replication or wal-g.
+### Kịch Bản 4: Toàn Bộ Kubernetes Cluster Hoặc Cloud Provider Gặp Sự Cố (Complete Cloud Disaster)
+- **Tình huống**: Cụm AKS/EKS/GKE bị xóa nhầm, hoặc Data Center tại vùng gặp sự cố thảm họa diện rộng.
+- **Quy trình tái thiết lập từ con số 0 (Cold Disaster Recovery)**:
+  1. **Khởi tạo cụm Kubernetes mới** tại Region/Provider dự phòng (sử dụng Terraform/OpenTofu hoặc tạo thủ công trong 5 phút).
+  2. **Cài đặt ArgoCD vào cụm mới**:
+     ```bash
+     kubectl create namespace argocd
+     kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+     ```
+  3. **Khôi phục toàn bộ cấu hình ứng dụng từ Git**:
+     ```bash
+     kubectl apply -f infra/argocd/appproject.yaml
+     kubectl apply -f infra/argocd/application.yaml
+     ```
+     ArgoCD sẽ tự động kéo toàn bộ Deployment, Service, Ingress về cụm mới trong 2 phút!
+  4. **Khôi phục dữ liệu Database từ Cloud Storage (R2 / S3)**:
+     ```bash
+     # Tải bản backup mới nhất từ S3
+     aws s3 cp s3://smartdoc-backups/postgres/latest/smartdoc_dump.dump.gpg /tmp/backup.dump.gpg
+     bash scripts/dr/restore_postgres.sh /tmp/backup.dump.gpg smartdoc
+     ```
+  5. **Cập nhật DNS**:
+     - Đổi bản ghi DNS trên Cloudflare trỏ địa chỉ IP Ingress sang Load Balancer của cụm mới.
+- **Thời gian khôi phục toàn bộ**: < 30 phút.
 
-## Incident
+---
 
-1. Detect via `BackendDown` / `SloBurnFast` alert (PagerDuty/Slack).
-2. Check `render.yaml` health: `curl https://smartdoc-backend-2hhz.onrender.com/api/actuator/health`
-3. If DB down: promote Neon read-replica or restore from latest `pg_*.sql.gz`.
-4. If Qdrant down: recover from snapshot, re-index from Postgres `document_chunks`.
-5. Verify `docs/render-smoke-test.md` curl checks.
-6. Postmortem within 48h.
+## 4. Quy Trình Diễn Tập Thảm Họa Định Kỳ (DR Drill Procedure)
 
-## Drill
-
-Quarterly: restore to staging, run `eval/golden_dataset.json` 50 cases, assert retrieval 100% and LLM Judge avg >0.75.
-
-## Multi-region (future)
-
-Neon cross-region read-replica + Qdrant Cloud multi-region (Singapore + Frankfurt). Render region pin to `singapore` now, migrate to `frankfurt` replica when needed. See `render.yaml` env `QDRANT_HOST` override.
+Để đảm bảo các bản backup không bao giờ bị rỗng, hỏng hoặc không thể giải mã:
+- **Tần suất**: Tự động chạy định kỳ hằng tháng.
+- **Lệnh thực hiện diễn tập tự động**:
+  ```bash
+  bash scripts/dr/dr_drill_test.sh
+  ```
+- **Các bước script tự động kiểm tra**:
+  1. Dump cơ sở dữ liệu hiện tại.
+  2. Tạo mã băm SHA-256.
+  3. Mã hóa bằng GPG AES-256.
+  4. Khởi tạo một database thử nghiệm tạm thời.
+  5. Giải mã và nạp dữ liệu vào database thử nghiệm.
+  6. So sánh đối soát số lượng bảng và phiên bản migration.
+  7. Báo cáo kết quả và tự dọn dẹp môi trường thử nghiệm.

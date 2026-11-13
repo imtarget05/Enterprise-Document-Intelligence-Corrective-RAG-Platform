@@ -1,0 +1,38 @@
+# smartdoc — values production (override base)
+namespace: smartdoc-prod
+
+image:
+  tag: "sha-${GITHUB_SHA}"
+  pullPolicy: IfNotPresent
+
+backend:
+  replicaCount: 2
+  env:
+    - name: SPRING_PROFILES_ACTIVE
+      value: "prod"
+
+redis:
+  enabled: true
+
+qdrant:
+  enabled: true
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+
+secret:
+  stringData:
+    SPRING_DATASOURCE_URL: "CHANGE_ME_PROD"
+    SPRING_DATASOURCE_USERNAME: "CHANGE_ME_PROD"
+    SPRING_DATASOURCE_PASSWORD: "CHANGE_ME_PROD"
+    JWT_SECRET: "CHANGE_ME_PROD_JWT"
+    REDIS_PASSWORD: "CHANGE_ME_PROD_REDIS"
+
+ingress:
+  enabled: true
+  tls:
+    - secretName: smartdoc-tls
+      hosts:
+        - smartdoc.example.com

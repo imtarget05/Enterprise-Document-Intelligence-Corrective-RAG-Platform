@@ -1,0 +1,28 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: smartdoc
+          static_configs:
+            - targets: ["smartdoc-backend:8080"]
+
+exporters:
+  otlp:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+  logging:
+    loglevel: debug
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [otlp, logging]
+    metrics:
+      receivers: [prometheus]
+      exporters: [logging]

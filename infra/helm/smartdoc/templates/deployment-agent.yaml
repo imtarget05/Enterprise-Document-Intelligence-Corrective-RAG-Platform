@@ -1,0 +1,33 @@
+{{- if .Values.deploy.agent }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "smartdoc.fullname" . }}-agent
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app: smartdoc-agent
+spec:
+  replicas: {{ .Values.agent.replicaCount }}
+  selector:
+    matchLabels:
+      app: smartdoc-agent
+  template:
+    metadata:
+      labels:
+        app: smartdoc-agent
+    spec:
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: agent
+        image: {{ .Values.agent.image.repository }}:{{ .Values.agent.image.tag }}
+        imagePullPolicy: {{ .Values.agent.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.agent.containerPort }}
+        resources:
+          {{- toYaml .Values.agent.resources | nindent 10 }}
+{{- end }}

@@ -1,0 +1,18 @@
+{{- if .Values.deploy.agent }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "smartdoc.fullname" . }}-agent
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app: smartdoc-agent
+spec:
+  type: {{ .Values.service.agent.type }}
+  selector:
+    app: smartdoc-agent
+  ports:
+  - name: http
+    port: {{ .Values.service.agent.port }}
+    targetPort: {{ .Values.service.agent.targetPort }}
+{{- end }}

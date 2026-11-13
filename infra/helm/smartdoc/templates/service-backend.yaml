@@ -1,0 +1,18 @@
+{{- if .Values.deploy.backend }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "smartdoc.fullname" . }}-backend
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app: smartdoc-backend
+spec:
+  type: {{ .Values.service.backend.type }}
+  selector:
+    app: smartdoc-backend
+  ports:
+  - name: http
+    port: {{ .Values.service.backend.port }}
+    targetPort: {{ .Values.service.backend.targetPort }}
+{{- end }}

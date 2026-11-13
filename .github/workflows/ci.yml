@@ -626,3 +626,121 @@ jobs:
           tags: smartdoc-frontend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # ════════════════════════════════════════════════════════════════
+  # Python dependency audit (pip-audit)
+  # ════════════════════════════════════════════════════════════════
+  pip-audit:
+    name: Python dependency audit (pip-audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install pip-audit
+        run: "python -m pip install --only-binary :all: pip-audit==2.10.1"
+      - name: Audit Python dependencies
+        run: pip-audit -r agent/requirements.txt --progress-spinner off
+
+  # ════════════════════════════════════════════════════════════════
+  # SBOM (Syft)
+  # ════════════════════════════════════════════════════════════════
+  syft-sbom:
+    name: Generate SBOM (Syft)
+    runs-on: ubuntu-latest
+    needs: [docker-build]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Syft SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: 'smartdoc-backend:latest'
+          output-file: sbom.spdx.json
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-smartdoc-backend
+          path: sbom.spdx.json
+          retention-days: 30
+
+  # ════════════════════════════════════════════════════════════════
+  # Cosign sign container image
+  # ════════════════════════════════════════════════════════════════
+  cosign-sign:
+    name: Cosign sign container image
+    runs-on: ubuntu-latest
+    needs: [docker-build, syft-sbom]
+    if: ${{ secrets.COSIGN_KEY != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.5.0
+      - name: Sign image with Cosign
+        run: |
+          IMAGE_DIGEST="$(docker inspect --format='{{index .RepoDigests 0}}' smartdoc-backend:latest 2>/dev/null | cut -d@ -f2 || true)"
+          if [ -z "$IMAGE_DIGEST" ]; then
+            echo "::notice::No remote image digest available (image built locally, not pushed); cosign sign skipped."
+            exit 0
+          fi
+          echo "${COSIGN_PASSWORD}" | cosign login ghcr.io -u imtarget05 --password-stdin
+          cosign sign --key="${COSIGN_KEY}" --yes "ghcr.io/imtarget05/smartdoc-backend@${IMAGE_DIGEST}"
+        env:
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+          COSIGN_KEY: ${{ secrets.COSIGN_KEY }}
+
+  # ════════════════════════════════════════════════════════════════
+  # k6 load testing (RAG query spike)
+  # ════════════════════════════════════════════════════════════════
+  k6-load-test:
+    name: k6 load testing (RAG spike)
+    runs-on: ubuntu-latest
+    needs: [docker-build]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run k6 load test
+        uses: grafana/k6-action@v0.4.0
+        with:
+          filename: loadtest/k6-rag.js
+        env:
+          BASE_URL: http://localhost:8080
+
+
+  # ════════════════════════════════════════════════════════════════
+  # Helm lint + kubeconform manifest validation
+  # ════════════════════════════════════════════════════════════════
+  helm-lint:
+    name: Helm lint + template render
+    runs-on: ubuntu-latest
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.0
+      - name: Helm lint
+        run: helm lint k8s/helm/smartdoc
+      - name: Helm template render (dry-run dev)
+        run: |
+          helm template smartdoc k8s/helm/smartdoc \
+            -f k8s/helm/smartdoc/values-dev.yaml \
+            -n portfolio-dev > /dev/null
+
+  kubeconform:
+    name: Kubeconform manifest validation
+    runs-on: ubuntu-latest
+    needs: [helm-lint]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up kubeconform
+        run: |
+          curl -L https://github.com/yannh/kubeconform/releases/download/v0.6.4/kubeconform-linux-amd64.tar.gz \
+            | tar xz -C /usr/local/bin kubeconform
+      - name: Render and validate manifests
+        run: |
+          helm template smartdoc k8s/helm/smartdoc \
+            -f k8s/helm/smartdoc/values-dev.yaml \
+            -n portfolio-dev > /tmp/rendered.yaml
+          kubeconform -kubernetes-version 1.28.0 /tmp/rendered.yaml
+

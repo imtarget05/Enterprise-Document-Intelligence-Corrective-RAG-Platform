@@ -1,0 +1,21 @@
+apiVersion: v2
+name: smartdoc
+description: Helm chart for SmartDoc (Corrective RAG platform) — base chart, environment overlays via values-<env>.yaml
+type: application
+version: 1.0.0
+appVersion: "0.1.0"
+kubeVersion: ">=1.25.0-0"
+keywords:
+  - smartdoc
+  - rag
+  - java
+  - postgresql
+  - redis
+  - qdrant
+  - argocd
+home: https://github.com/imtarget05/smartdoc
+sources:
+  - https://github.com/imtarget05/smartdoc
+maintainers:
+  - name: imtarget05
+    email: tanmainguyenbinhtan@gmail.com

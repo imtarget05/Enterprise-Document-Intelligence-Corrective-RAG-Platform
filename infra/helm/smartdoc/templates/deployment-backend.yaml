@@ -1,0 +1,100 @@
+{{- if .Values.deploy.backend }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "smartdoc.fullname" . }}-backend
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app: smartdoc-backend
+    role: api
+spec:
+  replicas: {{ .Values.backend.replicaCount }}
+  selector:
+    matchLabels:
+      app: smartdoc-backend
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: smartdoc-backend
+        role: api
+    spec:
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: backend
+        image: {{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}
+        imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.backend.containerPort }}
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "prod"
+        - name: QDRANT_HOST
+          value: "smartdoc-qdrant"
+        - name: QDRANT_PORT
+          value: "6333"
+        - name: REDIS_HOST
+          value: "smartdoc-redis"
+        - name: REDIS_PORT
+          value: "6379"
+        {{- range .Values.backend.env }}
+        - name: {{ .name }}
+          {{- if .valueFrom }}
+          valueFrom:
+            {{- toYaml .valueFrom | nindent 12 }}
+          {{- else }}
+          value: {{ .value | quote }}
+          {{- end }}
+        {{- end }}
+        - name: JAVA_OPTS
+          value: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+        readinessProbe:
+          httpGet:
+            path: /api/actuator/health
+            port: http
+          initialDelaySeconds: 20
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /api/actuator/health
+            port: http
+          initialDelaySeconds: 40
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+        resources:
+          {{- toYaml .Values.backend.resources | nindent 10 }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+        volumeMounts:
+        - name: uploads
+          mountPath: /app/uploads
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: uploads
+        emptyDir: {}
+      - name: tmp
+        emptyDir: {}
+{{- end }}

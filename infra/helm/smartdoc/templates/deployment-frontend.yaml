@@ -1,0 +1,33 @@
+{{- if .Values.deploy.frontend }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "smartdoc.fullname" . }}-frontend
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app: smartdoc-frontend
+spec:
+  replicas: {{ .Values.frontend.replicaCount }}
+  selector:
+    matchLabels:
+      app: smartdoc-frontend
+  template:
+    metadata:
+      labels:
+        app: smartdoc-frontend
+    spec:
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: frontend
+        image: {{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}
+        imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.frontend.containerPort }}
+        resources:
+          {{- toYaml .Values.frontend.resources | nindent 10 }}
+{{- end }}

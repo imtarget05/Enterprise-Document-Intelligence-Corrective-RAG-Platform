@@ -1,0 +1,34 @@
+# smartdoc — values staging (override base)
+namespace: smartdoc-staging
+
+image:
+  tag: "sha-${GITHUB_SHA}"
+  pullPolicy: IfNotPresent
+
+backend:
+  replicaCount: 2
+  env:
+    - name: SPRING_PROFILES_ACTIVE
+      value: "staging"
+
+redis:
+  enabled: true
+
+qdrant:
+  enabled: true
+
+secret:
+  stringData:
+    SPRING_DATASOURCE_URL: "jdbc:postgresql://smartdoc-pg.staging:5432/smartdoc"
+    SPRING_DATASOURCE_USERNAME: "smartdoc"
+    SPRING_DATASOURCE_PASSWORD: "CHANGE_ME_STAGING"
+    JWT_SECRET: "CHANGE_ME_STAGING_JWT"
+    REDIS_PASSWORD: "CHANGE_ME_STAGING_REDIS"
+
+ingress:
+  enabled: true
+  hosts:
+    - host: smartdoc-staging.example.com
+      paths:
+        - path: /
+          pathType: Prefix

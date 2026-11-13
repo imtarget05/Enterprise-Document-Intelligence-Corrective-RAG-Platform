@@ -1,0 +1,40 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: smartdoc-portfolio
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: "SmartDoc (Corrective RAG) — DevOps/Platform portfolio project"
+  sourceRepos:
+    - https://github.com/imtarget05/smartdoc.git
+  destinations:
+    - namespace: smartdoc-dev
+      server: https://kubernetes.default.svc
+    - namespace: smartdoc-staging
+      server: https://kubernetes.default.svc
+    - namespace: smartdoc-prod
+      server: https://kubernetes.default.svc
+    - namespace: monitoring
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  roles:
+    - name: smartdoc-deployer
+      description: "Can sync and manage smartdoc applications"
+      policies:
+        - p, proj.smartdoc-portfolio:smartdoc-deployer, applications, get, smartdoc/*, allow
+        - p, proj.smartdoc-portfolio:smartdoc-deployer, applications, sync, smartdoc/*, allow
+      groups:
+        - smartdoc-deployers
+    - name: smartdoc-reader
+      description: "Read-only access to smartdoc applications"
+      policies:
+        - p, proj.smartdoc-portfolio:smartdoc-reader, applications, get, smartdoc/*, allow
+      groups:
+        - smartdoc-readers

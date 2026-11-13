@@ -1,0 +1,228 @@
+# smartdoc — Helm values (base). Mỗi environment override qua values-<env>.yaml.
+
+nameOverride: ""
+fullnameOverride: ""
+
+namespace: smartdoc
+
+commonLabels: {}
+commonAnnotations: {}
+
+# Container image
+image:
+  repository: ghcr.io/imtarget05/smartdoc-backend
+  tag: latest
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+# Komponen được triển khai
+deploy:
+  backend: true
+  agent: true
+  frontend: true
+  redis: true
+  qdrant: true
+
+replicaCount: 1
+
+# ── Backend Deployment ─────────────────────────────────────────────────────────
+backend:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ghcr.io/imtarget05/smartdoc-backend
+    tag: latest
+    pullPolicy: IfNotPresent
+  containerPort: 8080
+  command: ["java", "-jar", "/app/app.jar"]
+  env:
+    - name: SPRING_PROFILES_ACTIVE
+      value: "prod"
+    - name: QDRANT_HOST
+      value: "smartdoc-qdrant"
+    - name: QDRANT_PORT
+      value: "6333"
+    - name: REDIS_HOST
+      value: "smartdoc-redis"
+    - name: REDIS_PORT
+      value: "6379"
+    - name: SPRING_DATASOURCE_URL
+      valueFrom:
+        secretKeyRef:
+          name: smartdoc-secrets
+          key: SPRING_DATASOURCE_URL
+    - name: SPRING_DATASOURCE_USERNAME
+      valueFrom:
+        secretKeyRef:
+          name: smartdoc-secrets
+          key: SPRING_DATASOURCE_USERNAME
+    - name: SPRING_DATASOURCE_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: smartdoc-secrets
+          key: SPRING_DATASOURCE_PASSWORD
+    - name: JWT_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: smartdoc-secrets
+          key: JWT_SECRET
+    - name: REDIS_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: smartdoc-secrets
+          key: REDIS_PASSWORD
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1024Mi
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+  readinessProbe:
+    httpGet:
+      path: /api/actuator/health
+      port: 8080
+    initialDelaySeconds: 20
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+  livenessProbe:
+    httpGet:
+      path: /api/actuator/health
+      port: 8080
+    initialDelaySeconds: 40
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+# ── Agent Deployment ───────────────────────────────────────────────────────────
+agent:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ghcr.io/imtarget05/smartdoc-agent
+    tag: latest
+    pullPolicy: IfNotPresent
+  containerPort: 9000
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# ── Frontend Deployment ────────────────────────────────────────────────────────
+frontend:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ghcr.io/imtarget05/smartdoc-frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+  containerPort: 80
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# ── Services ───────────────────────────────────────────────────────────────────
+service:
+  backend:
+    enabled: true
+    type: ClusterIP
+    port: 8080
+    targetPort: 8080
+  agent:
+    enabled: true
+    type: ClusterIP
+    port: 9000
+    targetPort: 9000
+  frontend:
+    enabled: true
+    type: ClusterIP
+    port: 80
+    targetPort: 80
+
+# ── Redis (dependency, dev/staging tự cung cấp) ────────────────────────────────
+redis:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: redis
+    tag: 7-alpine
+    pullPolicy: IfNotPresent
+  containerPort: 6379
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# ── Qdrant (vector DB) ─────────────────────────────────────────────────────────
+qdrant:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: qdrant/qdrant
+    tag: latest
+    pullPolicy: IfNotPresent
+  containerPort: 6333
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1024Mi
+
+# ── Autoscaling ────────────────────────────────────────────────────────────────
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+
+# ── Ingress ────────────────────────────────────────────────────────────────────
+ingress:
+  enabled: false
+  className: nginx
+  hosts:
+    - host: smartdoc.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+# ── Secret (template — giá trị thực qua ExternalSecrets / SOPS / env) ─────────
+secret:
+  enabled: true
+  stringData:
+    SPRING_DATASOURCE_URL: "CHANGE_ME"
+    SPRING_DATASOURCE_USERNAME: "CHANGE_ME"
+    SPRING_DATASOURCE_PASSWORD: "CHANGE_ME"
+    JWT_SECRET: "CHANGE_ME"
+    REDIS_PASSWORD: "CHANGE_ME"
+
+# ── Argo Rollouts (canary) ─────────────────────────────────────────────────────
+rollouts:
+  enabled: false
+  strategy: canary
+  maxUnavailable: 1
+  maxSurge: 1
