@@ -30,13 +30,16 @@ jobs:
                   vars_.append({"key": ev["key"], "value": ev.get("value"), "sync": ev.get("sync")})
           have = {v["key"]: v for v in vars_}
           print("existing keys:", len(vars_), "| KC_DB present:", "KC_DB" in have)
+          if have.get("KC_DB", {}).get("value") == "postgres":
+              print("KC_DB already postgres — skip PUT, watch only")
           newvars = {
               "KC_DB": {"value": "postgres"},
               "KC_DB_URL": {"value": "jdbc:postgresql://ep-rough-paper-beefdl2s.c-9.us-east-2.aws.neon.tech/neondb?sslmode=require"},
               "KC_DB_USERNAME": {"value": "neondb_owner"},
               "KC_DB_PASSWORD": {"value": os.environ["KC_DB_PASSWORD"]},
           }
-          for k, v in newvars.items():
+          if have.get("KC_DB", {}).get("value") != "postgres":
+              for k, v in newvars.items():
               if k in have:
                   have[k]["value"] = v["value"]
               else:
