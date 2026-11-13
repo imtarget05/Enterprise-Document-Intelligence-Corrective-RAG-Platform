@@ -1,0 +1,33 @@
+name: KC probe (temp)
+on: workflow_dispatch
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report render services state
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          import json, os, urllib.request
+          def render(path):
+              req = urllib.request.Request(f"https://api.render.com/v1/{path}", method="GET",
+                  headers={"Authorization": "Bearer " + os.environ["RENDER_API_KEY"]})
+              return json.load(urllib.request.urlopen(req, timeout=30))
+          for sid in ["srv-dbra675g1s2s73ft1150", "srv-db1ul5ij9qps73do0pq0"]:
+              svc = render("services/" + sid)
+              sd = svc.get("serviceDetails") or {}
+              print(svc.get("serviceDetails") and svc["serviceDetails"].get("name", sid) or sid,
+                    "| suspended:", svc.get("suspended"), "| state:", sd.get("state") or svc.get("state"))
+              deps = render(f"services/{sid}/deploys?limit=2")
+              for x in deps:
+                  y = x.get("deploy", x)
+                  print("  deploy:", y.get("id","")[:12], y.get("status"), y.get("createdAt"))
+              d = render(f"services/{sid}/deploys/{deps[0].get('deploy', deps[0]).get('id')}")
+              for m in d.get("deploy", d).get("messages", [])[:5]:
+                  print("  msg:", str(m)[:160])
+          PY
+          echo "== probe from runner =="
+          curl -s --max-time 60 -o /dev/null -w "backend health: %{http_code}\n" "https://smartdoc-backend-2hhz.onrender.com/api/actuator/health" || echo "curl exit $?"
+          curl -s --max-time 60 -o /dev/null -w "kc realm: %{http_code}\n" "https://smartdoc-keycloak.onrender.com/realms/smartdoc" || echo "curl exit $?"
