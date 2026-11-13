@@ -10,12 +10,12 @@ jobs:
         run: |
           set -euo pipefail
           python3 <<'PY'
-          import json, os, urllib.request
+          import json, os, time, urllib.request
           def render(path):
               req = urllib.request.Request(f"https://api.render.com/v1/{path}", method="GET",
                   headers={"Authorization": "Bearer " + os.environ["RENDER_API_KEY"]})
               return json.load(urllib.request.urlopen(req, timeout=30))
-          for sid in ["srv-dbra675g1s2s73ft1150", "srv-db1ul5ij9qps73do0pq0"]:
+          for sid in ["srv-db1ul5ij9qps73do0pq0"]:
               svc = render("services/" + sid)
               sd = svc.get("serviceDetails") or {}
               print(svc.get("serviceDetails") and svc["serviceDetails"].get("name", sid) or sid,
@@ -24,6 +24,13 @@ jobs:
               for x in deps:
                   y = x.get("deploy", x)
                   print("  deploy:", y.get("id","")[:12], y.get("status"), y.get("createdAt"))
+              for i in range(30):
+                  cur = deps[0].get("deploy", deps[0]).get("status")
+                  print("  watch:", cur)
+                  if cur in ("live", "build_failed", "deploy_failed", "update_failed", "canceled"):
+                      break
+                  time.sleep(15)
+                  deps = render(f"services/{sid}/deploys?limit=2")
               d = render(f"services/{sid}/deploys/{deps[0].get('deploy', deps[0]).get('id')}")
               for m in d.get("deploy", d).get("messages", [])[:5]:
                   print("  msg:", str(m)[:160])
