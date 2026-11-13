@@ -12,27 +12,35 @@ jobs:
           set -euo pipefail
           SERVICES=$(curl -s -H "Authorization: Bearer $RENDER_API_KEY" "https://api.render.com/v1/services?limit=100")
           SVC=$(echo "$SERVICES" | python3 -c 'import json,sys; ss=json.load(sys.stdin); m=[s["service"] for s in ss if s["service"]["name"]=="smartdoc-keycloak"]; print(json.dumps(m[0]) if m else "")')
+          OWNER_ID=$(echo "$SERVICES" | python3 -c 'import json,sys; ss=json.load(sys.stdin); print(ss[0]["service"]["ownerId"] if ss else "")')
+          echo "owner id: $OWNER_ID"
           if [ -z "$SVC" ]; then
             echo "== creating smartdoc-keycloak service"
             cat > /tmp/create.json <<'EOFJSON'
           {
-            "type": "web",
+            "type": "web_service",
             "name": "smartdoc-keycloak",
-            "plan": "free",
+            "ownerId": "REPLACE_OWNER",
             "repo": "https://github.com/imtarget05/Enterprise-Document-Intelligence-Corrective-RAG-Platform",
             "branch": "main",
-            "autoDeploy": true,
-            "dockerfilePath": "docker/Dockerfile.keycloak",
-            "healthCheckPath": "/realms/master",
+            "autoDeploy": "yes",
             "envVars": [
               {"key": "KEYCLOAK_ADMIN", "value": "admin"},
               {"key": "KEYCLOAK_ADMIN_PASSWORD", "value": "REPLACE_PW"},
               {"key": "KC_HOSTNAME", "value": "https://smartdoc-keycloak.onrender.com"},
               {"key": "KC_PROXY", "value": "edge"}
-            ]
+            ],
+            "serviceDetails": {
+              "runtime": "docker",
+              "env": "docker",
+              "plan": "free",
+              "dockerfilePath": "docker/Dockerfile.keycloak",
+              "dockerContext": ".",
+              "healthCheckPath": "/realms/master"
+            }
           }
           EOFJSON
-            KC_ADMIN_PASSWORD="$KC_ADMIN_PASSWORD" python3 -c "import pathlib,os,json; p=pathlib.Path('/tmp/create.json'); txt=p.read_text(); p.write_text(txt.replace('REPLACE_PW', os.environ['KC_ADMIN_PASSWORD'])); json.loads(p.read_text()); print('payload JSON valid')"
+            KC_ADMIN_PASSWORD="$KC_ADMIN_PASSWORD" OWNER_ID="$OWNER_ID" python3 -c "import pathlib,os,json; p=pathlib.Path('/tmp/create.json'); txt=p.read_text().replace('REPLACE_PW', os.environ['KC_ADMIN_PASSWORD']).replace('REPLACE_OWNER', os.environ['OWNER_ID']); p.write_text(txt); json.loads(txt); print('payload JSON valid')"
             RESP=$(curl -s -X POST -H "Authorization: Bearer $RENDER_API_KEY" -H "Content-Type: application/json" --data-binary @/tmp/create.json "https://api.render.com/v1/services")
             echo "raw response:"; echo "$RESP" | head -c 800; echo
             SVC=$(echo "$RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(json.dumps({"id": d["id"], "name": d["name"], "serviceDetails": {"url": d.get("serviceDetails",{}).get("url")}}) if "id" in d else "")')
