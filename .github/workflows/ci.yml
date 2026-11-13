@@ -744,3 +744,23 @@ jobs:
             -n portfolio-dev > /tmp/rendered.yaml
           kubeconform -kubernetes-version 1.28.0 /tmp/rendered.yaml
 
+  # ════════════════════════════════════════════════════════════════
+  # Terraform plan-only (Wave 3)
+  # ════════════════════════════════════════════════════════════════
+  terraform-plan:
+    name: Terraform plan (AKS/PG/Redis/storage)
+    runs-on: ubuntu-latest
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+      - name: Terraform init
+        working-directory: infra/terraform-aks
+        run: terraform init -backend=false
+      - name: Terraform validate
+        working-directory: infra/terraform-aks
+        run: terraform validate
+      - name: Terraform plan (dev)
+        working-directory: infra/terraform-aks
+        run: terraform plan -var-file=environments/dev/terraform.tfvars
