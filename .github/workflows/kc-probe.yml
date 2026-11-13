@@ -4,26 +4,41 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Check Render keycloak service state
+      - name: Fix autodeploy + report keycloak state
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
         run: |
           set -euo pipefail
           export KC=srv-dbra675g1s2s73ft1150
           python3 <<'PY'
-          import json, os, urllib.request
-          def render(path):
-              req = urllib.request.Request(f"https://api.render.com/v1/{path}", method="GET",
-                  headers={"Authorization": "Bearer " + os.environ["RENDER_API_KEY"]})
+          import json, os, time, urllib.request
+          def render(path, method="GET", body=None):
+              req = urllib.request.Request(f"https://api.render.com/v1/{path}", method=method,
+                  headers={"Authorization": "Bearer " + os.environ["RENDER_API_KEY"], "Content-Type": "application/json"},
+                  data=json.dumps(body).encode() if body else None)
               return json.load(urllib.request.urlopen(req, timeout=30))
-          svc = render("services/" + os.environ["KC"])
-          sd = svc.get("serviceDetails") or {}
-          print("state:", sd.get("state") or svc.get("state"))
-          print("suspended:", svc.get("suspended"), "| autoDeploy:", svc.get("autoDeploy"))
-          print("buildFilter:", sd.get("buildFilter"))
-          for x in render("services/" + os.environ["KC"] + "/deploys?limit=3"):
-              y = x.get("deploy", x)
+          KC = os.environ["KC"]
+          # 1) disable autodeploy — pushes to the app repo must not rebuild keycloak
+          render("services/" + KC, method="PATCH", body={"autoDeploy": "no"})
+          print("autodeploy -> no")
+          # 2) watch the in-progress deploy
+          for i in range(20):
+              deps = render(f"services/{KC}/deploys?limit=1")
+              y = deps[0].get("deploy", deps[0])
               print("deploy:", y.get("id","")[:12], y.get("status"), y.get("createdAt"))
+              if y.get("status") in ("live", "build_failed", "deploy_failed", "update_failed", "canceled"):
+                  break
+              time.sleep(15)
+          else:
+              print("still in progress after 5min")
+          # 3) final service + last deploy detail
+          svc = render("services/" + KC)
+          sd = svc.get("serviceDetails") or {}
+          print("autodeploy now:", svc.get("autoDeploy"), "| state:", sd.get("state") or svc.get("state"))
+          d = render(f"services/{KC}/deploys/{y.get('id')}")
+          dd = d.get("deploy", d)
+          for m in dd.get("messages", []):
+              print("msg:", str(m)[:200])
           PY
           echo "== probe from runner =="
           curl -s --max-time 60 -o /dev/null -w "realm smartdoc: %{http_code} in %{time_total}s\n" "https://smartdoc-keycloak.onrender.com/realms/smartdoc" || echo "curl exit $?"
