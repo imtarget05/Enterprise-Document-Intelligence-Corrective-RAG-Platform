@@ -614,3 +614,34 @@ jobs:
           tags: smartdoc-frontend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # ── Supply-chain SBOM for the images built above (push: false, so the
+      # images never leave the runner — catalog them before they are discarded).
+      # Filesystem SBOM of the repo additionally runs in supply-chain.yml.
+      - name: Generate backend image SBOM (Syft, SPDX JSON)
+        uses: anchore/sbom-action@v0
+        with:
+          image: smartdoc-backend:latest
+          format: spdx-json
+          output-file: sbom-backend.spdx.json
+
+      - name: Upload backend image SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-smartdoc-backend
+          path: sbom-backend.spdx.json
+          retention-days: 30
+
+      - name: Generate frontend image SBOM (Syft, SPDX JSON)
+        uses: anchore/sbom-action@v0
+        with:
+          image: smartdoc-frontend:latest
+          format: spdx-json
+          output-file: sbom-frontend.spdx.json
+
+      - name: Upload frontend image SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-smartdoc-frontend
+          path: sbom-frontend.spdx.json
+          retention-days: 30

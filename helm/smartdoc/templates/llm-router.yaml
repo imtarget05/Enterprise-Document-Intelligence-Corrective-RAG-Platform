@@ -1,0 +1,57 @@
+{{- if .Values.llmRouter.enabled }}
+{{- $root := $ -}}
+{{- $ctx := dict "root" $root "component" "llm-router" "role" "ai-service" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "smartdoc.componentName" $ctx }}
+  labels:
+    {{- include "smartdoc.labels" $ctx | nindent 4 }}
+spec:
+  replicas: {{ .Values.llmRouter.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "smartdoc.selectorLabels" $ctx | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "smartdoc.selectorLabels" $ctx | nindent 8 }}
+    spec:
+      securityContext:
+        {{- include "smartdoc.podSecurityContext" .Values.llmRouter.podSecurityContext | nindent 8 }}
+      containers:
+        - name: llm-router
+          image: "{{ .Values.llmRouter.image.repository }}:{{ .Values.llmRouter.image.tag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.llmRouter.service.port }}
+          env:
+            {{- include "smartdoc.env" (dict "root" $root "env" .Values.llmRouter.env) | nindent 12 }}
+          resources:
+            {{- toYaml .Values.llmRouter.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          securityContext:
+            {{- include "smartdoc.containerSecurityContext" . | nindent 12 }}
+          {{- include "smartdoc.probes" (dict "root" $root "probes" .Values.llmRouter.probes) | nindent 10 }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "smartdoc.componentName" $ctx }}
+  labels:
+    {{- include "smartdoc.labels" $ctx | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "smartdoc.selectorLabels" $ctx | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.llmRouter.service.port }}
+      targetPort: http
+{{- end }}

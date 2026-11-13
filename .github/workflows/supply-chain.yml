@@ -1,0 +1,34 @@
+name: Supply Chain Security
+
+# Supply-chain gate layer. gitleaks and the blocking Trivy fs scan already
+# run in ci.yml (`security-scan` and `gitleaks` jobs) — this workflow adds the
+# missing SBOM gate only.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  sbom:
+    name: SBOM (Syft, SPDX JSON)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate filesystem SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: spdx-json
+          output-file: sbom.spdx.json
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ github.event.repository.name }}
+          path: sbom.spdx.json
+          retention-days: 30

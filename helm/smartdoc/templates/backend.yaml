@@ -1,0 +1,63 @@
+{{- if .Values.backend.enabled }}
+{{- $root := $ -}}
+{{- $ctx := dict "root" $root "component" "backend" "role" "api" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "smartdoc.componentName" $ctx }}
+  labels:
+    {{- include "smartdoc.labels" $ctx | nindent 4 }}
+spec:
+  replicas: {{ .Values.backend.replicaCount }}
+  {{- include "smartdoc.strategy" (dict "strategy" .Values.backend.strategy) | nindent 2 }}
+  selector:
+    matchLabels:
+      {{- include "smartdoc.selectorLabels" $ctx | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "smartdoc.selectorLabels" $ctx | nindent 8 }}
+    spec:
+      serviceAccountName: {{ if .Values.backend.serviceAccount.create }}{{ include "smartdoc.fullname" . }}-api{{ else }}{{ .Values.backend.serviceAccount.name }}{{ end }}
+      securityContext:
+        {{- include "smartdoc.podSecurityContext" .Values.backend.podSecurityContext | nindent 8 }}
+      containers:
+        - name: backend
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.backend.service.port }}
+          env:
+            {{- include "smartdoc.env" (dict "root" $root "env" .Values.backend.env) | nindent 12 }}
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}
+          securityContext:
+            {{- include "smartdoc.containerSecurityContext" . | nindent 12 }}
+          volumeMounts:
+            - name: uploads
+              mountPath: /app/uploads
+            - name: tmp
+              mountPath: /tmp
+          {{- include "smartdoc.probes" (dict "root" $root "probes" .Values.backend.probes) | nindent 10 }}
+      volumes:
+        - name: uploads
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "smartdoc.componentName" $ctx }}
+  labels:
+    {{- include "smartdoc.labels" $ctx | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "smartdoc.selectorLabels" $ctx | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.backend.service.port }}
+      targetPort: http
+{{- end }}

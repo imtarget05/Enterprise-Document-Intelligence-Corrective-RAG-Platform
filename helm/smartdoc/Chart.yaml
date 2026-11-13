@@ -1,0 +1,15 @@
+apiVersion: v2
+name: smartdoc
+description: >
+  Enterprise Document Intelligence / Corrective-RAG platform:
+  Spring Boot backend, FastAPI LLM router + agent, Qdrant vector DB,
+  Redis cache, and nginx static frontend.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - rag
+  - smartdoc
+  - qdrant
+  - llm
+home: https://github.com/imtarget05/Enterprise-Document-Intelligence-Corrective-RAG-Platform
