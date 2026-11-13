@@ -31,7 +31,8 @@ jobs:
           echo "$RESP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print("after patch:", d["serviceDetails"].get("envSpecificDetails",{}))'
           echo "== triggering deploy"
           DEPLOY=$(curl -s -X POST -H "Authorization: Bearer $RENDER_API_KEY" -H "Content-Type: application/json" -d '{"clearCache":"no"}' "https://api.render.com/v1/services/$SID/deploys")
-          DID=$(echo "$DEPLOY" | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')
+          DID=$(echo "$DEPLOY" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("id") or d.get("deployId",""))')
+          if [ -z "$DID" ]; then echo "::error::deploy trigger failed:"; echo "$DEPLOY" | head -c 400; exit 1; fi
           echo "deploy id: $DID"
           ST=""
           for i in $(seq 1 80); do
