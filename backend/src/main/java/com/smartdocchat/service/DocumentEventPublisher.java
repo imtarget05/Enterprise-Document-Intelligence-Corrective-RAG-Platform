@@ -35,19 +35,23 @@ public class DocumentEventPublisher {
         String topic = resolveTopic(event);
         String key = event.eventId().toString();
 
-        CompletableFuture<SendResult<String, Object>> future =
-                kafkaTemplate.send(topic, key, event);
+        try {
+            CompletableFuture<SendResult<String, Object>> future =
+                    kafkaTemplate.send(topic, key, event);
 
-        future.whenComplete((result, ex) -> {
-            if (ex != null) {
-                log.error("Failed to publish event {} to topic {}: {}",
-                        event.eventId(), topic, ex.getMessage(), ex);
-            } else {
-                log.debug("Published event {} to topic {} partition {} offset {}",
-                        event.eventId(), topic, result.getRecordMetadata().partition(),
-                        result.getRecordMetadata().offset());
-            }
-        });
+            future.whenComplete((result, ex) -> {
+                if (ex != null) {
+                    log.error("Failed to publish event {} to topic {}: {}",
+                            event.eventId(), topic, ex.getMessage(), ex);
+                } else {
+                    log.debug("Published event {} to topic {} partition {} offset {}",
+                            event.eventId(), topic, result.getRecordMetadata().partition(),
+                            result.getRecordMetadata().offset());
+                }
+            });
+        } catch (Exception ex) {
+            log.warn("Could not dispatch event {} to Kafka topic {}: {}", event.eventId(), topic, ex.getMessage());
+        }
     }
 
     /**
@@ -61,7 +65,12 @@ public class DocumentEventPublisher {
         String topic = resolveTopic(event);
         String key = event.eventId().toString();
 
-        return kafkaTemplate.send(topic, key, event);
+        try {
+            return kafkaTemplate.send(topic, key, event);
+        } catch (Exception ex) {
+            log.warn("Could not schedule async event {} to Kafka topic {}: {}", event.eventId(), topic, ex.getMessage());
+            return CompletableFuture.failedFuture(ex);
+        }
     }
 
     /**

@@ -14,7 +14,7 @@
   [![Tests](https://img.shields.io/badge/Tests-665%20passing-success?style=flat-square)](#)
   [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 
-  [![CI/CD](https://github.com/imtarget05/Smart-Document-Chatbot/actions/workflows/ci.yml/badge.svg)](https://github.com/imtarget05/Smart-Document-Chatbot/actions)
+  [![CI/CD](https://github.com/imtarget05/Enterprise-Document-Intelligence-Corrective-RAG-Platform/actions/workflows/ci.yml/badge.svg)](https://github.com/imtarget05/Enterprise-Document-Intelligence-Corrective-RAG-Platform/actions)
 </div>
 
 ---

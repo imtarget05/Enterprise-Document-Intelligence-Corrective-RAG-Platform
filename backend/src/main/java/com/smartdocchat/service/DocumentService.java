@@ -568,23 +568,30 @@ public class DocumentService {
      * Non-blocking - uses publishAsync to avoid slowing down the response.
      */
     private void emitDocumentIngestedEvent(Document document) {
-        EventMetadata metadata = new EventMetadata(
-                document.getId().toString(),
-                null,
-                "document-service",
-                "1.0"
-        );
-        DocumentIngestedEvent event = DocumentIngestedEvent.create(
-                metadata,
-                document.getId(),
-                document.getFileName(),
-                document.getOwnerUsername(),
-                document.getFileType(),
-                document.getFileSize(),
-                document.getContentHash(),
-                document.getSourceType() != null ? document.getSourceType().name() : "USER"
-        );
-        eventPublisher.publishAsync(event);
+        if (eventPublisher == null || document == null || document.getId() == null) {
+            return;
+        }
+        try {
+            EventMetadata metadata = new EventMetadata(
+                    document.getId().toString(),
+                    null,
+                    "document-service",
+                    "1.0"
+            );
+            DocumentIngestedEvent event = DocumentIngestedEvent.create(
+                    metadata,
+                    document.getId(),
+                    document.getFileName(),
+                    document.getOwnerUsername(),
+                    document.getFileType(),
+                    document.getFileSize(),
+                    document.getContentHash(),
+                    document.getSourceType() != null ? document.getSourceType().name() : "USER"
+            );
+            eventPublisher.publishAsync(event);
+        } catch (Exception ex) {
+            log.warn("Could not publish DocumentIngestedEvent for doc {}: {}", document.getId(), ex.getMessage());
+        }
     }
 
     /**
@@ -592,20 +599,27 @@ public class DocumentService {
      * Non-blocking - uses publishAsync to avoid slowing down the response.
      */
     private void emitDocumentPurgedEvent(Document document, String purgedBy, String reason) {
-        EventMetadata metadata = new EventMetadata(
-                document.getId().toString(),
-                null,
-                "document-service",
-                "1.0"
-        );
-        DocumentPurgedEvent event = DocumentPurgedEvent.create(
-                metadata,
-                document.getId(),
-                document.getFileName(),
-                purgedBy,
-                reason
-        );
-        eventPublisher.publishAsync(event);
+        if (eventPublisher == null || document == null || document.getId() == null) {
+            return;
+        }
+        try {
+            EventMetadata metadata = new EventMetadata(
+                    document.getId().toString(),
+                    null,
+                    "document-service",
+                    "1.0"
+            );
+            DocumentPurgedEvent event = DocumentPurgedEvent.create(
+                    metadata,
+                    document.getId(),
+                    document.getFileName(),
+                    purgedBy,
+                    reason
+            );
+            eventPublisher.publishAsync(event);
+        } catch (Exception ex) {
+            log.warn("Could not publish DocumentPurgedEvent for doc {}: {}", document.getId(), ex.getMessage());
+        }
     }
 
     /**
