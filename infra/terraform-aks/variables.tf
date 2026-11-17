@@ -47,7 +47,7 @@ variable "pg_admin_password" {
 variable "pg_sku" {
   description = "SKU PostgreSQL Flexible Server"
   type        = string
-  default     = "Standard_B1ms"
+  default     = "B_Standard_B1ms"
 }
 
 variable "pg_storage_mb" {
