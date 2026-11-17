@@ -1,0 +1,113 @@
+# production environment overrides
+replicaCount: 3
+namespace: portfolio-prod
+backend:
+  replicaCount: 3
+  env:
+    - name: SPRING_PROFILES_ACTIVE
+      value: "prod"
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1024Mi
+    limits:
+      cpu: 2000m
+      memory: 2048Mi
+agent:
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1024Mi
+qdrant:
+  replicaCount: 3
+  persistence:
+    enabled: true
+    size: 50Gi
+llmRouter:
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1024Mi
+redis:
+  replicaCount: 2
+frontend:
+  replicaCount: 2
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  hosts:
+    - host: smartdoc.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+        - path: /api
+          pathType: Prefix
+  tls:
+    - hosts:
+        - smartdoc.example.com
+      secretName: smartdoc-prod-tls
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+networkPolicy:
+  enabled: true
+monitoring:
+  serviceMonitor:
+    enabled: true
+    endpoints:
+      - port: http
+        path: /api/actuator/prometheus
+        interval: 15s
+        scrapeTimeout: 5s
+      - port: http
+        path: /metrics
+        interval: 15s
+        scrapeTimeout: 5s
+otel:
+  collector:
+    enabled: true
+    replicaCount: 3
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 1024Mi
+rollouts:
+  enabled: true
+  strategy: canary
+  maxUnavailable: 1
+  maxSurge: 1
+  analysis:
+    enabled: true
+    templates:
+      - name: success-rate
+        args:
+          - name: service-name
+            value: smartdoc-backend
+          - name: threshold
+            value: "99"
+configmap:
+  data:
+    APP_ENV: "production"
+    SPRING_PROFILES_ACTIVE: "prod"
+    OTEL_EXPORTER_OTLP_ENDPOINT: "http://smartdoc-otel-collector.monitoring.svc.cluster.local:4318"

@@ -1,0 +1,82 @@
+{{- if .Values.deploy.qdrant -}}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "smartdoc.fullname" . }}-qdrant
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app.kubernetes.io/component: qdrant
+spec:
+  serviceName: {{ include "smartdoc.fullname" . }}-qdrant
+  replicas: {{ .Values.qdrant.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "smartdoc.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: qdrant
+  template:
+    metadata:
+      labels:
+        {{- include "smartdoc.labels" . | nindent 8 }}
+        app.kubernetes.io/component: qdrant
+    spec:
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.qdrant.securityContext | nindent 8 }}
+      containers:
+        - name: qdrant
+          image: {{ include "smartdoc.image" .Values.qdrant.image }}
+          imagePullPolicy: {{ .Values.qdrant.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.qdrant.containerPort }}
+              protocol: TCP
+          env:
+            - name: QT__LOG__LEVEL
+              value: "INFO"
+          resources:
+            {{- toYaml .Values.qdrant.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.qdrant.containerSecurityContext | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 6333
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: 6333
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - name: storage
+              mountPath: /storage
+      {{- if .Values.qdrant.persistence.enabled }}
+      volumeClaimTemplates:
+        - metadata:
+            name: storage
+          spec:
+            accessModes:
+              {{- toYaml .Values.qdrant.persistence.accessModes | nindent 14 }}
+            {{- if .Values.qdrant.persistence.storageClass }}
+            storageClassName: {{ .Values.qdrant.persistence.storageClass }}
+            {{- end }}
+            resources:
+              requests:
+                storage: {{ .Values.qdrant.persistence.size }}
+      {{- end }}
+      volumes:
+        {{- if not .Values.qdrant.persistence.enabled }}
+        - name: storage
+          emptyDir: {}
+        {{- end }}
+{{- end }}

@@ -1,0 +1,67 @@
+# dev environment overrides
+replicaCount: 1
+namespace: portfolio-dev
+backend:
+  replicaCount: 1
+  env:
+    - name: SPRING_PROFILES_ACTIVE
+      value: "dev"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 400m
+      memory: 512Mi
+agent:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+qdrant:
+  replicaCount: 1
+  persistence:
+    enabled: false
+llmRouter:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+redis:
+  replicaCount: 1
+  persistence:
+    enabled: false
+frontend:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+ingress:
+  enabled: false
+autoscaling:
+  enabled: false
+networkPolicy:
+  enabled: false
+monitoring:
+  serviceMonitor:
+    enabled: false
+otel:
+  collector:
+    enabled: false
+configmap:
+  data:
+    APP_ENV: "dev"
+    SPRING_PROFILES_ACTIVE: "dev"
+    OTEL_EXPORTER_OTLP_ENDPOINT: "http://smartdoc-otel-collector.monitoring.svc.cluster.local:4318"

@@ -1,0 +1,21 @@
+apiVersion: v2
+name: smartdoc
+description: Helm chart for SmartDoc (Corrective RAG Platform) — Spring Boot backend, FastAPI agent/router, Qdrant, Redis, LLM router, React frontend
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+kubeVersion: ">=1.25.0-0"
+keywords:
+  - spring-boot
+  - react
+  - fastapi
+  - qdrant
+  - langgraph
+  - argocd
+  - argo-rollouts
+home: https://github.com/imtarget05/Enterprise-Document-Intelligence-Corrective-RAG-Platform
+sources:
+  - https://github.com/imtarget05/Enterprise-Document-Intelligence-Corrective-RAG-Platform
+maintainers:
+  - name: imtarget05
+    email: tanmainguyenbinhtan@gmail.com

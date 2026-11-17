@@ -1,0 +1,73 @@
+# staging environment overrides
+replicaCount: 2
+namespace: portfolio-staging
+backend:
+  replicaCount: 2
+  env:
+    - name: SPRING_PROFILES_ACTIVE
+      value: "staging"
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1024Mi
+agent:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+qdrant:
+  replicaCount: 1
+llmRouter:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+redis:
+  replicaCount: 1
+frontend:
+  replicaCount: 1
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: smartdoc-staging.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+        - path: /api
+          pathType: Prefix
+  tls:
+    - hosts:
+        - smartdoc-staging.example.com
+      secretName: smartdoc-staging-tls
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+networkPolicy:
+  enabled: true
+monitoring:
+  serviceMonitor:
+    enabled: true
+otel:
+  collector:
+    enabled: true
+    replicaCount: 1
+configmap:
+  data:
+    APP_ENV: "staging"
+    SPRING_PROFILES_ACTIVE: "staging"
+    OTEL_EXPORTER_OTLP_ENDPOINT: "http://smartdoc-otel-collector.monitoring.svc.cluster.local:4318"
