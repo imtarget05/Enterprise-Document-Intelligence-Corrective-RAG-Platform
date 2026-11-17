@@ -1,0 +1,88 @@
+{{- if .Values.deploy.redis -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "smartdoc.fullname" . }}-redis
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  replicas: {{ .Values.redis.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      {{- include "smartdoc.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: redis
+  template:
+    metadata:
+      labels:
+        {{- include "smartdoc.labels" . | nindent 8 }}
+        app.kubernetes.io/component: redis
+    spec:
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.redis.securityContext | nindent 8 }}
+      containers:
+        - name: redis
+          image: {{ include "smartdoc.image" .Values.redis.image }}
+          imagePullPolicy: {{ .Values.redis.image.pullPolicy }}
+          command: ["redis-server"]
+          args: ["--save", "", "--appendonly", "no"]
+          ports:
+            - name: http
+              containerPort: {{ .Values.redis.containerPort }}
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.redis.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.redis.containerSecurityContext | nindent 12 }}
+          livenessProbe:
+            exec:
+              command:
+                - redis-cli
+                - -p
+                - "6379"
+                - ping
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+                - redis-cli
+                - -p
+                - "6379"
+                - ping
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+      {{- if .Values.redis.persistence.enabled }}
+      volumeClaimTemplates:
+        - metadata:
+            name: data
+          spec:
+            accessModes:
+              {{- toYaml .Values.redis.persistence.accessModes | nindent 14 }}
+            {{- if .Values.redis.persistence.storageClass }}
+            storageClassName: {{ .Values.redis.persistence.storageClass }}
+            {{- end }}
+            resources:
+              requests:
+                storage: {{ .Values.redis.persistence.size }}
+      {{- end }}
+      volumes:
+        {{- if not .Values.redis.persistence.enabled }}
+        - name: data
+          emptyDir: {}
+        {{- end }}
+{{- end }}

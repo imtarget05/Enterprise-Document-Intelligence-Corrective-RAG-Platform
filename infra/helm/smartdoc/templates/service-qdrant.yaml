@@ -1,0 +1,21 @@
+{{- if .Values.deploy.qdrant }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "smartdoc.fullname" . }}-qdrant
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app: smartdoc-qdrant
+spec:
+  type: ClusterIP
+  selector:
+    app: smartdoc-qdrant
+  ports:
+  - name: grpc
+    port: 6334
+    targetPort: 6334
+  - name: http
+    port: {{ .Values.qdrant.containerPort }}
+    targetPort: {{ .Values.qdrant.containerPort }}
+{{- end }}

@@ -1,0 +1,103 @@
+{{- if .Values.rollouts.enabled -}}
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: {{ include "smartdoc.fullname" . }}-backend
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  replicas: {{ .Values.backend.replicaCount }}
+  strategy:
+    {{- if eq .Values.rollouts.strategy "canary" }}
+    canary:
+      steps:
+        - setWeight: 20
+        - pause: {duration: 30s}
+        - setWeight: 50
+        - pause: {duration: 30s}
+        - setWeight: 100
+    maxUnavailable: {{ .Values.rollouts.maxUnavailable }}
+    maxSurge: {{ .Values.rollouts.maxSurge }}
+    {{- else }}
+    blueGreen:
+      autoPromotionEnabled: false
+      scaleDownDelaySeconds: 30
+    {{- end }}
+  selector:
+    matchLabels:
+      {{- include "smartdoc.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: backend
+  template:
+    metadata:
+      labels:
+        {{- include "smartdoc.labels" . | nindent 8 }}
+        app.kubernetes.io/component: backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: /api/actuator/prometheus
+    spec:
+      containers:
+        - name: backend
+          image: {{ include "smartdoc.image" .Values.backend.image }}
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.backend.containerPort }}
+          env:
+            {{- toYaml .Values.backend.env | nindent 12 }}
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}
+          livenessProbe:
+            {{- toYaml .Values.backend.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.backend.readinessProbe | nindent 12 }}
+  {{- if .Values.rollouts.analysis.enabled -}}
+  analysis:
+    templates:
+      {{- toYaml .Values.rollouts.analysis.templates | nindent 6 }}
+    args:
+      {{- toYaml .Values.rollouts.analysis.args | nindent 6 }}
+  {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "smartdoc.fullname" . }}-backend
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8080
+      targetPort: {{ .Values.backend.containerPort }}
+      protocol: TCP
+  selector:
+    {{- include "smartdoc.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "smartdoc.fullname" . }}-backend-canary
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+    rollouts: canary
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8080
+      targetPort: {{ .Values.backend.containerPort }}
+      protocol: TCP
+  selector:
+    {{- include "smartdoc.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+{{- end }}

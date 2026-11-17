@@ -1,0 +1,18 @@
+.....................................................s.................. [ 20%]
+........................................................................ [ 40%]
+........................................................................ [ 61%]
+........................................................................ [ 81%]
+.................................................................        [100%]
+=============================== warnings summary ===============================
+../opt/venv/lib/python3.11/site-packages/starlette/testclient.py:41
+  /opt/venv/lib/python3.11/site-packages/starlette/testclient.py:41: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    [], typing.ContextManager[anyio.abc.BlockingPortal]
+
+tests/test_mlops.py::TestTracker::test_log_eval_run_no_mlflow
+  /opt/venv/lib/python3.11/site-packages/pydantic/_internal/_fields.py:160: UserWarning: Field "model_name" has conflict with protected namespace "model_".
+  
+  You may be able to resolve this warning by setting `model_config['protected_namespaces'] = ()`.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+352 passed, 1 skipped, 2 warnings in 10.07s

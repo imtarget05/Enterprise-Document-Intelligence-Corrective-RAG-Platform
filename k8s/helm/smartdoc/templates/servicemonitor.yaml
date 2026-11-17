@@ -1,0 +1,21 @@
+{{- if .Values.monitoring.serviceMonitor.enabled -}}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "smartdoc.fullname" . }}-backend
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      {{- include "smartdoc.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: backend
+  endpoints:
+    {{- toYaml .Values.monitoring.serviceMonitor.endpoints | nindent 4 }}
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+{{- end }}

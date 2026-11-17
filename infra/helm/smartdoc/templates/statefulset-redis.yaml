@@ -1,0 +1,31 @@
+{{- if .Values.deploy.redis }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "smartdoc.fullname" . }}-redis
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app: smartdoc-redis
+spec:
+  replicas: {{ .Values.redis.replicaCount }}
+  serviceName: {{ include "smartdoc.fullname" . }}-redis
+  selector:
+    matchLabels:
+      app: smartdoc-redis
+  template:
+    metadata:
+      labels:
+        app: smartdoc-redis
+    spec:
+      containers:
+      - name: redis
+        image: {{ .Values.redis.image.repository }}:{{ .Values.redis.image.tag }}
+        imagePullPolicy: {{ .Values.redis.image.pullPolicy }}
+        ports:
+        - name: redis
+          containerPort: {{ .Values.redis.containerPort }}
+        resources:
+          {{- toYaml .Values.redis.resources | nindent 10 }}
+        command: ["redis-server", "--requirepass", "{{ .Values.secret.stringData.REDIS_PASSWORD }}"]
+{{- end }}

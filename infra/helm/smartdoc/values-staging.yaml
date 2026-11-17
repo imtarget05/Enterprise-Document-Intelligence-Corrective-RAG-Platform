@@ -1,0 +1,30 @@
+# smartdoc — values staging (override base)
+namespace: smartdoc-staging
+
+image:
+  tag: "sha-${GITHUB_SHA}"
+  pullPolicy: IfNotPresent
+
+backend:
+  replicaCount: 2
+  env:
+    - name: SPRING_PROFILES_ACTIVE
+      value: "staging"
+
+redis:
+  enabled: true
+
+qdrant:
+  enabled: true
+
+secret:
+  enabled: false
+  stringData: {}
+
+ingress:
+  enabled: true
+  hosts:
+    - host: smartdoc-staging.example.com
+      paths:
+        - path: /
+          pathType: Prefix

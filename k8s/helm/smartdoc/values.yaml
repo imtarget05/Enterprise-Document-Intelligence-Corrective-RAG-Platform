@@ -1,0 +1,536 @@
+# =============================================================================
+# smartdoc — SmartDoc Helm values (base). Mỗi environment override qua values-<env>.yaml.
+# =============================================================================
+
+nameOverride: ""
+fullnameOverride: ""
+namespace: portfolio
+
+# ── Global image registry ────────────────────────────────────────────────────
+image:
+  registry: ghcr.io
+  repository: imtarget05
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+# ── Komponen được triển khai ─────────────────────────────────────────────────
+component: backend
+deploy:
+  backend: true
+  agent: true
+  qdrant: true
+  llmRouter: true
+  redis: true
+  frontend: true
+
+# ── Labels & annotations chung ───────────────────────────────────────────────
+commonLabels: {}
+commonAnnotations: {}
+
+# ── ServiceAccount ───────────────────────────────────────────────────────────
+serviceAccount:
+  create: true
+  name: ""
+  automountServiceAccountToken: true
+
+# ── Backend (Spring Boot) ────────────────────────────────────────────────────
+backend:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: smartdoc-backend
+    tag: latest
+    pullPolicy: IfNotPresent
+  containerPort: 8080
+  command: []
+  env:
+    - name: SPRING_PROFILES_ACTIVE
+      value: "prod"
+    - name: JAVA_OPTS
+      value: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+    - name: QDRANT_HOST
+      value: "smartdoc-qdrant"
+    - name: QDRANT_PORT
+      value: "6333"
+    - name: LLM_BASE_URL
+      value: "http://smartdoc-llm-router:8000"
+    - name: AGENT_BASE_URL
+      value: "http://smartdoc-agent:9000"
+    - name: STORAGE_PROVIDER
+      value: "r2"
+    - name: REDIS_ENABLED
+      value: "true"
+    - name: REDIS_HOST
+      value: "smartdoc-redis"
+    - name: REDIS_PORT
+      value: "6379"
+    - name: REDIS_SSL_ENABLED
+      value: "false"
+    - name: SPRING_FLYWAY_OUT_OF_ORDER
+      value: "true"
+    - name: SPRING_DATASOURCE_URL
+      valueFrom:
+        secretKeyRef:
+          name: portfolio-secrets
+          key: SMARTDOC_JDBC_URL
+    - name: SPRING_DATASOURCE_USERNAME
+      valueFrom:
+        secretKeyRef:
+          name: portfolio-secrets
+          key: SPRING_DATASOURCE_USERNAME
+    - name: SPRING_DATASOURCE_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: portfolio-secrets
+          key: SPRING_DATASOURCE_PASSWORD
+    - name: JWT_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: portfolio-secrets
+          key: JWT_SECRET
+    - name: KAFKA_BOOTSTRAP_SERVERS
+      valueFrom:
+        secretKeyRef:
+          name: portfolio-secrets
+          key: KAFKA_BOOTSTRAP_SERVERS
+    - name: R2_ACCOUNT_ID
+      valueFrom:
+        secretKeyRef:
+          name: portfolio-secrets
+          key: R2_ACCOUNT_ID
+    - name: R2_ACCESS_KEY_ID
+      valueFrom:
+        secretKeyRef:
+          name: portfolio-secrets
+          key: R2_ACCESS_KEY_ID
+    - name: R2_SECRET_ACCESS_KEY
+      valueFrom:
+        secretKeyRef:
+          name: portfolio-secrets
+          key: R2_SECRET_ACCESS_KEY
+    - name: REDIS_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: portfolio-secrets
+          key: REDIS_PASSWORD
+    - name: OTEL_SERVICE_NAME
+      value: smartdoc-backend
+    - name: OTEL_EXPORTER_OTLP_ENDPOINT
+      value: http://smartdoc-otel-collector.monitoring.svc.cluster.local:4318
+    - name: APP_VERSION
+      value: "{{ .Chart.AppVersion }}"
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "1024Mi"
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+  livenessProbe:
+    httpGet:
+      path: /api/actuator/health
+      port: 8080
+    initialDelaySeconds: 40
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+  readinessProbe:
+    httpGet:
+      path: /api/actuator/health
+      port: 8080
+    initialDelaySeconds: 20
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+  startupProbe:
+    httpGet:
+      path: /api/actuator/health
+      port: 8080
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 30
+  volumeMounts:
+    - name: uploads
+      mountPath: /app/uploads
+    - name: tmp
+      mountPath: /tmp
+  volumes:
+    - name: uploads
+      emptyDir: {}
+    - name: tmp
+      emptyDir: {}
+
+# ── Agent (FastAPI) ──────────────────────────────────────────────────────────
+agent:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: smartdoc-agent
+    tag: latest
+    pullPolicy: IfNotPresent
+  containerPort: 9000
+  command: ["python", "-m", "agent.main"]
+  env:
+    - name: APP_ENV
+      value: "production"
+    - name: OTEL_SERVICE_NAME
+      value: smartdoc-agent
+    - name: OTEL_EXPORTER_OTLP_ENDPOINT
+      value: http://smartdoc-otel-collector.monitoring.svc.cluster.local:4318
+    - name: QDRANT_HOST
+      value: "smartdoc-qdrant"
+    - name: QDRANT_PORT
+      value: "6333"
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
+  livenessProbe:
+    httpGet:
+      path: /health/live
+      port: 9000
+    initialDelaySeconds: 15
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+  readinessProbe:
+    httpGet:
+      path: /health/ready
+      port: 9000
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 2
+
+# ── Qdrant (vector DB) ───────────────────────────────────────────────────────
+qdrant:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: qdrant/qdrant
+    tag: "v1.12"
+    pullPolicy: IfNotPresent
+  containerPort: 6333
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "1024Mi"
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+
+# ── LLM router (FastAPI) ─────────────────────────────────────────────────────
+llmRouter:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: smartdoc-llm-router
+    tag: latest
+    pullPolicy: IfNotPresent
+  containerPort: 8000
+  command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+  env:
+    - name: LOCAL_OLLAMA_URL
+      value: "http://ollama.ollama.svc.cluster.local:11434"
+    - name: LOCAL_OLLAMA_MODEL
+      value: "llama3.2"
+    - name: RESPONSE_CACHE_ENABLED
+      value: "false"
+    - name: OTEL_SERVICE_NAME
+      value: smartdoc-llm-router
+    - name: OTEL_EXPORTER_OTLP_ENDPOINT
+      value: http://smartdoc-otel-collector.monitoring.svc.cluster.local:4318
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 8000
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 8000
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 2
+
+# ── Redis ────────────────────────────────────────────────────────────────────
+redis:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: redis
+    tag: "7-alpine"
+    pullPolicy: IfNotPresent
+  containerPort: 6379
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 999
+    runAsGroup: 999
+    fsGroup: 999
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+  persistence:
+    enabled: false
+    size: 8Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+
+# ── Frontend (React) ─────────────────────────────────────────────────────────
+frontend:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: smartdoc-frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+  containerPort: 80
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "256Mi"
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+
+# ── Services ─────────────────────────────────────────────────────────────────
+service:
+  backend:
+    enabled: true
+    type: ClusterIP
+    port: 8080
+    targetPort: 8080
+    name: http
+  agent:
+    enabled: true
+    type: ClusterIP
+    port: 9000
+    targetPort: 9000
+    name: http
+  qdrant:
+    enabled: true
+    type: ClusterIP
+    port: 6333
+    targetPort: 6333
+    name: http
+  llmRouter:
+    enabled: true
+    type: ClusterIP
+    port: 8000
+    targetPort: 8000
+    name: http
+  redis:
+    enabled: true
+    type: ClusterIP
+    port: 6379
+    targetPort: 6379
+    name: http
+  frontend:
+    enabled: true
+    type: ClusterIP
+    port: 80
+    targetPort: 80
+    name: http
+
+# ── Ingress (nginx) ──────────────────────────────────────────────────────────
+ingress:
+  enabled: false
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+  hosts:
+    - host: smartdoc.local
+      paths:
+        - path: /
+          pathType: Prefix
+        - path: /api
+          pathType: Prefix
+  tls: []
+
+# ── ConfigMap ────────────────────────────────────────────────────────────────
+configmap:
+  enabled: true
+  data:
+    APP_ENV: "production"
+    SPRING_PROFILES_ACTIVE: "prod"
+    QDRANT_HOST: "smartdoc-qdrant"
+    QDRANT_PORT: "6333"
+    LLM_BASE_URL: "http://smartdoc-llm-router:8000"
+    AGENT_BASE_URL: "http://smartdoc-agent:9000"
+    REDIS_HOST: "smartdoc-redis"
+    REDIS_PORT: "6379"
+    STORAGE_PROVIDER: "r2"
+    OTEL_EXPORTER_OTLP_ENDPOINT: "http://smartdoc-otel-collector.monitoring.svc.cluster.local:4318"
+
+# ── Secret (template — giá trị thực qua ExternalSecrets / SOPS / env) ────────
+secret:
+  enabled: true
+  stringData:
+    SMARTDOC_JDBC_URL: "CHANGE_ME"
+    SPRING_DATASOURCE_USERNAME: "CHANGE_ME"
+    SPRING_DATASOURCE_PASSWORD: "CHANGE_ME"
+    JWT_SECRET: "CHANGE_ME"
+    KAFKA_BOOTSTRAP_SERVERS: "CHANGE_ME"
+    R2_ACCOUNT_ID: "CHANGE_ME"
+    R2_ACCESS_KEY_ID: "CHANGE_ME"
+    R2_SECRET_ACCESS_KEY: "CHANGE_ME"
+    REDIS_PASSWORD: "CHANGE_ME"
+
+# ── Autoscaling (HPA) ────────────────────────────────────────────────────────
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# ── Pod Disruption Budget ────────────────────────────────────────────────────
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+
+# ── NetworkPolicy ────────────────────────────────────────────────────────────
+networkPolicy:
+  enabled: false
+  allowIngressFrom:
+    - namespaceSelector: {}
+      podSelector: {}
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: monitoring
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: prometheus
+
+# ── Argo Rollouts (canary / blue-green) ──────────────────────────────────────
+rollouts:
+  enabled: false
+  strategy: canary
+  maxUnavailable: 1
+  maxSurge: 1
+  analysis:
+    enabled: false
+    templates:
+      - name: success-rate
+        args:
+          - name: service-name
+            value: smartdoc-backend
+          - name: threshold
+            value: "99"
+
+# ── Monitoring (ServiceMonitor) ──────────────────────────────────────────────
+monitoring:
+  serviceMonitor:
+    enabled: false
+    endpoints:
+      - port: http
+        path: /api/actuator/prometheus
+        interval: 30s
+        scrapeTimeout: 10s
+      - port: http
+        path: /metrics
+        interval: 30s
+        scrapeTimeout: 10s
+
+# ── OpenTelemetry Collector ──────────────────────────────────────────────────
+otel:
+  collector:
+    enabled: false
+    image: otel/opentelemetry-collector-contrib:0.110.0
+    replicaCount: 1
+    endpoint: http://smartdoc-otel-collector.monitoring.svc.cluster.local:4318
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi

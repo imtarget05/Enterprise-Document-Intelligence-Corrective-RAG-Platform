@@ -1,0 +1,18 @@
+{{- if .Values.deploy.redis }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "smartdoc.fullname" . }}-redis
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app: smartdoc-redis
+spec:
+  type: ClusterIP
+  selector:
+    app: smartdoc-redis
+  ports:
+  - name: redis
+    port: {{ .Values.redis.containerPort }}
+    targetPort: {{ .Values.redis.containerPort }}
+{{- end }}

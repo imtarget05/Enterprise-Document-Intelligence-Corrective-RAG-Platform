@@ -1,0 +1,127 @@
+{{- if .Values.service.backend.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "smartdoc.fullname" . }}-backend
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+  annotations:
+    {{- toYaml .Values.commonAnnotations | nindent 4 }}
+spec:
+  type: {{ .Values.service.backend.type }}
+  ports:
+    - name: {{ .Values.service.backend.name }}
+      port: {{ .Values.service.backend.port }}
+      targetPort: {{ .Values.backend.containerPort }}
+      protocol: TCP
+  selector:
+    {{- include "smartdoc.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+{{- end }}
+{{- if .Values.service.agent.enabled -}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "smartdoc.fullname" . }}-agent
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app.kubernetes.io/component: agent
+spec:
+  type: {{ .Values.service.agent.type }}
+  ports:
+    - name: {{ .Values.service.agent.name }}
+      port: {{ .Values.service.agent.port }}
+      targetPort: {{ .Values.agent.containerPort }}
+      protocol: TCP
+  selector:
+    {{- include "smartdoc.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: agent
+{{- end }}
+{{- if .Values.service.qdrant.enabled -}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "smartdoc.fullname" . }}-qdrant
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app.kubernetes.io/component: qdrant
+spec:
+  type: {{ .Values.service.qdrant.type }}
+  ports:
+    - name: {{ .Values.service.qdrant.name }}
+      port: {{ .Values.service.qdrant.port }}
+      targetPort: {{ .Values.qdrant.containerPort }}
+      protocol: TCP
+  selector:
+    {{- include "smartdoc.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: qdrant
+{{- end }}
+{{- if .Values.service.llmRouter.enabled -}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "smartdoc.fullname" . }}-llm-router
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app.kubernetes.io/component: llm-router
+spec:
+  type: {{ .Values.service.llmRouter.type }}
+  ports:
+    - name: {{ .Values.service.llmRouter.name }}
+      port: {{ .Values.service.llmRouter.port }}
+      targetPort: {{ .Values.service.llmRouter.targetPort }}
+      protocol: TCP
+  selector:
+    {{- include "smartdoc.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: llm-router
+{{- end }}
+{{- if .Values.service.redis.enabled -}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "smartdoc.fullname" . }}-redis
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  type: {{ .Values.service.redis.type }}
+  ports:
+    - name: {{ .Values.service.redis.name }}
+      port: {{ .Values.service.redis.port }}
+      targetPort: {{ .Values.redis.containerPort }}
+      protocol: TCP
+  selector:
+    {{- include "smartdoc.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+{{- end }}
+{{- if .Values.service.frontend.enabled -}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "smartdoc.fullname" . }}-frontend
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  type: {{ .Values.service.frontend.type }}
+  ports:
+    - name: {{ .Values.service.frontend.name }}
+      port: {{ .Values.service.frontend.port }}
+      targetPort: {{ .Values.frontend.containerPort }}
+      protocol: TCP
+  selector:
+    {{- include "smartdoc.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+{{- end }}

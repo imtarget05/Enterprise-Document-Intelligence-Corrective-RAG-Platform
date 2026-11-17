@@ -1,0 +1,83 @@
+{{- if .Values.deploy.llmRouter -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "smartdoc.fullname" . }}-llm-router
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app.kubernetes.io/component: llm-router
+  annotations:
+    {{- range $key, $value := .Values.commonAnnotations }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+    {{- if .Values.llmRouter.annotations }}
+    {{- toYaml .Values.llmRouter.annotations | nindent 4 }}
+    {{- end }}
+spec:
+  replicas: {{ .Values.llmRouter.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      {{- include "smartdoc.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: llm-router
+  template:
+    metadata:
+      labels:
+        {{- include "smartdoc.labels" . | nindent 8 }}
+        app.kubernetes.io/component: llm-router
+      annotations:
+        {{- if .Values.llmRouter.podAnnotations }}
+        {{- toYaml .Values.llmRouter.podAnnotations | nindent 8 }}
+        {{- end }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: /metrics
+    spec:
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "smartdoc.name" . }}-llm-router
+      securityContext:
+        {{- toYaml .Values.llmRouter.securityContext | nindent 8 }}
+      containers:
+        - name: llm-router
+          image: {{ include "smartdoc.image" .Values.llmRouter.image }}
+          imagePullPolicy: {{ .Values.llmRouter.image.pullPolicy }}
+          command:
+            {{- toYaml .Values.llmRouter.command | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.llmRouter.containerPort }}
+              protocol: TCP
+          env:
+            {{- toYaml .Values.llmRouter.env | nindent 12 }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "smartdoc.fullname" . }}-config
+          resources:
+            {{- toYaml .Values.llmRouter.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.llmRouter.containerSecurityContext | nindent 12 }}
+          livenessProbe:
+            {{- toYaml .Values.llmRouter.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.llmRouter.readinessProbe | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

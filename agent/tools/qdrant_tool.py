@@ -468,7 +468,10 @@ class QdrantHybridSearch:
         reraise=True,
     )
     async def _embed_inner(self, payload: Dict[str, Any]):
-        resp = await self._http.post(self._embed_url, json=payload)
+        resp = await self._http.post(
+            self._embed_url, json=payload,
+            headers={"X-Internal-Token": settings.internal_service_token},
+        )
         resp.raise_for_status()
         return resp.json()
 

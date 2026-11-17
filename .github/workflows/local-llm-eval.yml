@@ -61,6 +61,7 @@ jobs:
           LOCAL_OLLAMA_URL: http://localhost:11434
           LOCAL_OLLAMA_MODEL: llama3.2
           RESPONSE_CACHE_ENABLED: 'false'
+          ROUTER_INTERNAL_TOKEN: ${{ github.run_id }}
         run: |
           # Router module lives at llm-router/app/main.py -> use app.main:app.
           nohup uvicorn app.main:app --host 0.0.0.0 --port 8000 > /tmp/router.log 2>&1 &
@@ -75,15 +76,18 @@ jobs:
       # EVIDENCE #2: real questions answered by local llama3.2 inference
       # through the router's local-first path.
       - name: Run real local-LLM eval
+        env:
+          ROUTER_INTERNAL_TOKEN: ${{ github.run_id }}
         run: |
           python - <<'PYEOF'
-          import json, time, urllib.request
+          import json, os, time, urllib.request
 
           def post(path, payload):
               req = urllib.request.Request(
                   f"http://127.0.0.1:8000{path}",
                   data=json.dumps(payload).encode(),
-                  headers={"Content-Type": "application/json"},
+                  headers={"Content-Type": "application/json",
+                           "X-Internal-Token": os.environ["ROUTER_INTERNAL_TOKEN"]},
               )
               with urllib.request.urlopen(req, timeout=300) as r:
                   return json.loads(r.read())

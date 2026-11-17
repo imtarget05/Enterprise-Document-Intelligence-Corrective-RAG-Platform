@@ -1,0 +1,45 @@
+{
+  "date": "2026-11-13",
+  "scanner_version": "Version: 0.74.0",
+  "scan": "filesystem dependency vulnerabilities",
+  "severity": [
+    "HIGH",
+    "CRITICAL"
+  ],
+  "ignore_unfixed": true,
+  "include_dev_deps": false,
+  "exit_code": 0,
+  "targets": [
+    {
+      "path": "agent/requirements.txt",
+      "type": "pip",
+      "packages": 39,
+      "findings": 0
+    },
+    {
+      "path": "airflow/requirements.txt",
+      "type": "pip",
+      "packages": 2,
+      "findings": 0
+    },
+    {
+      "path": "backend/pom.xml",
+      "type": "pom",
+      "packages": 311,
+      "findings": 0
+    },
+    {
+      "path": "frontend/package-lock.json",
+      "type": "npm",
+      "packages": 174,
+      "findings": 0
+    },
+    {
+      "path": "llm-router/requirements.txt",
+      "type": "pip",
+      "packages": 7,
+      "findings": 0
+    }
+  ],
+  "high_or_critical_findings": 0
+}

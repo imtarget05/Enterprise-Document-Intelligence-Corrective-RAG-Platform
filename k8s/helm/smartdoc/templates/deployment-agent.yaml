@@ -1,0 +1,83 @@
+{{- if .Values.deploy.agent -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "smartdoc.fullname" . }}-agent
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app.kubernetes.io/component: agent
+  annotations:
+    {{- range $key, $value := .Values.commonAnnotations }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+    {{- if .Values.agent.annotations }}
+    {{- toYaml .Values.agent.annotations | nindent 4 }}
+    {{- end }}
+spec:
+  replicas: {{ .Values.agent.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      {{- include "smartdoc.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: agent
+  template:
+    metadata:
+      labels:
+        {{- include "smartdoc.labels" . | nindent 8 }}
+        app.kubernetes.io/component: agent
+      annotations:
+        {{- if .Values.agent.podAnnotations }}
+        {{- toYaml .Values.agent.podAnnotations | nindent 8 }}
+        {{- end }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9000"
+        prometheus.io/path: /metrics
+    spec:
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "smartdoc.name" . }}-agent
+      securityContext:
+        {{- toYaml .Values.agent.securityContext | nindent 8 }}
+      containers:
+        - name: agent
+          image: {{ include "smartdoc.image" .Values.agent.image }}
+          imagePullPolicy: {{ .Values.agent.image.pullPolicy }}
+          command:
+            {{- toYaml .Values.agent.command | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.agent.containerPort }}
+              protocol: TCP
+          env:
+            {{- toYaml .Values.agent.env | nindent 12 }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "smartdoc.fullname" . }}-config
+          resources:
+            {{- toYaml .Values.agent.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.agent.containerSecurityContext | nindent 12 }}
+          livenessProbe:
+            {{- toYaml .Values.agent.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.agent.readinessProbe | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

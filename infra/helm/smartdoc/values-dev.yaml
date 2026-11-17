@@ -1,0 +1,25 @@
+# smartdoc — values dev (override base)
+namespace: smartdoc-dev
+
+image:
+  tag: latest
+  pullPolicy: Always
+
+backend:
+  replicaCount: 1
+  env:
+    - name: SPRING_PROFILES_ACTIVE
+      value: "dev"
+
+redis:
+  enabled: true
+
+qdrant:
+  enabled: true
+
+secret:
+  enabled: false
+  stringData: {}
+
+ingress:
+  enabled: false

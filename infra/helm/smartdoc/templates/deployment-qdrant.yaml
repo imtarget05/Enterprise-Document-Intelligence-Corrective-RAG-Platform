@@ -1,0 +1,35 @@
+{{- if .Values.deploy.qdrant }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "smartdoc.fullname" . }}-qdrant
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app: smartdoc-qdrant
+spec:
+  replicas: {{ .Values.qdrant.replicaCount }}
+  selector:
+    matchLabels:
+      app: smartdoc-qdrant
+  template:
+    metadata:
+      labels:
+        app: smartdoc-qdrant
+    spec:
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: qdrant
+        image: {{ .Values.qdrant.image.repository }}:{{ .Values.qdrant.image.tag }}
+        imagePullPolicy: {{ .Values.qdrant.image.pullPolicy }}
+        ports:
+        - name: grpc
+          containerPort: 6334
+        - name: http
+          containerPort: {{ .Values.qdrant.containerPort }}
+        resources:
+          {{- toYaml .Values.qdrant.resources | nindent 10 }}
+{{- end }}

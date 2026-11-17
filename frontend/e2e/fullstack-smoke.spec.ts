@@ -140,6 +140,7 @@ test.describe('full-stack API smoke', () => {
         sessionId: `e2e-session-${Date.now()}`,
         documentId,
         message: 'What was the root cause of the failure?',
+        mode: 'rag',
       },
       timeout: 150_000,
     });
