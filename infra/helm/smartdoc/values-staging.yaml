@@ -18,12 +18,8 @@ qdrant:
   enabled: true
 
 secret:
-  stringData:
-    SPRING_DATASOURCE_URL: "jdbc:postgresql://smartdoc-pg.staging:5432/smartdoc"
-    SPRING_DATASOURCE_USERNAME: "smartdoc"
-    SPRING_DATASOURCE_PASSWORD: "CHANGE_ME_STAGING"
-    JWT_SECRET: "CHANGE_ME_STAGING_JWT"
-    REDIS_PASSWORD: "CHANGE_ME_STAGING_REDIS"
+  enabled: false
+  stringData: {}
 
 ingress:
   enabled: true

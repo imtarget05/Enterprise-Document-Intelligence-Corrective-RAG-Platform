@@ -23,12 +23,8 @@ autoscaling:
   maxReplicas: 6
 
 secret:
-  stringData:
-    SPRING_DATASOURCE_URL: "CHANGE_ME_PROD"
-    SPRING_DATASOURCE_USERNAME: "CHANGE_ME_PROD"
-    SPRING_DATASOURCE_PASSWORD: "CHANGE_ME_PROD"
-    JWT_SECRET: "CHANGE_ME_PROD_JWT"
-    REDIS_PASSWORD: "CHANGE_ME_PROD_REDIS"
+  enabled: false
+  stringData: {}
 
 ingress:
   enabled: true
