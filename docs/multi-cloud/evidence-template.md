@@ -1,60 +1,65 @@
-# Multi-Cloud Evidence Template (P1 — chưa chạy thật) — SmartDoc
+# Multi-Cloud Evidence — SmartDoc (Azure)
 
-Mục tiêu: chứng minh khả năng cloud-agnostic bằng cách deploy cùng workload lên ≥2 cloud.
-**Lưu ý**: Các bước dưới đây là skeleton/template. Để lấy evidence thật, bạn cần credentials cloud thật (Azure/AWS/GCP) và thay các giá trị `CHANGE_ME`.
+Mục tiêu: chứng minh khả năng triển khai workload lên Azure qua Terraform.
 
-## 1. Mục tiêu evidence
+## 1. Thông tin Azure CLI
 
-| Mục tiêu | Cloud 1 (hiện có) | Cloud 2 (cần bổ sung) |
-|----------|-------------------|-----------------------|
-| K8s cluster | Azure AKS (Terraform) | AWS EKS hoặc GCP GKE |
-| PostgreSQL | Azure PG Flexible | AWS RDS / GCP Cloud SQL |
-| Object storage | Azure Storage | AWS S3 / GCP GCS |
-| Redis | Azure Cache for Redis | AWS ElastiCache / GCP Memorystore |
-| ArgoCD sync | Azure AKS | AWS EKS / GCP GKE |
-| App health | /api/actuator/health 200 | /api/actuator/health 200 |
+| Mục | Giá trị |
+|-----|---------|
+| Subscription | Azure subscription 1 (`a3deec78-7edb-41cd-9e94-ec1d4d9379f5`) |
+| Tenant | `aa79a92c-ec09-4de1-baa9-151b8f9df886` (`binhtan5734gmail.onmicrosoft.com`) |
+| User | `binhtan5734@gmail.com` |
+| Azure CLI | 2.90.0 |
 
-## 2. Skeleton Terraform AWS (placeholder)
+## 2. Infrastructure đã tạo trên Azure
 
-```hcl
-# infra/terraform/aws/main.tf  (chưa được kích hoạt)
-provider "aws" {
-  region = var.aws_region
-}
+| Resource | Tên | Vùng | Trạng thái |
+|----------|-----|------|------------|
+| Resource Group | `rg-smartdoc-prod` | eastus | Succeeded |
+| Virtual Network | `smartdoc-vnet-l9quzq` | eastus | Succeeded |
+| Subnet (container apps) | `container-apps` | eastus | Succeeded |
+| Subnet (private endpoints) | `private-endpoints` | eastus | Succeeded |
+| Log Analytics | `smartdoc-law-l9quzq` | eastus | Succeeded |
+| Azure AI Search | `smartdoc-search-l9quzq` | eastus | Succeeded |
+| Storage Account | `stsmartdocl9quzq` | eastus | Succeeded |
+| Service Bus Namespace | `smartdoc-sb-l9quzq` | eastus | Succeeded |
+| User Assigned Identity | `smartdoc-uai` | eastus | Succeeded |
+| Private DNS Zone | `privatelink.blob.core.windows.net` | global | Succeeded |
+| Private DNS Zone Link | `smartdoc-storage-blob` | global | Succeeded |
 
-resource "aws_eks_cluster" "smartdoc" {
-  name     = "smartdoc-eks"
-  role_arn = aws_iam_role.cluster.arn
-  version  = "1.28"
+## 3. Các vấn đề gặp phải
 
-  vpc_config {
-    subnet_ids = aws_subnet.eks[*].id
-  }
-}
+| Vấn đề | Nguyên nhân | Hành động |
+|--------|-------------|-----------|
+| Container App Environment | `MaxNumberOfGlobalEnvironmentsInSubExceeded` - subscription chỉ cho phép tối đa 2 CAE | Không thể tạo CAE trên subscription này. Cần xóa CAE cũ hoặc đăng ký quota increase. |
+| Storage Account key auth | `KeyBasedAuthenticationNotPermitted` - storage account không cho phép key-based auth | Cần dùng managed identity hoặc Azure AD auth thay vì access key |
+| Service Bus Queue | Tạo bị hủy do Container App Environment lỗi | Sẽ tạo sau khi CAE vấn đề được giải quyết |
 
-resource "aws_rds_cluster" "smartdoc_pg" {
-  cluster_identifier = "smartdoc-pg"
-  engine             = "aurora-postgresql"
-  master_username    = var.pg_admin_user
-  master_password    = var.pg_admin_password  # từ secret, không hardcode
-}
-```
+## 4. Evidence files
 
-## 3. Checklist evidence (điền khi chạy thật)
+| File | Mô tả |
+|------|-------|
+| `docs/evidence/azure-resources-2026-11-14.json` | Danh sách tất cả resource trong RG `rg-smartdoc-prod` |
 
-- [ ] Terraform apply Azure AKS thành công → `terraform output kubernetes_cluster_name`
-- [ ] Terraform apply AWS/GCP EKS/GKE thành công → cluster_name
-- [ ] ArgoCD Application deploy cùng Helm chart lên cả 2 cluster
-- [ ] `kubectl get pods -n smartdoc-prod` trên cả 2 cluster đều Running
-- [ ] `curl <LB-IP>/api/actuator/health` trả 200 trên cả 2 cloud
-- [ ] Chụp màn hình / lưu logs làm evidence đính kèm vào CV/portfolio
-
-## 4. Cách lấy screenshot evidence
+## 5. Cách lấy thêm evidence
 
 ```bash
-# Trên mỗi cloud, sau khi deploy:
-kubectl get pods -n smartdoc-prod -o wide > evidence/cluster-<cloud>-pods.txt
-curl -s <LB-IP>/api/actuator/health > evidence/health-<cloud>.json
-kubectl get rollout -n smartdoc-prod > evidence/rollout-<cloud>.txt
-# Chụp màn hình Grafana dashboard + ArgoCD sync status
+# Resource group info
+az group show --resource-group rg-smartdoc-prod
+
+# All resources in RG
+az resource list --resource-group rg-smartdoc-prod --output table
+
+# Storage account info
+az storage account show --resource-group rg-smartdoc-prod --name stsmartdocl9quzq
+
+# Service Bus namespace
+az servicebus namespace show --resource-group rg-smartdoc-prod --name smartdoc-sb-l9quzq
+
+# Azure AI Search
+az search service show --resource-group rg-smartdoc-prod --name smartdoc-search-l9quzq
 ```
+
+## 6. Multi-cloud (AWS/GCP)
+
+Cần cấu hình credentials AWS/GCP nếu muốn chứng minh multi-cloud. Hiện chỉ chạy trên Azure.
