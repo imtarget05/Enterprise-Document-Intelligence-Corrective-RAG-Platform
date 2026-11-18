@@ -14,7 +14,10 @@ No network, no LLM, no production access.
 """
 import os
 import sys
+import tempfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -22,8 +25,11 @@ from run_live_benchmark import (  # noqa: E402
     DEFAULT_CORPUS,
     DEFAULT_QUESTIONS,
     evaluate_retrieval_ranking,
+    run_benchmark,
+    sha256_file,
     validate_question_corpus,
 )
+import hashlib
 import json
 
 
@@ -119,6 +125,20 @@ class DatasetIntegrityTests(unittest.TestCase):
         ):
             with self.assertRaises(ValueError):
                 validate_question_corpus(questions, corpus)
+
+    def test_mismatch_stops_before_network_and_files_have_stable_hashes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            corpus = Path(directory) / "corpus.txt"
+            questions = Path(directory) / "questions.json"
+            corpus.write_text("bearing failure", encoding="utf-8")
+            questions.write_text(json.dumps([{"id": 1, "question": "Which backend?",
+                                              "expected_source_keywords": ["Spring Boot"]}]), encoding="utf-8")
+            self.assertEqual(sha256_file(corpus), hashlib.sha256(b"bearing failure").hexdigest())
+            with patch("run_live_benchmark.requests.Session") as session:
+                with self.assertRaises(ValueError):
+                    run_benchmark("http://localhost:8080/api", questions, corpus,
+                                  Path(directory) / "result.json")
+                session.assert_not_called()
 
 
 if __name__ == "__main__":

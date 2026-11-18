@@ -110,7 +110,7 @@ jobs:
           PYEOF
 
   live-benchmark:
-    name: "Live Retrieval & LLM Benchmark (Production Stack)"
+    name: "Live Retrieval & LLM Benchmark (supplied stack)"
     if: ${{ inputs.base_url != '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
