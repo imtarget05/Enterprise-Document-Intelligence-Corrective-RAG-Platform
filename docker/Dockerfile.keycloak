@@ -1,5 +1,5 @@
 # Keycloak SSO for prod (Render free)
-FROM quay.io/keycloak/keycloak:24.0.5
+FROM quay.io/keycloak/keycloak:26.8.0
 # Use dev file DB (H2) for free tier — prod should switch to Neon via KC_DB env if needed
 ENV KC_DB=dev-file
 EXPOSE 8080
