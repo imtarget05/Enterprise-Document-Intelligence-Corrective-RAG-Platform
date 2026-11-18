@@ -104,15 +104,20 @@ python eval/run_fixture_eval.py --base-url http://127.0.0.1:8081/api
 # Live benchmark (requires a running deployment + uploaded document)
 python eval/run_live_benchmark.py \
   --base-url https://<your-deployment>/api \
-  --questions eval/questions.json \
+  --questions eval/agent_questions.json \
   --output eval/results/live_benchmark.json
 ```
 
-`run_live_benchmark.py` reports **Hit@K / Recall@K / MRR** computed by matching
+`run_live_benchmark.py` reports **Hit@K / lexical keyword coverage@K / MRR** computed by matching
 expected source keywords inside the top-K retrieved chunks (so: ranking-aware
 and K-scoped, but still lexical — not gold-chunk-ID ground truth). Questions
 that carry no expected keywords are reported as `scored: false` with `None`
 metrics and are excluded from every aggregate; they are never scored as 1.0.
+
+The runner rejects question sets whose expected source keywords are absent from
+the uploaded corpus before opening a session. Its JSON includes SHA-256 hashes
+of the corpus and question file. `eval/questions.json` contains architecture
+questions and must not be paired with the default 8D corpus.
 
 A live run cannot be executed from a machine without a reachable provider, and
 **no result may be fabricated in its absence**.

@@ -17,6 +17,19 @@ on:
         default: false
 
 jobs:
+  benchmark-integrity:
+    name: Live benchmark dataset and scoring integrity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install benchmark dependencies
+        run: pip install requests pytest
+      - name: Verify matched corpus and scoring rules
+        run: python -m pytest eval/tests/test_live_benchmark_scoring.py -q
+
   fixture-smoke:
     name: "Fixture Smoke Test (Mock Stack, Non-Gating)"
     runs-on: ubuntu-latest
@@ -97,7 +110,7 @@ jobs:
           PYEOF
 
   live-benchmark:
-    name: "Live Retrieval & LLM Benchmark (Production Stack)"
+    name: "Live Retrieval & LLM Benchmark (supplied stack)"
     if: ${{ inputs.base_url != '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -117,7 +130,7 @@ jobs:
           BASE_URL: ${{ inputs.base_url }}
         run: |
           python eval/run_live_benchmark.py --base-url "$BASE_URL" \
-            --questions eval/questions.json \
+            --questions eval/agent_questions.json \
             --output eval/results/live_benchmark.json
 
       - name: Upload live benchmark report

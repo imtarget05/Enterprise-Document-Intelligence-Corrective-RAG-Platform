@@ -14,11 +14,23 @@ No network, no LLM, no production access.
 """
 import os
 import sys
+import tempfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from run_live_benchmark import evaluate_retrieval_ranking  # noqa: E402
+from run_live_benchmark import (  # noqa: E402
+    DEFAULT_CORPUS,
+    DEFAULT_QUESTIONS,
+    evaluate_retrieval_ranking,
+    run_benchmark,
+    sha256_file,
+    validate_question_corpus,
+)
+import hashlib
+import json
 
 
 def _chunk(idx, text, rank=None):
@@ -90,6 +102,43 @@ class ScoredQuestionTests(unittest.TestCase):
         # are the same thing, so slicing by position IS slicing by rank.
         chunks = [_chunk(i, "text", rank=i) for i in range(1, 7)]
         self.assertEqual([c["rank"] for c in chunks[:5]], [1, 2, 3, 4, 5])
+
+
+class DatasetIntegrityTests(unittest.TestCase):
+    def test_default_questions_match_uploaded_corpus(self):
+        questions = json.loads(DEFAULT_QUESTIONS.read_text(encoding="utf-8"))
+        self.assertGreaterEqual(len(questions), 3)
+        validate_question_corpus(questions, DEFAULT_CORPUS.read_text(encoding="utf-8"))
+
+    def test_architecture_questions_are_rejected_for_engineering_fixture(self):
+        questions = [{"id": "architecture", "question": "Which backend framework?",
+                      "expected_source_keywords": ["Spring Boot"]}]
+        with self.assertRaisesRegex(ValueError, "architecture"):
+            validate_question_corpus(questions, DEFAULT_CORPUS.read_text(encoding="utf-8"))
+
+    def test_duplicate_ids_and_empty_questions_are_rejected(self):
+        corpus = "bearing failure root cause"
+        for questions in (
+            [{"id": 1, "question": "A?", "expected_source_keywords": ["bearing"]},
+             {"id": 1, "question": "B?", "expected_source_keywords": ["failure"]}],
+            [{"id": 2, "question": "", "expected_source_keywords": ["bearing"]}],
+        ):
+            with self.assertRaises(ValueError):
+                validate_question_corpus(questions, corpus)
+
+    def test_mismatch_stops_before_network_and_files_have_stable_hashes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            corpus = Path(directory) / "corpus.txt"
+            questions = Path(directory) / "questions.json"
+            corpus.write_text("bearing failure", encoding="utf-8")
+            questions.write_text(json.dumps([{"id": 1, "question": "Which backend?",
+                                              "expected_source_keywords": ["Spring Boot"]}]), encoding="utf-8")
+            self.assertEqual(sha256_file(corpus), hashlib.sha256(b"bearing failure").hexdigest())
+            with patch("run_live_benchmark.requests.Session") as session:
+                with self.assertRaises(ValueError):
+                    run_benchmark("http://localhost:8080/api", questions, corpus,
+                                  Path(directory) / "result.json")
+                session.assert_not_called()
 
 
 if __name__ == "__main__":
