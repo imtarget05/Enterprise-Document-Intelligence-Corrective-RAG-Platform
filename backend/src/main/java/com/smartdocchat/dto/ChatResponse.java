@@ -26,6 +26,8 @@ public class ChatResponse {
     private Double confidenceScore;
     /** CRAG strategy used: "direct" | "corrective" | "web_search" | "general_knowledge". */
     private String ragStrategy;
+    /** How the answer was produced: llm, extractive_fallback, abstention, error, blocked, agent, or unverified. */
+    private String answerOrigin;
     /** Structured citations: documentId, content, score, sourceType. */
     private List<Map<String, Object>> sources;
     /** True when the agent paused an action awaiting human approval (HITL). */

@@ -17,6 +17,7 @@ public class LlmConfig {
     private String embeddingModel = "@cf/baai/bge-base-en-v1.5";
     private double temperature = 0.3;
     private double topP = 0.95;
+    private int maxOutputTokens = 2048;
     
     // Retry configurations
     private int maxAttempts = 3;

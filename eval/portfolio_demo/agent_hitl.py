@@ -146,8 +146,21 @@ def invoke(db_path: Path, thread_id: str, state: DemoState | None = None,
         pass
     with SqliteSaver.from_conn_string(str(db_path)) as saver:
         graph = build_graph(db_path, saver)
-        payload = state if state is not None else Command(resume=decision)
         config = {"configurable": {"thread_id": thread_id}}
+        if state is None and decision is not None:
+            # Reject invalid resumes before LangGraph records the resume value.
+            # A failed node otherwise replays the same invalid decision when a
+            # different approver tries to correct it on the same thread.
+            current = graph.get_state(config)
+            owner_id = current.values.get("owner_id") if current.values else None
+            if not isinstance(decision.get("approved"), bool):
+                raise ValueError("decision must contain approved: bool")
+            approver = decision.get("approver")
+            if not isinstance(approver, str) or not approver.strip():
+                raise ValueError("a named human approver is required")
+            if owner_id and approver == owner_id:
+                raise ValueError("request owner cannot approve their own action")
+        payload = state if state is not None else Command(resume=decision)
         result = graph.invoke(payload, config)
         snapshot = graph.get_state(config)
     return {**result, "__paused__": any(task.interrupts for task in snapshot.tasks)}

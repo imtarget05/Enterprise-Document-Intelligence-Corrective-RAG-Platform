@@ -44,6 +44,7 @@ class LlmClientTest {
     @Mock private RestTemplate restTemplate;
 
     private LlmClient llmClient;
+    private LlmConfig llmConfig;
     private CircuitBreaker circuitBreaker;
     private io.micrometer.core.instrument.simple.SimpleMeterRegistry meterRegistry;
 
@@ -52,7 +53,7 @@ class LlmClientTest {
 
     @BeforeEach
     void setUp() {
-        LlmConfig llmConfig = new LlmConfig();
+        llmConfig = new LlmConfig();
         llmConfig.setChatModel("test-model");
         llmConfig.setBaseUrl("http://localhost:8001");
 
@@ -86,6 +87,11 @@ class LlmClientTest {
                         "eval_count", 42)));
 
         assertEquals("answer", guardedChat());
+        ArgumentCaptor<HttpEntity> requestCaptor = ArgumentCaptor.forClass(HttpEntity.class);
+        verify(restTemplate).exchange(eq("http://localhost:8001/api/chat"), eq(HttpMethod.POST),
+                requestCaptor.capture(), eq(Map.class));
+        Map<?, ?> body = (Map<?, ?>) requestCaptor.getValue().getBody();
+        assertEquals(Map.of("task_type", "qa"), body.get("routing"));
     }
 
     @Test
@@ -164,6 +170,7 @@ class LlmClientTest {
     @Test
     @SuppressWarnings("unchecked")
     void chatSendsTopPSamplingInOptions() {
+        llmConfig.setMaxOutputTokens(256);
         when(restTemplate.exchange(eq("http://localhost:8001/api/chat"), eq(HttpMethod.POST),
                 any(HttpEntity.class), eq(Map.class)))
                 .thenReturn(ResponseEntity.ok(Map.of("message", Map.of("content", "answer"))));
@@ -178,7 +185,7 @@ class LlmClientTest {
         Map<String, Object> options = (Map<String, Object>) body.get("options");
         assertEquals(0.95, ((Number) options.get("top_p")).doubleValue());
         assertEquals(0.3, ((Number) options.get("temperature")).doubleValue());
-        assertEquals(2048, ((Number) options.get("num_predict")).intValue());
+        assertEquals(256, ((Number) options.get("num_predict")).intValue());
     }
 
     @Test
