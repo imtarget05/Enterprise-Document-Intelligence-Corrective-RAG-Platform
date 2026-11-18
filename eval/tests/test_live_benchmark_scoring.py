@@ -18,7 +18,13 @@ import unittest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from run_live_benchmark import evaluate_retrieval_ranking  # noqa: E402
+from run_live_benchmark import (  # noqa: E402
+    DEFAULT_CORPUS,
+    DEFAULT_QUESTIONS,
+    evaluate_retrieval_ranking,
+    validate_question_corpus,
+)
+import json
 
 
 def _chunk(idx, text, rank=None):
@@ -90,6 +96,29 @@ class ScoredQuestionTests(unittest.TestCase):
         # are the same thing, so slicing by position IS slicing by rank.
         chunks = [_chunk(i, "text", rank=i) for i in range(1, 7)]
         self.assertEqual([c["rank"] for c in chunks[:5]], [1, 2, 3, 4, 5])
+
+
+class DatasetIntegrityTests(unittest.TestCase):
+    def test_default_questions_match_uploaded_corpus(self):
+        questions = json.loads(DEFAULT_QUESTIONS.read_text(encoding="utf-8"))
+        self.assertGreaterEqual(len(questions), 3)
+        validate_question_corpus(questions, DEFAULT_CORPUS.read_text(encoding="utf-8"))
+
+    def test_architecture_questions_are_rejected_for_engineering_fixture(self):
+        questions = [{"id": "architecture", "question": "Which backend framework?",
+                      "expected_source_keywords": ["Spring Boot"]}]
+        with self.assertRaisesRegex(ValueError, "architecture"):
+            validate_question_corpus(questions, DEFAULT_CORPUS.read_text(encoding="utf-8"))
+
+    def test_duplicate_ids_and_empty_questions_are_rejected(self):
+        corpus = "bearing failure root cause"
+        for questions in (
+            [{"id": 1, "question": "A?", "expected_source_keywords": ["bearing"]},
+             {"id": 1, "question": "B?", "expected_source_keywords": ["failure"]}],
+            [{"id": 2, "question": "", "expected_source_keywords": ["bearing"]}],
+        ):
+            with self.assertRaises(ValueError):
+                validate_question_corpus(questions, corpus)
 
 
 if __name__ == "__main__":

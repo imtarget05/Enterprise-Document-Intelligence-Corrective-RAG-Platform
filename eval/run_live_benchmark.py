@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """Live RAG benchmark: evaluates real retrieval and LLM response against live stack.
 
-Runs questions.json (31 items) against a live Spring Boot + Vector DB (Qdrant) stack.
-Computes real retrieval metrics (Hit-Rate@K, Recall@K, MRR) from retrieved chunk IDs / sources
-rather than synthetic string matches, providing verified production evaluation numbers.
+Runs a question set matched to the uploaded corpus against a live Spring Boot
+and Qdrant stack. Retrieval scores are lexical keyword coverage of returned
+chunk text, not gold-chunk recall or a semantic relevance judgment.
 
 Usage:
     python eval/run_live_benchmark.py --base-url http://localhost:8080/api
 """
 import argparse
+import hashlib
 import json
 import os
 import pathlib
@@ -21,8 +22,34 @@ import requests
 
 HERE = pathlib.Path(__file__).resolve().parent
 DEFAULT_CORPUS = HERE / "fixtures" / "8d_failure_risk_fixture.txt"
-DEFAULT_QUESTIONS = HERE / "questions.json"
+DEFAULT_QUESTIONS = HERE / "agent_questions.json"
 DEFAULT_OUTPUT = HERE / "results" / "live_benchmark.json"
+
+
+def validate_question_corpus(questions: List[Dict[str, Any]], corpus_text: str) -> None:
+    """Reject a question set whose lexical ground truth cannot be in the upload."""
+    if not isinstance(questions, list) or not questions:
+        raise ValueError("Questions must be a non-empty list")
+    corpus_lower = corpus_text.casefold()
+    seen_ids = set()
+    for question in questions:
+        question_id = question.get("id")
+        if question_id is None or question_id in seen_ids:
+            raise ValueError(f"Missing or duplicate question id: {question_id}")
+        seen_ids.add(question_id)
+        if not str(question.get("question", "")).strip():
+            raise ValueError(f"Empty question text: {question_id}")
+        keywords = question.get("expected_source_keywords")
+        if not isinstance(keywords, list) or not keywords:
+            raise ValueError(f"Missing source keyword ground truth: {question_id}")
+        absent = [word for word in keywords if not isinstance(word, str) or not word.strip()
+                  or word.casefold() not in corpus_lower]
+        if absent:
+            raise ValueError(f"Question {question_id} has source keywords absent from uploaded corpus: {absent}")
+
+
+def sha256_file(path: pathlib.Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def get_csrf_token(session: requests.Session, base_url: str) -> Optional[str]:
@@ -206,6 +233,8 @@ def run_benchmark(
     top_k: int = 5,
 ) -> Dict[str, Any]:
     base_url = base_url.rstrip("/")
+    questions = json.loads(questions_path.read_text(encoding="utf-8"))
+    validate_question_corpus(questions, corpus_path.read_text(encoding="utf-8"))
     session = requests.Session()
 
     print(f"Connecting to live backend at: {base_url}")
@@ -214,12 +243,11 @@ def run_benchmark(
 
     doc_id = upload_corpus(session, base_url, auth_headers, corpus_path)
 
-    questions = json.loads(questions_path.read_text(encoding="utf-8"))
     print(f"Loaded {len(questions)} evaluation questions from {questions_path.name}")
 
     results = []
     latencies = []
-    genuine_responses = 0
+    non_mock_answer_responses = 0
 
     session_id = f"live-bench-{uuid.uuid4().hex[:8]}"
 
@@ -261,7 +289,7 @@ def run_benchmark(
             if r.status_code == 200:
                 response_data = r.json()
                 if not is_mock and response_data.get("aiResponse"):
-                    genuine_responses += 1
+                    non_mock_answer_responses += 1
         except Exception as e:
             latency_ms = int((time.time() - t0) * 1000)
             print(f"  [Q{q_id}] Request error: {e}", file=sys.stderr)
@@ -288,18 +316,18 @@ def run_benchmark(
             "is_mock": is_mock,
             "scored": retrieval_metrics["scored"],
             "retrieval_hit": retrieval_metrics["hit"],
-            "retrieval_recall": retrieval_metrics["recall"],
+            "source_keyword_coverage": retrieval_metrics["recall"],
             "mrr": retrieval_metrics["mrr"],
             "matched_rank": retrieval_metrics["matched_rank"],
             "answer_scored": answer_scored,
-            "answer_correct": answer_correct,
+            "answer_keyword_hit": answer_correct,
             "retrieved_chunks_count": len(retrieved_chunks),
             "confidence": response_data.get("confidence"),
             "rag_strategy": response_data.get("ragStrategy"),
         })
 
         icon = "✅" if (retrieval_metrics["hit"] and answer_correct) else "⚠️"
-        print(f"  [{i}/{len(questions)}] Q{q_id}: {icon} (Hit@{top_k}={retrieval_metrics['hit']}, Recall={retrieval_metrics['recall']}, Latency={latency_ms}ms)")
+        print(f"  [{i}/{len(questions)}] Q{q_id}: {icon} (KeywordHit@{top_k}={retrieval_metrics['hit']}, KeywordCoverage={retrieval_metrics['recall']}, Latency={latency_ms}ms)")
 
     total = len(results)
     # Aggregates are computed ONLY over questions that carry ground truth.
@@ -308,35 +336,42 @@ def run_benchmark(
     scored_answers = [r for r in results if r["answer_scored"]]
     hits = sum(1 for r in scored_retrieval if r["retrieval_hit"])
     avg_recall = (
-        sum(r["retrieval_recall"] for r in scored_retrieval) / len(scored_retrieval)
+        sum(r["source_keyword_coverage"] for r in scored_retrieval) / len(scored_retrieval)
         if scored_retrieval else None
     )
     mean_mrr = (
         sum(r["mrr"] for r in scored_retrieval) / len(scored_retrieval)
         if scored_retrieval else None
     )
-    correct_answers = sum(1 for r in scored_answers if r["answer_correct"])
+    correct_answers = sum(1 for r in scored_answers if r["answer_keyword_hit"])
 
     summary = {
         "benchmark_type": "live_stack_evaluation",
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "target_base_url": base_url,
         "corpus_file": corpus_path.name,
+        "corpus_sha256": sha256_file(corpus_path),
+        "questions_file": questions_path.name,
+        "questions_sha256": sha256_file(questions_path),
+        "retrieval_scoring_method": "case-insensitive lexical keyword coverage in top-k returned chunk text; not gold-chunk recall",
+        "answer_scoring_method": "case-insensitive expected-answer substring hit; not semantic correctness",
+        "provider_identity_verification": "not_verified_by_this_harness",
         "total_questions": total,
         "scored_retrieval_questions": len(scored_retrieval),
         "unscored_retrieval_questions": total - len(scored_retrieval),
         "scored_answer_questions": len(scored_answers),
         "top_k": top_k,
-        "hit_rate_at_k": (
+        "source_keyword_hit_rate_at_k": (
             round(hits / len(scored_retrieval), 4) if scored_retrieval else None
         ),
-        "mean_recall_at_k": round(avg_recall, 4) if avg_recall is not None else None,
+        "mean_source_keyword_coverage_at_k": round(avg_recall, 4) if avg_recall is not None else None,
         "mean_reciprocal_rank": round(mean_mrr, 4) if mean_mrr is not None else None,
-        "answer_correctness": (
+        "answer_keyword_hit_rate": (
             round(correct_answers / len(scored_answers), 4) if scored_answers else None
         ),
-        "genuine_llm_responses": genuine_responses,
-        "mock_responses": total - genuine_responses if any(r["is_mock"] for r in results) else 0,
+        "non_mock_answer_responses": non_mock_answer_responses,
+        "mock_responses": sum(1 for r in results if r["is_mock"]),
+        "http_200_responses": sum(1 for r in results if r["status_code"] == 200),
         "average_latency_ms": round(sum(latencies) / max(len(latencies), 1)),
         "p95_latency_ms": sorted(latencies)[int(len(latencies) * 0.95)] if latencies else 0,
         "results": results,
@@ -347,19 +382,19 @@ def run_benchmark(
     print(f"\n📊 Summary saved to {output_path}")
     print(f"   Scored questions: {summary['scored_retrieval_questions']}/{total} "
           f"(retrieval), {summary['scored_answer_questions']}/{total} (answer)")
-    if summary["hit_rate_at_k"] is None:
+    if summary["source_keyword_hit_rate_at_k"] is None:
         print("   ⚠️  No question carried expected source keywords — retrieval "
               "metrics are undefined, not 0%.")
     else:
-        print(f"   Hit-Rate@{top_k}: {summary['hit_rate_at_k'] * 100:.1f}%")
-        print(f"   Mean Recall@{top_k}: {summary['mean_recall_at_k'] * 100:.1f}%")
+        print(f"   Source keyword hit rate@{top_k}: {summary['source_keyword_hit_rate_at_k'] * 100:.1f}%")
+        print(f"   Mean source keyword coverage@{top_k}: {summary['mean_source_keyword_coverage_at_k'] * 100:.1f}%")
         print(f"   MRR: {summary['mean_reciprocal_rank']:.3f}")
-    if summary["answer_correctness"] is None:
+    if summary["answer_keyword_hit_rate"] is None:
         print("   ⚠️  No question carried expected answer keywords — "
-              "answer_correctness is undefined.")
+              "answer substring hit rate is undefined.")
     else:
-        print(f"   Answer correctness: {summary['answer_correctness'] * 100:.1f}%")
-    print(f"   Genuine LLM Responses: {genuine_responses}/{total}")
+        print(f"   Answer substring hit rate: {summary['answer_keyword_hit_rate'] * 100:.1f}%")
+    print(f"   Non-mock-marked answer responses: {non_mock_answer_responses}/{total} (provider identity unverified by harness)")
     print(f"   Avg Latency: {summary['average_latency_ms']}ms")
 
     return summary
@@ -370,7 +405,7 @@ def main():
     parser.add_argument("--base-url", default=os.getenv("BASE_URL", "http://localhost:8080/api"),
                         help="Base API URL including context path")
     parser.add_argument("--questions", default=str(DEFAULT_QUESTIONS),
-                        help="Path to questions.json")
+                        help="Path to questions matched to the uploaded corpus")
     parser.add_argument("--corpus", default=str(DEFAULT_CORPUS),
                         help="Path to corpus text file")
     parser.add_argument("--output", default=str(DEFAULT_OUTPUT),
