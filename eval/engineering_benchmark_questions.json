@@ -1,0 +1,122 @@
+[
+  {
+    "id": "eng-001",
+    "question": "How much downtime did the bearing failure cause and when did it happen?",
+    "expected_source_keywords": ["week 32", "14 hours of unplanned downtime"],
+    "expected_answer_contains": ["14", "week 32", "tuần 32"],
+    "evidence_quote": "During week 32, the main drive bearing on Production",
+    "reference_answer": "In week 32, the recurring bearing failure caused 14 hours of unplanned downtime."
+  },
+  {
+    "id": "eng-002",
+    "question": "What was the root process cause of Case A?",
+    "expected_source_keywords": ["checklist lacks a mandatory", "verification step"],
+    "expected_answer_contains": ["verification", "xác minh", "kiểm tra"],
+    "evidence_quote": "The corrective maintenance checklist lacks a mandatory",
+    "reference_answer": "The maintenance checklist lacked a mandatory post-repair lubrication verification step."
+  },
+  {
+    "id": "eng-003",
+    "question": "What interim containment was used for Case A?",
+    "expected_source_keywords": ["manual lubrication every 8 hours", "daily inspection"],
+    "expected_answer_contains": ["8", "manual lubrication", "bôi trơn thủ công"],
+    "evidence_quote": "Switched to manual lubrication every 8 hours and",
+    "reference_answer": "Operators used manual lubrication every eight hours and daily inspection."
+  },
+  {
+    "id": "eng-004",
+    "question": "Which corrective actions were proposed for the bearing failure?",
+    "expected_source_keywords": ["pressure sensor with alarm", "retrain maintenance staff"],
+    "expected_answer_contains": ["sensor", "cảm biến"],
+    "evidence_quote": "install a pressure",
+    "reference_answer": "Update the verification checklist, install a pressure sensor with an alarm, and retrain maintenance staff."
+  },
+  {
+    "id": "eng-005",
+    "question": "How was Case A effectiveness verified?",
+    "expected_source_keywords": ["After 12 weeks", "zero recurrence"],
+    "expected_answer_contains": ["12", "zero recurrence", "không tái diễn"],
+    "evidence_quote": "After 12 weeks, zero recurrence of",
+    "reference_answer": "After 12 weeks there was no recurrence; pressure alarms were checked monthly."
+  },
+  {
+    "id": "eng-006",
+    "question": "How often did the sensor gateway crash and what was lost?",
+    "expected_source_keywords": ["every 48 hours", "dropping telemetry data"],
+    "expected_answer_contains": ["48", "telemetry", "dữ liệu"],
+    "evidence_quote": "crashed every 48 hours",
+    "reference_answer": "It crashed every 48 hours under high network load and lost telemetry data."
+  },
+  {
+    "id": "eng-007",
+    "question": "What caused the firmware memory leak in Case B?",
+    "expected_source_keywords": ["Unbounded buffer allocation", "release path"],
+    "expected_answer_contains": ["buffer", "bộ đệm"],
+    "evidence_quote": "Unbounded buffer allocation without a release path",
+    "reference_answer": "The new driver allocated network buffers without a release path."
+  },
+  {
+    "id": "eng-008",
+    "question": "What was Case B's interim containment measure?",
+    "expected_source_keywords": ["Automatic nightly reboot"],
+    "expected_answer_contains": ["reboot", "khởi động lại"],
+    "evidence_quote": "Automatic nightly reboot of the gateway",
+    "reference_answer": "The gateway was automatically rebooted every night."
+  },
+  {
+    "id": "eng-009",
+    "question": "What release-gate test was added after the firmware crash?",
+    "expected_source_keywords": ["72-hour stress", "release gate"],
+    "expected_answer_contains": ["72", "stress"],
+    "evidence_quote": "add a 72-hour stress",
+    "reference_answer": "A 72-hour stress test was added to the release gate."
+  },
+  {
+    "id": "eng-010",
+    "question": "How long did gateways run without a crash after the patch?",
+    "expected_source_keywords": ["90 days without a crash", "heap usage stable"],
+    "expected_answer_contains": ["90", "chín mươi"],
+    "evidence_quote": "Gateways ran 90 days without a crash",
+    "reference_answer": "The gateways ran 90 days without a crash, with stable heap use under peak load."
+  },
+  {
+    "id": "eng-011",
+    "question": "What mitigates mechanical downtime risk in the risk assessment?",
+    "expected_source_keywords": ["predictive maintenance", "vibration and pressure sensors"],
+    "expected_answer_contains": ["sensor", "cảm biến", "predictive"],
+    "evidence_quote": "predictive maintenance using",
+    "reference_answer": "Predictive maintenance with vibration and pressure sensors and a revised verification checklist."
+  },
+  {
+    "id": "eng-012",
+    "question": "How did the corrective actions differ between Cases A and B?",
+    "expected_source_keywords": ["Case A was a mechanical failure", "Case B was a software failure"],
+    "expected_answer_contains": ["mechanical", "software", "cơ khí", "phần mềm"],
+    "evidence_quote": "Case A was a mechanical failure",
+    "reference_answer": "Case A targeted maintenance procedures and physical sensors; Case B targeted driver code, profiling, and stress tests."
+  },
+  {
+    "id": "eng-013",
+    "question": "What was the exact total financial cost of the bearing failure in US dollars?",
+    "expect_abstain": true,
+    "expected_source_keywords": [],
+    "expected_answer_contains": [],
+    "reference_answer": "The document gives downtime and rejected parts but no exact dollar cost."
+  },
+  {
+    "id": "eng-014",
+    "question": "What is the serial number of the failed bearing?",
+    "expect_abstain": true,
+    "expected_source_keywords": [],
+    "expected_answer_contains": [],
+    "reference_answer": "The bearing serial number is absent from the document."
+  },
+  {
+    "id": "eng-015",
+    "question": "Which vendor manufactured the sensor gateway?",
+    "expect_abstain": true,
+    "expected_source_keywords": [],
+    "expected_answer_contains": [],
+    "reference_answer": "The document does not name the gateway manufacturer."
+  }
+]
