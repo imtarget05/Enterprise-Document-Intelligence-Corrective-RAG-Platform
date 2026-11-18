@@ -336,7 +336,7 @@ Two tracks, different meanings — do not mix them:
 | Track | Command | What it measures | Evidence |
 |:---|:---|:---|:---|
 | Fixture smoke (mock backend) | `pytest eval` (28 tests) or `python eval/run_fixture_eval.py` | Deterministic grader + fixture regression on 31 questions; the ~96.8% figure in `eval/results/offline_eval.json` is the **fixture retrieval pass rate against a mock backend** (`mock_responses: 31, genuine_llm_responses: 0`) — a CI regression signal, **not** live retrieval accuracy | `eval/results/offline_eval.json` (self-labeled `test_type: fixture_grader_smoke_test`) |
-| Live benchmark (real stack) | `python eval/run_live_benchmark.py --base-url http://localhost:8080/api` | Top-K lexical keyword hit, coverage, rank and answer substring hits on the matched 8D fixture and 3-question set | `eval/results/live_benchmark.json` — **requires a running backend, Qdrant, and an LLM provider; cannot run offline and must never be fabricated** |
+| Live benchmark (real stack) | `python eval/run_live_benchmark.py --base-url http://localhost:8080/api` | Top-K lexical keyword hit, coverage, rank, answer substring hits and explicit abstention on the matched synthetic 8D fixture and 15-question set | `eval/results/live_benchmark.json` — **new 15-question live results pending**; requires a running backend, Qdrant, and an LLM provider |
 
 Wording rule: say "96.8% fixture pass rate (mock, 31 questions)" — never "96.8% live retrieval accuracy" — unless `live_benchmark.json` with real provider provenance exists to back it.
 

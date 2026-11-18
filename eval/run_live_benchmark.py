@@ -22,17 +22,23 @@ import requests
 
 HERE = pathlib.Path(__file__).resolve().parent
 DEFAULT_CORPUS = HERE / "fixtures" / "8d_failure_risk_fixture.txt"
-DEFAULT_QUESTIONS = HERE / "agent_questions.json"
+DEFAULT_QUESTIONS = HERE / "engineering_benchmark_questions.json"
 DEFAULT_OUTPUT = HERE / "results" / "live_benchmark.json"
+
+
+def normalize_match_text(value: str) -> str:
+    return " ".join(value.casefold().split())
 
 
 def validate_question_corpus(questions: List[Dict[str, Any]], corpus_text: str) -> None:
     """Reject a question set whose lexical ground truth cannot be in the upload."""
     if not isinstance(questions, list) or not questions:
         raise ValueError("Questions must be a non-empty list")
-    corpus_lower = corpus_text.casefold()
+    corpus_lower = normalize_match_text(corpus_text)
     seen_ids = set()
     for question in questions:
+        if not isinstance(question, dict):
+            raise ValueError("Each question must be an object")
         question_id = question.get("id")
         if question_id is None or question_id in seen_ids:
             raise ValueError(f"Missing or duplicate question id: {question_id}")
@@ -40,12 +46,32 @@ def validate_question_corpus(questions: List[Dict[str, Any]], corpus_text: str) 
         if not str(question.get("question", "")).strip():
             raise ValueError(f"Empty question text: {question_id}")
         keywords = question.get("expected_source_keywords")
-        if not isinstance(keywords, list) or not keywords:
+        expect_abstain = question.get("expect_abstain", False)
+        if not isinstance(expect_abstain, bool):
+            raise ValueError(f"expect_abstain must be boolean: {question_id}")
+        if not isinstance(keywords, list):
+            raise ValueError(f"Source keyword ground truth must be a list: {question_id}")
+        if expect_abstain:
+            if keywords or question.get("expected_answer_contains"):
+                raise ValueError(f"Unanswerable question must not contain positive gold labels: {question_id}")
+            continue
+        if not keywords:
             raise ValueError(f"Missing source keyword ground truth: {question_id}")
         absent = [word for word in keywords if not isinstance(word, str) or not word.strip()
-                  or word.casefold() not in corpus_lower]
+                  or normalize_match_text(word) not in corpus_lower]
         if absent:
             raise ValueError(f"Question {question_id} has source keywords absent from uploaded corpus: {absent}")
+        quote = question.get("evidence_quote")
+        if quote and (not isinstance(quote, str) or normalize_match_text(quote) not in corpus_lower):
+            raise ValueError(f"Question {question_id} has an evidence quote absent from uploaded corpus")
+
+
+def evaluate_abstention(status_code: int, response_body: Dict[str, Any]) -> bool:
+    """Count only a successful, explicit no-evidence route with the safe response."""
+    answer = response_body.get("aiResponse") or ""
+    return (status_code == 200
+            and response_body.get("ragStrategy") == "no_evidence"
+            and answer.casefold().startswith("không tìm thấy thông tin trong tài liệu"))
 
 
 def sha256_file(path: pathlib.Path) -> str:
@@ -200,11 +226,11 @@ def evaluate_retrieval_ranking(
 
     top_chunks = retrieved_chunks[:top_k]
     matched_rank = None
-    keywords_lower = [k.lower() for k in expected_keywords]
+    keywords_lower = [normalize_match_text(k) for k in expected_keywords]
     hits_found = set()
 
     for chunk in top_chunks:
-        chunk_text = chunk.get("text", "").lower()
+        chunk_text = normalize_match_text(chunk.get("text", ""))
         chunk_hits = [k for k in keywords_lower if k in chunk_text]
         if chunk_hits:
             if matched_rank is None:
@@ -256,6 +282,7 @@ def run_benchmark(
         q_text = q.get("question", "")
         expected_keywords = q.get("expected_source_keywords", [])
         expected_answer_contains = q.get("expected_answer_contains", [])
+        expect_abstain = q.get("expect_abstain", False)
 
         csrf = get_csrf_token(session, base_url)
         headers = dict(auth_headers)
@@ -292,6 +319,7 @@ def run_benchmark(
                     non_mock_answer_responses += 1
         except Exception as e:
             latency_ms = int((time.time() - t0) * 1000)
+            latencies.append(latency_ms)
             print(f"  [Q{q_id}] Request error: {e}", file=sys.stderr)
 
         retrieved_chunks = parse_retrieved_chunks(response_data)
@@ -307,6 +335,7 @@ def run_benchmark(
         # than counting "any response text" as a correct answer.
         answer_scored = bool(expected_answer_contains)
         answer_correct = len(answer_hits) > 0 if answer_scored else None
+        abstained = evaluate_abstention(status_code, response_data)
 
         results.append({
             "id": q_id,
@@ -321,6 +350,9 @@ def run_benchmark(
             "matched_rank": retrieval_metrics["matched_rank"],
             "answer_scored": answer_scored,
             "answer_keyword_hit": answer_correct,
+            "expected_abstention": expect_abstain,
+            "observed_abstention": abstained,
+            "abstention_correct": abstained if expect_abstain else None,
             "retrieved_chunks_count": len(retrieved_chunks),
             "confidence": response_data.get("confidence"),
             "rag_strategy": response_data.get("ragStrategy"),
@@ -344,22 +376,37 @@ def run_benchmark(
         if scored_retrieval else None
     )
     correct_answers = sum(1 for r in scored_answers if r["answer_keyword_hit"])
+    expected_abstentions = [r for r in results if r["expected_abstention"]]
+    correct_abstentions = sum(1 for r in expected_abstentions if r["abstention_correct"])
+    unexpected_abstentions = sum(1 for r in results if not r["expected_abstention"]
+                                 and r["observed_abstention"])
 
     summary = {
         "benchmark_type": "live_stack_evaluation",
+        "corpus_scope": "synthetic_engineering_8d_fixture",
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "target_base_url": base_url,
         "corpus_file": corpus_path.name,
         "corpus_sha256": sha256_file(corpus_path),
         "questions_file": questions_path.name,
         "questions_sha256": sha256_file(questions_path),
-        "retrieval_scoring_method": "case-insensitive lexical keyword coverage in top-k returned chunk text; not gold-chunk recall",
+        "retrieval_scoring_method": "case-insensitive whitespace-normalized lexical keyword coverage in top-k returned chunk text; not gold-chunk recall",
         "answer_scoring_method": "case-insensitive expected-answer substring hit; not semantic correctness",
         "provider_identity_verification": "not_verified_by_this_harness",
+        "model_id": None,
+        "model_id_status": "not_exposed_by_chat_response",
+        "api_cost_usd": None,
+        "compute_cost_usd": None,
+        "cost_status": "not_measured_chat_response_has_no_token_usage_or_billing_fields",
         "total_questions": total,
         "scored_retrieval_questions": len(scored_retrieval),
         "unscored_retrieval_questions": total - len(scored_retrieval),
         "scored_answer_questions": len(scored_answers),
+        "expected_abstention_questions": len(expected_abstentions),
+        "correct_abstentions": correct_abstentions,
+        "abstention_success_rate": (round(correct_abstentions / len(expected_abstentions), 4)
+                                    if expected_abstentions else None),
+        "unexpected_abstentions": unexpected_abstentions,
         "top_k": top_k,
         "source_keyword_hit_rate_at_k": (
             round(hits / len(scored_retrieval), 4) if scored_retrieval else None
@@ -372,6 +419,7 @@ def run_benchmark(
         "non_mock_answer_responses": non_mock_answer_responses,
         "mock_responses": sum(1 for r in results if r["is_mock"]),
         "http_200_responses": sum(1 for r in results if r["status_code"] == 200),
+        "non_200_or_failed_requests": sum(1 for r in results if r["status_code"] != 200),
         "average_latency_ms": round(sum(latencies) / max(len(latencies), 1)),
         "p95_latency_ms": sorted(latencies)[int(len(latencies) * 0.95)] if latencies else 0,
         "results": results,
@@ -379,6 +427,8 @@ def run_benchmark(
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
+    if summary["mock_responses"]:
+        raise RuntimeError("Mock backend detected in live benchmark; artifact retained for diagnosis")
     print(f"\n📊 Summary saved to {output_path}")
     print(f"   Scored questions: {summary['scored_retrieval_questions']}/{total} "
           f"(retrieval), {summary['scored_answer_questions']}/{total} (answer)")
@@ -395,6 +445,8 @@ def run_benchmark(
     else:
         print(f"   Answer substring hit rate: {summary['answer_keyword_hit_rate'] * 100:.1f}%")
     print(f"   Non-mock-marked answer responses: {non_mock_answer_responses}/{total} (provider identity unverified by harness)")
+    if expected_abstentions:
+        print(f"   Correct explicit abstentions: {correct_abstentions}/{len(expected_abstentions)}; unexpected abstentions: {unexpected_abstentions}")
     print(f"   Avg Latency: {summary['average_latency_ms']}ms")
 
     return summary

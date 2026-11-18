@@ -130,7 +130,7 @@ jobs:
           BASE_URL: ${{ inputs.base_url }}
         run: |
           python eval/run_live_benchmark.py --base-url "$BASE_URL" \
-            --questions eval/agent_questions.json \
+            --questions eval/engineering_benchmark_questions.json \
             --output eval/results/live_benchmark.json
 
       - name: Upload live benchmark report

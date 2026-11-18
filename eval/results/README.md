@@ -104,7 +104,7 @@ python eval/run_fixture_eval.py --base-url http://127.0.0.1:8081/api
 # Live benchmark (requires a running deployment + uploaded document)
 python eval/run_live_benchmark.py \
   --base-url https://<your-deployment>/api \
-  --questions eval/agent_questions.json \
+  --questions eval/engineering_benchmark_questions.json \
   --output eval/results/live_benchmark.json
 ```
 
@@ -114,10 +114,19 @@ and K-scoped, but still lexical — not gold-chunk-ID ground truth). Questions
 that carry no expected keywords are reported as `scored: false` with `None`
 metrics and are excluded from every aggregate; they are never scored as 1.0.
 
-The runner rejects question sets whose expected source keywords are absent from
-the uploaded corpus before opening a session. Its JSON includes SHA-256 hashes
-of the corpus and question file. `eval/questions.json` contains architecture
-questions and must not be paired with the default 8D corpus.
+The default 15-question set has 12 answerable cases and 3 facts deliberately
+absent from the uploaded 8D corpus. The runner rejects mismatched positive
+source keywords before opening a session. Its JSON includes SHA-256 hashes of
+the corpus and question file, explicit abstention outcomes, failed request
+counts, and latency. It records model identity and cost as unavailable because
+the current chat response exposes neither model ID nor token/billing usage.
+No model or dollar figure should be inferred from the benchmark alone.
+`eval/questions.json` contains architecture questions and must not be paired
+with the default 8D corpus. A mock-marked response fails the live command.
+
+The historical 3-question local live result in
+`docs/evidence/live-validation-2026-11-12/engineering-benchmark.json` remains
+as recorded. **The 15-question set has not yet produced a live result.**
 
 A live run cannot be executed from a machine without a reachable provider, and
 **no result may be fabricated in its absence**.
