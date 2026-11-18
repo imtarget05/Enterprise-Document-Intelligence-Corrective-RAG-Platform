@@ -13,6 +13,7 @@ import hashlib
 import json
 import os
 import pathlib
+import re
 import sys
 import time
 import uuid
@@ -67,11 +68,17 @@ def validate_question_corpus(questions: List[Dict[str, Any]], corpus_text: str) 
 
 
 def evaluate_abstention(status_code: int, response_body: Dict[str, Any]) -> bool:
-    """Count only a successful, explicit no-evidence route with the safe response."""
-    answer = response_body.get("aiResponse") or ""
+    """Count an explicit safe refusal from either retrieval or the LLM."""
+    answer = (response_body.get("aiResponse") or "").strip().casefold()
+    english_refusal = re.fullmatch(
+        r".{0,220}\b(?:is|are) not (?:specified|mentioned|provided|included|stated|available) "
+        r"in the (?:provided information|given text|documents?|supplied excerpts)\.",
+        answer,
+    )
+    explicit_refusal = answer.startswith("không tìm thấy thông tin trong tài liệu") or english_refusal is not None
     return (status_code == 200
-            and response_body.get("ragStrategy") == "no_evidence"
-            and answer.casefold().startswith("không tìm thấy thông tin trong tài liệu"))
+            and response_body.get("ragStrategy") != "error"
+            and explicit_refusal)
 
 
 def sha256_file(path: pathlib.Path) -> str:
@@ -340,6 +347,7 @@ def run_benchmark(
         results.append({
             "id": q_id,
             "question": q_text,
+            "answer_text": answer_text,
             "status_code": status_code,
             "latency_ms": latency_ms,
             "is_mock": is_mock,
@@ -356,6 +364,7 @@ def run_benchmark(
             "retrieved_chunks_count": len(retrieved_chunks),
             "confidence": response_data.get("confidence"),
             "rag_strategy": response_data.get("ragStrategy"),
+            "answer_origin": response_data.get("answerOrigin"),
         })
 
         icon = "✅" if (retrieval_metrics["hit"] and answer_correct) else "⚠️"
@@ -380,6 +389,12 @@ def run_benchmark(
     correct_abstentions = sum(1 for r in expected_abstentions if r["abstention_correct"])
     unexpected_abstentions = sum(1 for r in results if not r["expected_abstention"]
                                  and r["observed_abstention"])
+    llm_responses = [r for r in results if r["answer_origin"] == "llm"]
+    fallback_responses = [r for r in results if r["answer_origin"] == "extractive_fallback"]
+    invalid_origin_responses = [r for r in results if
+                                r["answer_origin"] not in ("llm", "abstention")
+                                or r["rag_strategy"] == "error"]
+    llm_scored_answers = [r for r in llm_responses if r["answer_scored"]]
 
     summary = {
         "benchmark_type": "live_stack_evaluation",
@@ -416,6 +431,13 @@ def run_benchmark(
         "answer_keyword_hit_rate": (
             round(correct_answers / len(scored_answers), 4) if scored_answers else None
         ),
+        "llm_answer_keyword_hit_rate": (
+            round(sum(1 for r in llm_scored_answers if r["answer_keyword_hit"])
+                  / len(llm_scored_answers), 4) if llm_scored_answers else None
+        ),
+        "llm_generated_responses": len(llm_responses),
+        "extractive_fallback_responses": len(fallback_responses),
+        "invalid_generation_responses": len(invalid_origin_responses),
         "non_mock_answer_responses": non_mock_answer_responses,
         "mock_responses": sum(1 for r in results if r["is_mock"]),
         "http_200_responses": sum(1 for r in results if r["status_code"] == 200),
@@ -429,6 +451,10 @@ def run_benchmark(
     output_path.write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
     if summary["mock_responses"]:
         raise RuntimeError("Mock backend detected in live benchmark; artifact retained for diagnosis")
+    if summary["non_200_or_failed_requests"]:
+        raise RuntimeError("Non-200 or failed requests in live benchmark; artifact retained for diagnosis")
+    if summary["invalid_generation_responses"]:
+        raise RuntimeError("Live benchmark contains non-LLM answer origin or error strategy; artifact retained for diagnosis")
     print(f"\n📊 Summary saved to {output_path}")
     print(f"   Scored questions: {summary['scored_retrieval_questions']}/{total} "
           f"(retrieval), {summary['scored_answer_questions']}/{total} (answer)")
@@ -445,6 +471,7 @@ def run_benchmark(
     else:
         print(f"   Answer substring hit rate: {summary['answer_keyword_hit_rate'] * 100:.1f}%")
     print(f"   Non-mock-marked answer responses: {non_mock_answer_responses}/{total} (provider identity unverified by harness)")
+    print(f"   Backend-reported LLM answers: {len(llm_responses)}/{total}; extractive fallbacks: {len(fallback_responses)}")
     if expected_abstentions:
         print(f"   Correct explicit abstentions: {correct_abstentions}/{len(expected_abstentions)}; unexpected abstentions: {unexpected_abstentions}")
     print(f"   Avg Latency: {summary['average_latency_ms']}ms")

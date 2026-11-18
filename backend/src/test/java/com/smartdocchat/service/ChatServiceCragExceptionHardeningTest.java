@@ -92,6 +92,7 @@ class ChatServiceCragExceptionHardeningTest {
         assertNotNull(response);
         // Frontend should be able to render a distinguishable strategy label.
         assertEquals("error", response.getRagStrategy());
+        assertEquals("error", response.getAnswerOrigin());
     }
 
     @Test

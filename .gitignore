@@ -160,6 +160,7 @@ deploy/terraform/terraform.tfvars
 # LARGE FILES & MODEL WEIGHTS
 # ═══════════════════════════════════════════════════════════════
 backend/uploads/
+uploads/
 finetune/llama.cpp/
 finetune/qwen3-vi-fused/
 supply-chain-module/mlops/mlflow.db

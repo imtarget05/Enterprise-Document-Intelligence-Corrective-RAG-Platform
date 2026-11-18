@@ -29,16 +29,18 @@ accuracy" without this qualifier.
 
 ## 2. How to tell a mock run from a live run
 
-Two independent signals, both present in every summary artifact:
+Two useful clues, both present in historical summary artifacts:
 
 | Signal | Mock stack | Live stack |
 |---|---|---|
 | `base_url` | `http://localhost:8081/api` (see `eval/mock_backend.py`) | a real deployment |
 | `average_latency_ms` | **11–20 ms** | **~1900–2700 ms** |
 
-The mock replies from an in-process dictionary keyed on the question text and
-sleeps only 10% of the canned latency, so it is physically incapable of
-produces multi-second latencies. **Latency is the decisive tell.**
+The mock replies from an in-process dictionary keyed on question text and
+sleeps only 10% of the canned latency. Latency alone does not prove a live
+provider: a real backend may serve a cached answer or a fast fallback. For
+new runs, inspect `mock_responses`, `answer_origin`, router/provider logs,
+and the endpoint configuration together.
 
 ### Why several files all report 0.9677
 
@@ -126,7 +128,17 @@ with the default 8D corpus. A mock-marked response fails the live command.
 
 The historical 3-question local live result in
 `docs/evidence/live-validation-2026-11-12/engineering-benchmark.json` remains
-as recorded. **The 15-question set has not yet produced a live result.**
+as recorded. The 2026-11-18 local 15-question run is saved as
+`live_engineering_15_ollama_qwen2_5_1_5b_2026-11-18.json`:
+12/12 lexical source-keyword hits, 11/12 answer substring hits, 3/3 explicit
+abstentions, 15/15 backend-reported LLM answers, no extractive fallback,
+7,792 ms mean and 20,301 ms p95 end-to-end latency. These are fixture-specific
+measurements, not semantic accuracy or production latency. The answer to
+`eng-012` explains both cases correctly but lacks the rubric's literal
+"mechanical"/"software" words, so its substring score is false. The local
+router was configured with Ollama `qwen2.5:1.5b`, response cache disabled;
+router logs showed `local_ollama` route completions during the run. The JSON
+itself does not verify provider identity, token usage, or compute cost.
 
 A live run cannot be executed from a machine without a reachable provider, and
 **no result may be fabricated in its absence**.

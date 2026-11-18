@@ -82,8 +82,12 @@ public class LlmClient {
                 Map.of("role", "system", "content", systemPrompt),
                 Map.of("role", "user", "content", userPrompt)));
         requestBody.put("options",
-                Map.of("temperature", llmConfig.getTemperature(), "top_p", llmConfig.getTopP(), "num_predict", 2048));
+                Map.of("temperature", llmConfig.getTemperature(), "top_p", llmConfig.getTopP(),
+                        "num_predict", llmConfig.getMaxOutputTokens()));
         requestBody.put("stream", false);
+        // This client serves document-grounded chat. Passing the task explicitly
+        // prevents source text such as an "error code" from selecting the coder model.
+        requestBody.put("routing", Map.of("task_type", "qa"));
 
         log.info("Calling local LLM model: {}", llmConfig.getChatModel());
         ResponseEntity<Map> response = restTemplate.exchange(

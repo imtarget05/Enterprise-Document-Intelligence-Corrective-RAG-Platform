@@ -178,6 +178,7 @@ public class ChatService {
                 ChatMessage saved = saveResponse(ownerUsername, request, userMessage,
                         agentResp.answer(), null);
                 response = toResponse(ownerUsername, saved, emptyCrag("agentic"));
+                response.setAnswerOrigin("agent");
                 // HITL: surface a paused action so the frontend can render the
                 // approval card (approve/reject via /api/agent/approvals).
                 response.setHitlPending(agentResp.hitlPending());
@@ -198,19 +199,24 @@ public class ChatService {
             CragResult crag = runCrag(ownerUsername, request.getDocumentId(), userMessage, request.isWebSearch());
 
             String aiResponse;
+            String answerOrigin;
             if ("no_evidence".equals(crag.strategy())) {
                 aiResponse = messageHandler.buildAbstentionResponse();
+                answerOrigin = "abstention";
             } else {
                 String llmRaw = messageHandler.callLLM(buildPromptForStrategy(userMessage, crag));
                 if (isUnavailableOrFailed(llmRaw)) {
                     log.info("LLM unavailable or failed; falling back to extractive grounded legal synthesis for: {}", userMessage);
                     aiResponse = synthesizeExtractiveLegalAnswer(userMessage, crag);
+                    answerOrigin = "extractive_fallback";
                 } else {
                     aiResponse = strategyPrefix(crag) + llmRaw;
+                    answerOrigin = "llm";
                 }
             }
             ChatMessage saved = saveResponse(ownerUsername, request, userMessage, aiResponse, buildSourceChunks(crag));
             response = toResponse(ownerUsername, saved, crag);
+            response.setAnswerOrigin(answerOrigin);
 
             if ("no_evidence".equals(crag.strategy())) {
                 ragMetrics.recordAbstention();
@@ -236,6 +242,7 @@ public class ChatService {
             String abstain = messageHandler.buildAbstentionResponse();
             ChatMessage saved = saveResponse(ownerUsername, request, userMessage, abstain, null);
             response = toResponse(ownerUsername, saved, emptyCrag("error"));
+            response.setAnswerOrigin("error");
             ragMetrics.recordAbstention();
         }
 
@@ -698,6 +705,13 @@ public class ChatService {
                 .confidence(label)
                 .confidenceScore(score)
                 .ragStrategy(crag.strategy())
+                .answerOrigin(switch (crag.strategy()) {
+                    case "no_evidence" -> "abstention";
+                    case "error" -> "error";
+                    case "blocked" -> "blocked";
+                    case "agentic" -> "agent";
+                    default -> "unverified";
+                })
                 .sources(buildSources(ownerUsername, message.getDocumentId(), crag))
                 .build();
     }

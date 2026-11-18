@@ -83,9 +83,25 @@ class ChatServiceTest {
         ChatResponse response = chatService.processQuery("alice", request("Which framework does the backend use?"));
 
         assertEquals("direct", response.getRagStrategy());
+        assertEquals("llm", response.getAnswerOrigin());
         assertEquals("Spring Boot is used.", response.getAiResponse());
         verify(messageHandler).buildPrompt(eq("Which framework does the backend use?"),
                 argThat(chunks -> chunks.toString().contains("Spring Boot for the REST API")));
+    }
+
+    @Test
+    void llmFailureIsLabelledAsExtractiveFallback() {
+        when(retrievalService.retrieve(eq("alice"), eq(1L), anyString(), anyInt()))
+                .thenReturn(List.of(new RetrievalService.RetrievalResult(
+                        "The backend uses Spring Boot for the REST API.", 0.85)));
+        when(messageHandler.buildPrompt(anyString(), anyList())).thenReturn("direct prompt");
+        when(messageHandler.callLLM("direct prompt")).thenReturn(LlmClient.NO_RESPONSE_PLACEHOLDER);
+        stubSaveReturnsArgument();
+
+        ChatResponse response = chatService.processQuery("alice", request("Which framework does the backend use?"));
+
+        assertEquals("extractive_fallback", response.getAnswerOrigin());
+        assertTrue(response.getAiResponse().contains("The backend uses Spring Boot"));
     }
 
     @Test
@@ -139,6 +155,7 @@ class ChatServiceTest {
         ChatResponse response = chatService.processQuery("alice", request("Who is the CEO of NASA?"));
 
         assertEquals("no_evidence", response.getRagStrategy());
+        assertEquals("abstention", response.getAnswerOrigin());
         assertTrue(response.getAiResponse().contains("sufficient evidence"));
         verify(messageHandler, never()).callLLM(anyString());
         verify(messageHandler).buildAbstentionResponse();

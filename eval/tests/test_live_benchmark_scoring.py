@@ -161,6 +161,13 @@ class DatasetIntegrityTests(unittest.TestCase):
     def test_abstention_requires_explicit_no_evidence_and_safe_answer(self):
         safe = "Không tìm thấy thông tin trong tài liệu để trả lời câu hỏi này."
         self.assertTrue(evaluate_abstention(200, {"ragStrategy": "no_evidence", "aiResponse": safe}))
+        self.assertTrue(evaluate_abstention(200, {"ragStrategy": "direct", "aiResponse": safe}))
+        self.assertTrue(evaluate_abstention(200, {"ragStrategy": "corrective", "aiResponse":
+            "The exact total financial cost is not specified in the provided information."}))
+        self.assertTrue(evaluate_abstention(200, {"ragStrategy": "direct", "aiResponse":
+            "The exact total financial cost is not provided in the given text."}))
+        self.assertFalse(evaluate_abstention(200, {"ragStrategy": "direct", "aiResponse":
+            "It is not specified in the provided information. The cost is $14,000."}))
         self.assertFalse(evaluate_abstention(200, {"ragStrategy": "error", "aiResponse": safe}))
         self.assertFalse(evaluate_abstention(200, {"ragStrategy": "no_evidence", "aiResponse": "The cost was $100"}))
         self.assertFalse(evaluate_abstention(503, {"ragStrategy": "no_evidence", "aiResponse": safe}))
@@ -182,10 +189,11 @@ class DatasetIntegrityTests(unittest.TestCase):
             known = Mock(status_code=200, headers={})
             known.json.return_value = {"aiResponse": "The checklist is mandatory.",
                                        "ragStrategy": "direct",
+                                       "answerOrigin": "llm",
                                        "sourceChunks": ["The verification checklist is mandatory."]}
             unknown = Mock(status_code=200, headers={})
             unknown.json.return_value = {"aiResponse": "Không tìm thấy thông tin trong tài liệu để trả lời câu hỏi này.",
-                                         "ragStrategy": "no_evidence", "sourceChunks": []}
+                                         "ragStrategy": "no_evidence", "answerOrigin": "abstention", "sourceChunks": []}
             session = Mock()
             session.post.side_effect = [known, unknown]
             with patch("run_live_benchmark.requests.Session", return_value=session), \
@@ -198,7 +206,34 @@ class DatasetIntegrityTests(unittest.TestCase):
             self.assertEqual(summary["abstention_success_rate"], 1.0)
             self.assertEqual(summary["unexpected_abstentions"], 0)
             self.assertEqual(summary["source_keyword_hit_rate_at_k"], 1.0)
+            self.assertEqual(summary["llm_generated_responses"], 1)
+            self.assertEqual(summary["extractive_fallback_responses"], 0)
             self.assertEqual(json.loads(output.read_text())["questions_sha256"], sha256_file(questions))
+
+    def test_provider_failure_fallback_cannot_pass_as_llm_benchmark(self):
+        with tempfile.TemporaryDirectory() as directory:
+            corpus = Path(directory) / "corpus.txt"
+            questions = Path(directory) / "questions.json"
+            output = Path(directory) / "result.json"
+            corpus.write_text("The verification checklist is mandatory.", encoding="utf-8")
+            questions.write_text(json.dumps([{"id": "known", "question": "What is mandatory?",
+                                              "expected_source_keywords": ["verification checklist"],
+                                              "expected_answer_contains": ["checklist"]}]), encoding="utf-8")
+            response = Mock(status_code=200, headers={})
+            response.json.return_value = {"aiResponse": "The verification checklist is mandatory.",
+                                          "ragStrategy": "direct", "answerOrigin": "extractive_fallback",
+                                          "sourceChunks": ["The verification checklist is mandatory."]}
+            session = Mock()
+            session.post.return_value = response
+            with patch("run_live_benchmark.requests.Session", return_value=session), \
+                 patch("run_live_benchmark.authenticate", return_value=("tester", {})), \
+                 patch("run_live_benchmark.upload_corpus", return_value=12), \
+                 patch("run_live_benchmark.get_csrf_token", return_value=None):
+                with self.assertRaisesRegex(RuntimeError, "non-LLM answer origin"):
+                    run_benchmark("http://localhost:8080/api", questions, corpus, output)
+            saved = json.loads(output.read_text())
+            self.assertEqual(saved["extractive_fallback_responses"], 1)
+            self.assertEqual(saved["llm_generated_responses"], 0)
 
     def test_mock_backend_cannot_produce_a_passing_live_result(self):
         with tempfile.TemporaryDirectory() as directory:
