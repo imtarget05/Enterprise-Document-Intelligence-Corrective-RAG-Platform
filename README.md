@@ -23,16 +23,30 @@
 
 Core workflow: `Upload → Retrieve → Verify → Cite → Answer`
 
-## 🚦 Production status (audited 2026-10-10)
+## 🚦 Deployment status (rechecked 2026-11-19)
+
+The October 2026 Azure smoke below is historical evidence. On 2026-11-19 the
+Azure API and agent hostnames in this table did not resolve in DNS, while the
+Render backend and Keycloak endpoints timed out. The Cloudflare Pages origin
+returned HTTP 200, but this does not establish that its backend works. The
+latest `main` [CI](https://github.com/imtarget05/Enterprise-Document-Intelligence-Corrective-RAG-Platform/actions/runs/44342849574)
+and [Eval & Regression](https://github.com/imtarget05/Enterprise-Document-Intelligence-Corrective-RAG-Platform/actions/runs/44342849530)
+passed; [Azure deploy](https://github.com/imtarget05/Enterprise-Document-Intelligence-Corrective-RAG-Platform/actions/runs/44342849520)
+failed at login (`No subscriptions found`), and
+[CD](https://github.com/imtarget05/Enterprise-Document-Intelligence-Corrective-RAG-Platform/actions/runs/44342849547)
+failed polling Render backend readiness.
+The reproducible local 15-question Ollama benchmark is indexed in
+[`eval/results/README.md`](eval/results/README.md). Do not cite the historical
+Azure deployment or the Pages shell as a currently working end-to-end demo.
 
 | Component | URL | State |
 |---|---|---|
 | Frontend (Cloudflare Pages) | https://smart-doc-chatbot.pages.dev | Live bundle still points to Render. The revised Pages workflow builds against Azure after CI, but has not been published. A Playwright test opened this Pages origin and successfully completed Azure registration, login, and `/auth/me` with a cross-site cookie on 2026-10-10. |
-| Spring backend (Azure, canonical demo API) | https://smartdoc-api.blackisland-5a3f0246.southeastasia.azurecontainerapps.io | Revision `smartdoc-api--deploy1791607168` receives 100% traffic, retains all 21 runtime variables, and passed live CSRF, browser cookie, upload, owner isolation, and RAG chat smoke on 2026-10-10. Agent mode still falls back to RAG (`ragStrategy=direct`). |
-| Spring backend (Render mirror) | https://smartdoc-backend-2hhz.onrender.com | Health and full chat intermittently returned 502 on 2026-10-09; not the frontend target until stable. |
+| Spring backend (Azure, historical demo API) | https://smartdoc-api.blackisland-5a3f0246.southeastasia.azurecontainerapps.io | Passed live CSRF, browser cookie, upload, owner isolation, and RAG chat smoke on 2026-10-10; hostname did not resolve on 2026-11-19. Current availability is unverified. |
+| Spring backend (Render mirror) | https://smartdoc-backend-2hhz.onrender.com | Health endpoint timed out on 2026-11-19; CD readiness poll also failed. Not a verified live demo. |
 | Spring backend (Render, legacy) | https://smart-doc-backend-h4mt.onrender.com | Legacy/alternate endpoint — **status unresolved** (last known Down with `x-render-routing: no-server`); **not canonical** until re-verified via Render dashboard. Not to be referenced in new deploy config |
-| LLM router / Keycloak (Render free) | — | **Down** — Keycloak had the same `$PORT` binding issue (fixed here); router requires Cloudflare credentials in the Render dashboard |
-| Python agent (Azure) | https://smartdoc-agent.blackisland-5a3f0246.southeastasia.azurecontainerapps.io | Container revision is provisioned but public `/health` and `/ready` timed out on 2026-10-09; agent workflows are not yet verified live. |
+| LLM router / Keycloak (Render free) | — | Keycloak endpoint timed out on 2026-11-19; router availability is unverified. |
+| Python agent (Azure) | https://smartdoc-agent.blackisland-5a3f0246.southeastasia.azurecontainerapps.io | Public `/health` and `/ready` timed out on 2026-10-09; hostname did not resolve on 2026-11-19. Agent workflows are not verified live. |
 
 **Agent claim boundary (commit `8b6d394`):** `ChatService` calls `AgentClient`
 by default in code, but the recorded Azure smoke fell back to Spring CRAG.
@@ -47,7 +61,9 @@ The evidence-first portfolio audit and offline demo commands are in
 
 The `fix/pages-api-h4mt` branch (repoints Pages + Docker build-args to h4mt) must **not** be
 merged until Render dashboard/OAuth console evidence confirms `h4mt` is a valid backend for
-this project; today `h4mt` is legacy/unresolved, `2hhz` is a Render mirror, and Azure is the verified RAG demo API. CI runs tests and scans; Azure deployment and Pages publication run afterward with their own readiness gates.
+this project; `h4mt` remains legacy/unresolved, `2hhz` is an unavailable Render
+mirror, and Azure has only historical RAG demo evidence. CI runs tests and
+scans; deployment and Pages publication have separate readiness gates.
 
 ## ✨ Key Features & Engineering Decisions
 
