@@ -29,11 +29,11 @@ The October 2026 Azure smoke below is historical evidence. On 2026-11-19 the
 Azure API and agent hostnames in this table did not resolve in DNS, while the
 Render backend and Keycloak endpoints timed out. The Cloudflare Pages origin
 returned HTTP 200, but this does not establish that its backend works. The
-latest `main` [CI](https://github.com/imtarget05/Enterprise-Document-Intelligence-Corrective-RAG-Platform/actions/runs/44342849574)
-and [Eval & Regression](https://github.com/imtarget05/Enterprise-Document-Intelligence-Corrective-RAG-Platform/actions/runs/44342849530)
-passed; [Azure deploy](https://github.com/imtarget05/Enterprise-Document-Intelligence-Corrective-RAG-Platform/actions/runs/44342849520)
+latest `main` [CI](https://github.com/imtarget05/Enterprise-Document-Intelligence-Corrective-RAG-Platform/actions/runs/44506354194)
+and [Eval & Regression](https://github.com/imtarget05/Enterprise-Document-Intelligence-Corrective-RAG-Platform/actions/runs/44506354089)
+passed; the last [Azure deploy](https://github.com/imtarget05/Enterprise-Document-Intelligence-Corrective-RAG-Platform/actions/runs/44483089516)
 failed at login (`No subscriptions found`), and
-[CD](https://github.com/imtarget05/Enterprise-Document-Intelligence-Corrective-RAG-Platform/actions/runs/44342849547)
+[CD](https://github.com/imtarget05/Enterprise-Document-Intelligence-Corrective-RAG-Platform/actions/runs/44506354062)
 failed polling Render backend readiness.
 The reproducible local 15-question Ollama benchmark is indexed in
 [`eval/results/README.md`](eval/results/README.md). Do not cite the historical
@@ -42,6 +42,10 @@ The image-push and Azure deploy workflow (`.github/workflows/deploy.yml`) now
 runs only on manual dispatch, consistent with the localhost demo scope. A manual
 run still requires successful Azure login and deployment; CI, evaluation and
 security workflows remain independent and automatic.
+The CD workflow builds vetted images on each push to `main`. Render readiness
+verification is requested separately via `workflow_dispatch` with
+`verify_render: true` after a Render deployment; that job still fails if the
+health endpoint is unavailable. An image-build success is not a live deployment.
 
 | Component | URL | State |
 |---|---|---|
