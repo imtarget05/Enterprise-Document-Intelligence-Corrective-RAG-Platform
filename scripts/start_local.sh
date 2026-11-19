@@ -1,76 +1,33 @@
-#!/bin/bash
-# Start local development stack with Ollama + LLM Router
+#!/usr/bin/env bash
+# Start the local infrastructure used by the SmartDoc RAG demo.
+set -euo pipefail
 
-set -e
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
 
-echo "🚀 Starting Smart Document Chatbot — Local Dev Stack"
-echo "===================================================="
+command -v docker >/dev/null || { echo 'Docker is required.' >&2; exit 1; }
+LOCAL_OLLAMA_MODEL=qwen2.5:1.5b docker compose -f docker/docker-compose.local.yml up --build -d postgres qdrant ollama llm-router
 
-# Check if Ollama is running on host
-if ! curl -s http://localhost:11434/api/tags > /dev/null 2>&1; then
-    echo "⚠️  Ollama not running on host. Starting Ollama..."
-    if command -v ollama &> /dev/null; then
-        ollama serve &
-        sleep 5
-    else
-        echo "❌ Ollama not installed. Install from https://ollama.com"
-        echo "   Or run: brew install ollama"
-        exit 1
-    fi
-fi
+# Ollama runs in Docker; no host installation or cloud credentials are needed.
+for model in qwen2.5:1.5b nomic-embed-text; do
+  if ! docker exec smartdoc-local-ollama ollama list | grep -Fq "$model"; then
+    docker exec smartdoc-local-ollama ollama pull "$model"
+  fi
+done
 
-# Pull required models if not present
-echo "📦 Checking Ollama models..."
-if ! curl -s http://localhost:11434/api/tags | grep -q "qwen2.5:3b"; then
-    echo "   Pulling qwen2.5:3b (this may take a while)..."
-    ollama pull qwen2.5:3b
-fi
-if ! curl -s http://localhost:11434/api/tags | grep -q "nomic-embed-text"; then
-    echo "   Pulling nomic-embed-text..."
-    ollama pull nomic-embed-text
-fi
+for endpoint in http://127.0.0.1:6333/healthz http://127.0.0.1:11434/api/tags "http://127.0.0.1:${LOCAL_LLM_ROUTER_PORT:-18001}/health"; do
+  ready=false
+  for attempt in {1..30}; do
+    if curl --fail --silent --output /dev/null "$endpoint"; then ready=true; break; fi
+    sleep 2
+  done
+  if [[ "$ready" != true ]]; then
+    echo "Local service did not become ready: $endpoint" >&2
+    exit 1
+  fi
+done
 
-# Start infrastructure
-echo "🏗️  Starting infrastructure (Postgres + Qdrant + Redis)..."
-docker compose -f docker/docker-compose.local.yml up -d postgres qdrant redis
-
-# Wait for services
-echo "⏳ Waiting for services to be healthy..."
-sleep 10
-
-# Start LLM Router (uses host Ollama)
-echo "🧠 Starting LLM Router..."
-cd llm-router
-pip install -r requirements.txt -q
-LOCAL_OLLAMA_URL=http://localhost:11434 LOCAL_OLLAMA_MODEL=qwen2.5:3b \
-    uvicorn main:app --host 0.0.0.0 --port 8000 &
-cd ..
-
-# Start Backend
-echo "⚙️  Starting Backend..."
-cd backend
-source ../.env.local
-export $(cat ../.env.local | grep -v '^#' | grep -v '^$' | xargs)
-mvn spring-boot:run &
-cd ..
-
-# Start Frontend
-echo "🎨 Starting Frontend..."
-cd frontend
-npm run dev &
-cd ..
-
-echo ""
-echo "✅ All services started!"
-echo "   Frontend:    http://localhost:3000"
-echo "   Backend:     http://localhost:8080/api"
-echo "   LLM Router:  http://localhost:8001"
-echo "   Ollama:      http://localhost:11434"
-echo "   Postgres:    localhost:5434"
-echo "   Qdrant:      localhost:6333"
-echo "   Redis:       localhost:6379"
-echo ""
-echo "Press Ctrl+C to stop all services."
-
-# Wait for interrupt
-wait
+echo 'Local PostgreSQL, Qdrant, Ollama and LLM router are ready.'
+echo "Router health: http://127.0.0.1:${LOCAL_LLM_ROUTER_PORT:-18001}/health"
+echo 'The Spring backend and agent need their own local configuration, including Redis/Kafka and authentication; this script starts infrastructure only.'
+echo 'The recorded 15-question RAG result and its limits are in eval/results/README.md.'
