@@ -38,6 +38,10 @@ failed polling Render backend readiness.
 The reproducible local 15-question Ollama benchmark is indexed in
 [`eval/results/README.md`](eval/results/README.md). Do not cite the historical
 Azure deployment or the Pages shell as a currently working end-to-end demo.
+The image-push and Azure deploy workflow (`.github/workflows/deploy.yml`) now
+runs only on manual dispatch, consistent with the localhost demo scope. A manual
+run still requires successful Azure login and deployment; CI, evaluation and
+security workflows remain independent and automatic.
 
 | Component | URL | State |
 |---|---|---|
