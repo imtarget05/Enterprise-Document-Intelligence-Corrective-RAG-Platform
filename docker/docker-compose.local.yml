@@ -51,7 +51,7 @@ services:
       dockerfile: Dockerfile
     container_name: smartdoc-local-llm-router
     ports:
-      - "8001:8001"
+      - "${LOCAL_LLM_ROUTER_PORT:-18001}:8001"
     environment:
       - LOCAL_OLLAMA_URL=http://ollama:11434
       - LOCAL_OLLAMA_MODEL=${LOCAL_OLLAMA_MODEL:-qwen2.5:3b}

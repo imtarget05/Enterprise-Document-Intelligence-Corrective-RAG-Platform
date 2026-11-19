@@ -208,6 +208,14 @@ fixture only — never run the stack with it; real runs use `.env` from Option 1
 
 ### Option 2: Local Development
 
+For the credential-free local infrastructure used by the recorded Ollama
+benchmark, run `./scripts/start_local.sh`. It starts PostgreSQL, Qdrant,
+Ollama (`qwen2.5:1.5b` and `nomic-embed-text`) and the LLM router on host port
+18001. It does not start the Spring backend, agent or frontend. The benchmark
+result and its scoring limits are documented in
+[`eval/results/README.md`](eval/results/README.md). No Azure service is needed
+for this local infrastructure.
+
 ```bash
 # Terminal 1: Pull LLM models & start Ollama (M1 Pro 16GB plan, 2026-09-18)
 # KEEP qwen2.5:3b (chat RAG default, num_ctx 4096, keep_alive 5m) +
