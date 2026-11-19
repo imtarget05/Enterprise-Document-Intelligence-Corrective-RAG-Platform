@@ -29,11 +29,11 @@ The October 2026 Azure smoke below is historical evidence. On 2026-11-19 the
 Azure API and agent hostnames in this table did not resolve in DNS, while the
 Render backend and Keycloak endpoints timed out. The Cloudflare Pages origin
 returned HTTP 200, but this does not establish that its backend works. The
-latest `main` [CI](https://github.com/imtarget05/Enterprise-Document-Intelligence-Corrective-RAG-Platform/actions/runs/44342849574)
-and [Eval & Regression](https://github.com/imtarget05/Enterprise-Document-Intelligence-Corrective-RAG-Platform/actions/runs/44342849530)
-passed; [Azure deploy](https://github.com/imtarget05/Enterprise-Document-Intelligence-Corrective-RAG-Platform/actions/runs/44342849520)
+latest `main` [CI](https://github.com/imtarget05/Enterprise-Document-Intelligence-Corrective-RAG-Platform/actions/runs/44506354194)
+and [Eval & Regression](https://github.com/imtarget05/Enterprise-Document-Intelligence-Corrective-RAG-Platform/actions/runs/44506354089)
+passed; the last [Azure deploy](https://github.com/imtarget05/Enterprise-Document-Intelligence-Corrective-RAG-Platform/actions/runs/44483089516)
 failed at login (`No subscriptions found`), and
-[CD](https://github.com/imtarget05/Enterprise-Document-Intelligence-Corrective-RAG-Platform/actions/runs/44342849547)
+[CD](https://github.com/imtarget05/Enterprise-Document-Intelligence-Corrective-RAG-Platform/actions/runs/44506354062)
 failed polling Render backend readiness.
 The reproducible local 15-question Ollama benchmark is indexed in
 [`eval/results/README.md`](eval/results/README.md). Do not cite the historical
@@ -42,6 +42,10 @@ The image-push and Azure deploy workflow (`.github/workflows/deploy.yml`) now
 runs only on manual dispatch, consistent with the localhost demo scope. A manual
 run still requires successful Azure login and deployment; CI, evaluation and
 security workflows remain independent and automatic.
+The CD workflow builds vetted images on each push to `main`. Render readiness
+verification is requested separately via `workflow_dispatch` with
+`verify_render: true` after a Render deployment; that job still fails if the
+health endpoint is unavailable. An image-build success is not a live deployment.
 
 | Component | URL | State |
 |---|---|---|
@@ -356,7 +360,7 @@ Two tracks, different meanings — do not mix them:
 | Track | Command | What it measures | Evidence |
 |:---|:---|:---|:---|
 | Fixture smoke (mock backend) | `pytest eval` (28 tests) or `python eval/run_fixture_eval.py` | Deterministic grader + fixture regression on 31 questions; the ~96.8% figure in `eval/results/offline_eval.json` is the **fixture retrieval pass rate against a mock backend** (`mock_responses: 31, genuine_llm_responses: 0`) — a CI regression signal, **not** live retrieval accuracy | `eval/results/offline_eval.json` (self-labeled `test_type: fixture_grader_smoke_test`) |
-| Live benchmark (real stack) | `python eval/run_live_benchmark.py --base-url http://localhost:8080/api` | Top-K lexical keyword hit, coverage, rank, answer substring hits and explicit abstention on the matched synthetic 8D fixture and 15-question set | `eval/results/live_benchmark.json` — **new 15-question live results pending**; requires a running backend, Qdrant, and an LLM provider |
+| Local live benchmark (real stack) | `python eval/run_live_benchmark.py --base-url http://localhost:8080/api` | Top-K lexical keyword hit, coverage, rank, answer substring hits and explicit abstention on the matched synthetic corpus and 15-question set | [`eval/results/live_engineering_15_ollama_qwen2_5_1_5b_2026-11-18.json`](eval/results/live_engineering_15_ollama_qwen2_5_1_5b_2026-11-18.json) records 12/12 source-keyword hits, 11/12 answer substring hits and 3/3 abstentions; see [measurement limits](eval/results/README.md) before citing these fixture-specific counts. |
 
 Wording rule: say "96.8% fixture pass rate (mock, 31 questions)" — never "96.8% live retrieval accuracy" — unless `live_benchmark.json` with real provider provenance exists to back it.
 
