@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -108,6 +109,23 @@ public class ChatService {
         return dlqService.getDlqSnapshot();
     }
 
+    private List<String> agentDocumentIds(String ownerUsername, ChatRequest request) {
+        LinkedHashSet<Long> ids = new LinkedHashSet<>();
+        if (request.getDocumentId() != null) {
+            ids.add(request.getDocumentId());
+        }
+        if (request.getDocumentIds() != null) {
+            ids.addAll(request.getDocumentIds());
+        }
+        for (Long id : ids) {
+            if (id == null || id <= 0) {
+                throw new IllegalArgumentException("Document ID must be positive");
+            }
+            documentService.getDocumentById(id, ownerUsername);
+        }
+        return ids.stream().map(String::valueOf).toList();
+    }
+
     /**
      * Replay one DLQ entry through the existing SSE streaming path (which
      * reuses {@code sseStreamManager}'s executor). Returns false when the key
@@ -166,11 +184,12 @@ public class ChatService {
             agentMode = false;
         }
         if (agentMode) {
+            List<String> agentDocumentIds = agentDocumentIds(ownerUsername, request);
             String traceId = langfuse.startTrace("agentic_request", ownerUsername,
                     Map.of("query", userMessage));
             try {
                 AgentClient.AgentResponse agentResp = agentClient.invokeAgent(
-                        ownerUsername, request.getSessionId(), userMessage, traceId);
+                        ownerUsername, request.getSessionId(), userMessage, traceId, agentDocumentIds);
                 if (agentResp == null) {
                     throw new IllegalStateException("Agent returned null response");
                 }
@@ -277,12 +296,13 @@ public class ChatService {
                 }
 
                 if (agentMode) {
+                    List<String> agentDocumentIds = agentDocumentIds(ownerUsername, request);
                     emitter.send(SseEmitter.event().name("status").data("Đang gọi Agent để tìm kiếm thông tin..."));
                     String traceId = langfuse.startTrace("agentic_request", ownerUsername,
                             Map.of("query", userMessage));
                     try {
                         AgentClient.AgentResponse agentResp = agentClient.invokeAgent(
-                                ownerUsername, request.getSessionId(), userMessage, traceId);
+                                ownerUsername, request.getSessionId(), userMessage, traceId, agentDocumentIds);
                         if (agentResp == null) {
                             throw new IllegalStateException("Agent returned null response");
                         }

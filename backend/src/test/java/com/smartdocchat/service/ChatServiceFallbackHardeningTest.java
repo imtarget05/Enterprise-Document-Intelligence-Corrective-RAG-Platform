@@ -72,13 +72,13 @@ class ChatServiceFallbackHardeningTest {
     void agentDown_fallsBackToRagWithoutThrowing() {
         // any non-"rag" message goes through the generic agent path first
         String supplyMsg = "dự báo nhu cầu tồn kho supplier risk lead time";
-        when(agentClient.invokeAgent(any(), any(), any(), any()))
+        when(agentClient.invokeAgent(any(), any(), any(), any(), any()))
                 .thenThrow(new RuntimeException("agent unavailable"));
 
         ChatResponse response = chatService.processQuery("alice", req(supplyMsg));
 
         assertNotNull(response, "response must not be null even when agent is down");
-        verify(agentClient).invokeAgent(any(), any(), any(), any());
+        verify(agentClient).invokeAgent(any(), any(), any(), any(), any());
         // RAG fallback should have been attempted (abstention since no context)
         verify(messageHandler).buildAbstentionResponse();
     }
@@ -86,11 +86,11 @@ class ChatServiceFallbackHardeningTest {
     @Test
     void agentReturnsNull_fallsBackSafely() {
         String supplyMsg = "dự báo nhu cầu tồn kho supplier risk lead time";
-        when(agentClient.invokeAgent(any(), any(), any(), any())).thenReturn(null);
+        when(agentClient.invokeAgent(any(), any(), any(), any(), any())).thenReturn(null);
 
         ChatResponse response = chatService.processQuery("alice", req(supplyMsg));
 
         assertNotNull(response);
-        verify(agentClient).invokeAgent(any(), any(), any(), any());
+        verify(agentClient).invokeAgent(any(), any(), any(), any(), any());
     }
 }

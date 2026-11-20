@@ -132,6 +132,12 @@ graph TD
 
 Do not claim "all retrieval uses Qdrant": the Spring path never touches Qdrant, and the agent path never touches PostgreSQL chunks. Each path enforces owner isolation independently.
 
+The Spring chat route now forwards the selected `documentId`/`documentIds` to
+the Python agent after checking ownership. This verifies request scoping, not
+that a Spring-uploaded document is present in Qdrant. A complete agent demo
+still needs to ingest that same document into the agent's Qdrant collection
+and capture the agent response, sources, and HITL trace in one session.
+
 ### Corrective RAG (CRAG) Pipeline
 ```mermaid
 graph TD

@@ -74,11 +74,19 @@ public class AgentClient {
     @Retry(name = "agentService")
     public AgentResponse invokeAgent(String ownerUsername, String sessionId,
                                      String message, String traceId) {
+        return invokeAgent(ownerUsername, sessionId, message, traceId, java.util.List.of());
+    }
+
+    @CircuitBreaker(name = "agentService", fallbackMethod = "invokeAgentFallback")
+    @Retry(name = "agentService")
+    public AgentResponse invokeAgent(String ownerUsername, String sessionId,
+                                     String message, String traceId, java.util.List<String> documentIds) {
         String url = agentBaseUrl + "/v1/agent/invoke";
         Map<String, Object> body = new HashMap<>();
         body.put("query", message);
         body.put("session_id", sessionId);
         body.put("user_id", ownerUsername);
+        body.put("document_ids", documentIds == null ? java.util.List.of() : documentIds);
         if (traceId != null) {
             body.put("trace_id", traceId);
         }
@@ -133,6 +141,13 @@ public class AgentClient {
         log.warn("Agent circuit breaker fallback traceId={} err={}", traceId, ex.getMessage());
         persistState(ownerUsername, sessionId, traceId, null, "failed", "circuit_open: " + ex.getMessage());
         throw new RuntimeException("agent unavailable (circuit open): " + ex.getMessage(), ex);
+    }
+
+    @SuppressWarnings("unused")
+    private AgentResponse invokeAgentFallback(String ownerUsername, String sessionId,
+                                              String message, String traceId,
+                                              java.util.List<String> documentIds, Exception ex) {
+        return invokeAgentFallback(ownerUsername, sessionId, message, traceId, ex);
     }
 
     // ------------------------------------------------------------------
