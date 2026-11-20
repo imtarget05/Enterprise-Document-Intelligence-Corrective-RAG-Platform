@@ -759,6 +759,11 @@ public class ChatService {
         if (response == null || response.isBlank()) {
             return true;
         }
+        // A citation marker alone does not answer the question. Small local
+        // models can emit only "[1]" even when the retrieved chunk is relevant.
+        if (response.matches("(?s)\\s*(?:\\[\\d+\\]\\s*)+")) {
+            return true;
+        }
         return response.startsWith(LlmClient.UNAVAILABLE_RESPONSE)
                 || response.startsWith(LlmClient.NO_RESPONSE_PLACEHOLDER)
                 || response.contains("language model is temporarily unavailable")
@@ -770,7 +775,7 @@ public class ChatService {
             return messageHandler.buildAbstentionResponse();
         }
         StringBuilder sb = new StringBuilder();
-        sb.append("Căn cứ vào dữ liệu văn bản quy phạm pháp luật và quy chế doanh nghiệp đã được xác thực trong hệ thống:\n\n");
+        sb.append("Các đoạn trích từ tài liệu đã tải lên:\n\n");
         int idx = 1;
         for (RetrievalService.RetrievalResult r : crag.results()) {
             sb.append("### ").append(idx++).append(". ");
@@ -788,7 +793,7 @@ public class ChatService {
                 hasLegalRef = true;
             }
             if (!hasLegalRef) {
-                sb.append("Căn cứ quy định liên quan");
+                sb.append("Đoạn trích tài liệu");
             }
             sb.append(" — *Độ tin cậy: ").append(Math.round(r.score() * 100)).append("%*\n\n");
 
@@ -796,7 +801,7 @@ public class ChatService {
             sb.append("> ").append(content.replace("\n", "\n> ")).append("\n\n");
         }
         sb.append("────────────────────────────────────────\n");
-        sb.append("📋 *Nội dung được trích xuất trực tiếp từ các văn bản chính thức theo quy chế pháp lý.*");
+        sb.append("📋 *Nội dung trích trực tiếp từ tài liệu; hệ thống chưa tạo được câu trả lời tóm tắt.*");
         return sb.toString();
     }
 
