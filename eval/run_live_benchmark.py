@@ -72,7 +72,7 @@ def evaluate_abstention(status_code: int, response_body: Dict[str, Any]) -> bool
     answer = (response_body.get("aiResponse") or "").strip().casefold()
     english_refusal = re.fullmatch(
         r".{0,220}\b(?:is|are) not (?:specified|mentioned|provided|included|stated|available) "
-        r"in the (?:provided information|given text|documents?|supplied excerpts)\.",
+        r"in the (?:provided information|given text|documents?|supplied excerpts)\.\s*(?:\[\d+\])?",
         answer,
     )
     explicit_refusal = answer.startswith("không tìm thấy thông tin trong tài liệu") or english_refusal is not None
