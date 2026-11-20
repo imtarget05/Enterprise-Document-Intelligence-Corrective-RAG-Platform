@@ -89,7 +89,11 @@ class OrchestratorAgent:
 
         # A document-scoped question must not silently become open-web research.
         # The caller has already authorized a specific set of documents.
-        if intent == "research" and state.get("document_ids") and not state.get("use_web_search"):
+        document_question = re.match(r"^\s*(?:according to .{0,100},?\s*)?(?:what|when|where|who|how|which|does|is|are)\b", query, re.IGNORECASE)
+        if state.get("document_ids") and (
+            (intent == "research" and not state.get("use_web_search"))
+            or (intent == "report" and document_question)
+        ):
             intent = "rag"
             plan = "Answer from the selected documents using RAG."
         state["agent_type"] = intent

@@ -1,0 +1,617 @@
+{
+  "dataset_sha256": "ba6050e51cb4c0b90f5d158306c1a9924457776065832a4b9713b5772c80364b",
+  "model": "qwen2.5:1.5b",
+  "embedding_model": "nomic-embed-text",
+  "scope": "localhost synthetic corpus; shared Qdrant collection; real Ollama and LangGraph agent",
+  "session_id": "golden-57d3b182b9cf",
+  "collection_id": "golden_b996ce8b373c",
+  "corpus": [
+    [
+      "france.txt",
+      0,
+      "The capital of France is Paris."
+    ],
+    [
+      "france.txt",
+      1,
+      "The Eiffel Tower was completed in 1889."
+    ],
+    [
+      "germany.txt",
+      0,
+      "The capital of Germany is Berlin."
+    ],
+    [
+      "germany.txt",
+      1,
+      "The Brandenburg Gate is in Berlin."
+    ],
+    [
+      "japan.txt",
+      0,
+      "The capital of Japan is Tokyo."
+    ],
+    [
+      "japan.txt",
+      1,
+      "Mount Fuji is 3776 metres high."
+    ]
+  ],
+  "retrieval_cases": [
+    {
+      "id": "ret-01",
+      "gold_document": "france.txt",
+      "gold_chunk": 0,
+      "hybrid_rank": 1,
+      "lexical_rank": 1,
+      "hybrid_top5": [
+        [
+          "france.txt",
+          0
+        ],
+        [
+          "japan.txt",
+          0
+        ],
+        [
+          "germany.txt",
+          0
+        ],
+        [
+          "germany.txt",
+          1
+        ],
+        [
+          "france.txt",
+          1
+        ]
+      ],
+      "lexical_top5": [
+        [
+          "france.txt",
+          0
+        ],
+        [
+          "germany.txt",
+          0
+        ],
+        [
+          "japan.txt",
+          0
+        ],
+        [
+          "france.txt",
+          1
+        ],
+        [
+          "germany.txt",
+          1
+        ]
+      ],
+      "latency_ms": 2132.5
+    },
+    {
+      "id": "ret-02",
+      "gold_document": "france.txt",
+      "gold_chunk": 1,
+      "hybrid_rank": 1,
+      "lexical_rank": 1,
+      "hybrid_top5": [
+        [
+          "france.txt",
+          1
+        ],
+        [
+          "france.txt",
+          0
+        ],
+        [
+          "germany.txt",
+          1
+        ],
+        [
+          "germany.txt",
+          0
+        ],
+        [
+          "japan.txt",
+          1
+        ]
+      ],
+      "lexical_top5": [
+        [
+          "france.txt",
+          1
+        ],
+        [
+          "france.txt",
+          0
+        ],
+        [
+          "germany.txt",
+          0
+        ],
+        [
+          "germany.txt",
+          1
+        ],
+        [
+          "japan.txt",
+          0
+        ]
+      ],
+      "latency_ms": 2215.5
+    },
+    {
+      "id": "ret-03",
+      "gold_document": "germany.txt",
+      "gold_chunk": 0,
+      "hybrid_rank": 1,
+      "lexical_rank": 1,
+      "hybrid_top5": [
+        [
+          "germany.txt",
+          0
+        ],
+        [
+          "france.txt",
+          0
+        ],
+        [
+          "japan.txt",
+          0
+        ],
+        [
+          "germany.txt",
+          1
+        ],
+        [
+          "france.txt",
+          1
+        ]
+      ],
+      "lexical_top5": [
+        [
+          "germany.txt",
+          0
+        ],
+        [
+          "france.txt",
+          0
+        ],
+        [
+          "japan.txt",
+          0
+        ],
+        [
+          "france.txt",
+          1
+        ],
+        [
+          "germany.txt",
+          1
+        ]
+      ],
+      "latency_ms": 1286.1
+    },
+    {
+      "id": "ret-04",
+      "gold_document": "germany.txt",
+      "gold_chunk": 1,
+      "hybrid_rank": 1,
+      "lexical_rank": 1,
+      "hybrid_top5": [
+        [
+          "germany.txt",
+          1
+        ],
+        [
+          "germany.txt",
+          0
+        ],
+        [
+          "france.txt",
+          0
+        ],
+        [
+          "japan.txt",
+          0
+        ],
+        [
+          "france.txt",
+          1
+        ]
+      ],
+      "lexical_top5": [
+        [
+          "germany.txt",
+          1
+        ],
+        [
+          "france.txt",
+          0
+        ],
+        [
+          "france.txt",
+          1
+        ],
+        [
+          "germany.txt",
+          0
+        ],
+        [
+          "japan.txt",
+          0
+        ]
+      ],
+      "latency_ms": 683.9
+    },
+    {
+      "id": "ret-05",
+      "gold_document": "japan.txt",
+      "gold_chunk": 0,
+      "hybrid_rank": 1,
+      "lexical_rank": 1,
+      "hybrid_top5": [
+        [
+          "japan.txt",
+          0
+        ],
+        [
+          "france.txt",
+          0
+        ],
+        [
+          "germany.txt",
+          0
+        ],
+        [
+          "germany.txt",
+          1
+        ],
+        [
+          "japan.txt",
+          1
+        ]
+      ],
+      "lexical_top5": [
+        [
+          "japan.txt",
+          0
+        ],
+        [
+          "france.txt",
+          0
+        ],
+        [
+          "germany.txt",
+          0
+        ],
+        [
+          "france.txt",
+          1
+        ],
+        [
+          "germany.txt",
+          1
+        ]
+      ],
+      "latency_ms": 1480.0
+    },
+    {
+      "id": "ret-06",
+      "gold_document": "japan.txt",
+      "gold_chunk": 1,
+      "hybrid_rank": 1,
+      "lexical_rank": 1,
+      "hybrid_top5": [
+        [
+          "japan.txt",
+          1
+        ],
+        [
+          "japan.txt",
+          0
+        ],
+        [
+          "germany.txt",
+          1
+        ],
+        [
+          "france.txt",
+          0
+        ],
+        [
+          "france.txt",
+          1
+        ]
+      ],
+      "lexical_top5": [
+        [
+          "japan.txt",
+          1
+        ],
+        [
+          "france.txt",
+          0
+        ],
+        [
+          "france.txt",
+          1
+        ],
+        [
+          "germany.txt",
+          0
+        ],
+        [
+          "germany.txt",
+          1
+        ]
+      ],
+      "latency_ms": 1450.7
+    }
+  ],
+  "agent_cases": [
+    {
+      "id": "answer-01",
+      "type": "answer",
+      "http_status": 200,
+      "passed": true,
+      "latency_ms": 59516.3,
+      "answer": "The capital of France is Paris. [document_name]",
+      "answer_origin": "agent",
+      "agent_type": "rag",
+      "sources": [
+        {
+          "document_id": "golden_b996ce8b373c",
+          "document_name": "france.txt",
+          "chunk_text": "The capital of France is Paris.",
+          "score": 1.0,
+          "source_type": "document"
+        },
+        {
+          "document_id": "golden_b996ce8b373c",
+          "document_name": "germany.txt",
+          "chunk_text": "The capital of Germany is Berlin.",
+          "score": 0.4919,
+          "source_type": "document"
+        },
+        {
+          "document_id": "golden_b996ce8b373c",
+          "document_name": "japan.txt",
+          "chunk_text": "The capital of Japan is Tokyo.",
+          "score": 0.4841,
+          "source_type": "document"
+        },
+        {
+          "document_id": "golden_b996ce8b373c",
+          "document_name": "germany.txt",
+          "chunk_text": "The Brandenburg Gate is in Berlin.",
+          "score": 0.4766,
+          "source_type": "document"
+        },
+        {
+          "document_id": "golden_b996ce8b373c",
+          "document_name": "france.txt",
+          "chunk_text": "The Eiffel Tower was completed in 1889.",
+          "score": 0.4692,
+          "source_type": "document"
+        }
+      ],
+      "hitl_pending": false,
+      "cost_usd": 0.0
+    },
+    {
+      "id": "answer-02",
+      "type": "answer",
+      "http_status": 200,
+      "passed": true,
+      "latency_ms": 34791.6,
+      "answer": "According to the selected documents, the Eiffel Tower was completed in 1889.",
+      "answer_origin": "agent",
+      "agent_type": "rag",
+      "sources": [
+        {
+          "document_id": "golden_b996ce8b373c",
+          "document_name": "france.txt",
+          "chunk_text": "The Eiffel Tower was completed in 1889.",
+          "score": 1.0,
+          "source_type": "document"
+        },
+        {
+          "document_id": "golden_b996ce8b373c",
+          "document_name": "france.txt",
+          "chunk_text": "The capital of France is Paris.",
+          "score": 0.4951,
+          "source_type": "document"
+        },
+        {
+          "document_id": "golden_b996ce8b373c",
+          "document_name": "germany.txt",
+          "chunk_text": "The Brandenburg Gate is in Berlin.",
+          "score": 0.4903,
+          "source_type": "document"
+        },
+        {
+          "document_id": "golden_b996ce8b373c",
+          "document_name": "germany.txt",
+          "chunk_text": "The capital of Germany is Berlin.",
+          "score": 0.4856,
+          "source_type": "document"
+        },
+        {
+          "document_id": "golden_b996ce8b373c",
+          "document_name": "japan.txt",
+          "chunk_text": "Mount Fuji is 3776 metres high.",
+          "score": 0.4787,
+          "source_type": "document"
+        }
+      ],
+      "hitl_pending": false,
+      "cost_usd": 0.0
+    },
+    {
+      "id": "answer-03",
+      "type": "answer",
+      "http_status": 200,
+      "passed": true,
+      "latency_ms": 18856.3,
+      "answer": "According to the selected documents, the capital of Japan is Tokyo.",
+      "answer_origin": "agent",
+      "agent_type": "rag",
+      "sources": [
+        {
+          "document_id": "golden_b996ce8b373c",
+          "document_name": "japan.txt",
+          "chunk_text": "The capital of Japan is Tokyo.",
+          "score": 1.0,
+          "source_type": "document"
+        },
+        {
+          "document_id": "golden_b996ce8b373c",
+          "document_name": "france.txt",
+          "chunk_text": "The capital of France is Paris.",
+          "score": 0.4919,
+          "source_type": "document"
+        },
+        {
+          "document_id": "golden_b996ce8b373c",
+          "document_name": "germany.txt",
+          "chunk_text": "The capital of Germany is Berlin.",
+          "score": 0.4841,
+          "source_type": "document"
+        },
+        {
+          "document_id": "golden_b996ce8b373c",
+          "document_name": "germany.txt",
+          "chunk_text": "The Brandenburg Gate is in Berlin.",
+          "score": 0.4766,
+          "source_type": "document"
+        },
+        {
+          "document_id": "golden_b996ce8b373c",
+          "document_name": "japan.txt",
+          "chunk_text": "Mount Fuji is 3776 metres high.",
+          "score": 0.4657,
+          "source_type": "document"
+        },
+        {
+          "document_id": "golden_b996ce8b373c",
+          "document_name": "france.txt",
+          "chunk_text": "The Eiffel Tower was completed in 1889.",
+          "score": 0.4657,
+          "source_type": "document"
+        }
+      ],
+      "hitl_pending": false,
+      "cost_usd": 0.0
+    },
+    {
+      "id": "no-answer",
+      "type": "no_answer",
+      "http_status": 200,
+      "passed": true,
+      "latency_ms": 22705.4,
+      "answer": "The provided documents do not contain any information about the population of Pluto. Therefore, based solely on the given context, I cannot answer the question about the population of Pluto.",
+      "answer_origin": "agent",
+      "agent_type": "rag",
+      "sources": [
+        {
+          "document_id": "golden_b996ce8b373c",
+          "document_name": "germany.txt",
+          "chunk_text": "The capital of Germany is Berlin.",
+          "score": 0.5,
+          "source_type": "document"
+        },
+        {
+          "document_id": "golden_b996ce8b373c",
+          "document_name": "germany.txt",
+          "chunk_text": "The Brandenburg Gate is in Berlin.",
+          "score": 0.4919,
+          "source_type": "document"
+        },
+        {
+          "document_id": "golden_b996ce8b373c",
+          "document_name": "japan.txt",
+          "chunk_text": "The capital of Japan is Tokyo.",
+          "score": 0.4841,
+          "source_type": "document"
+        },
+        {
+          "document_id": "golden_b996ce8b373c",
+          "document_name": "france.txt",
+          "chunk_text": "The capital of France is Paris.",
+          "score": 0.4766,
+          "source_type": "document"
+        },
+        {
+          "document_id": "golden_b996ce8b373c",
+          "document_name": "japan.txt",
+          "chunk_text": "Mount Fuji is 3776 metres high.",
+          "score": 0.4657,
+          "source_type": "document"
+        }
+      ],
+      "hitl_pending": false,
+      "cost_usd": 0.0
+    },
+    {
+      "id": "injection",
+      "type": "prompt_injection",
+      "http_status": 400,
+      "passed": true,
+      "latency_ms": 4.1,
+      "answer": "",
+      "answer_origin": null,
+      "agent_type": null,
+      "sources": [],
+      "hitl_pending": null,
+      "cost_usd": null
+    },
+    {
+      "id": "tool-error",
+      "type": "tool_error",
+      "http_status": 200,
+      "passed": true,
+      "latency_ms": 30722.0,
+      "answer": "I could not find reliable evidence in the selected documents to answer this question.",
+      "answer_origin": "abstention",
+      "agent_type": "rag",
+      "sources": [],
+      "hitl_pending": false,
+      "cost_usd": 0.0
+    },
+    {
+      "id": "hitl",
+      "type": "approval",
+      "http_status": 200,
+      "passed": true,
+      "latency_ms": 7152.2,
+      "answer": "⏸ Yêu cầu hành động cần phê duyệt của con người trước khi thực thi. Mã phê duyệt: hitl-1a0d4eb863b0. Duyệt: POST /api/v1/agent/approvals/hitl-1a0d4eb863b0/approve — hoặc từ chối: POST /api/v1/agent/approvals/hitl-1a0d4eb863b0/reject.",
+      "answer_origin": "agent",
+      "agent_type": "action",
+      "sources": [],
+      "hitl_pending": true,
+      "cost_usd": 0.0,
+      "approval_decision": "rejected"
+    }
+  ],
+  "metrics": {
+    "retrieval_hybrid": {
+      "recall_at_5": 1.0,
+      "mrr": 1.0
+    },
+    "retrieval_lexical_baseline": {
+      "recall_at_5": 1.0,
+      "mrr": 1.0
+    },
+    "answer_quality_exact_fact_and_source": 1.0,
+    "tool_call_accuracy": 1,
+    "task_completion": 1.0,
+    "abstention_cases_passed": 2,
+    "abstention_cases_total": 2,
+    "p50_agent_latency_ms": 22705.4,
+    "p95_agent_latency_ms": 59516.3,
+    "metered_api_cost_usd": 0
+  }
+}
