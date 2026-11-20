@@ -18,6 +18,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -244,7 +245,7 @@ class ChatServiceTest {
     @Test
     void agenticDuplicateRequestSuppressesSecondAgentCall() {
         when(agentClient.invokeAgent(eq("alice"), eq("session-1"),
-                eq("who are the suppliers?"), nullable(String.class)))
+                eq("who are the suppliers?"), nullable(String.class), eq(List.of("1"))))
                 .thenReturn(new AgentClient.AgentResponse("supplier list", "rag",
                         List.of(), 0.9, "trace-1", false, null));
         // RAG fallback path used for the suppressed (dedup'd) second request.
@@ -266,13 +267,14 @@ class ChatServiceTest {
 
         // The duplicate (identical message within the 5s TTL) must be suppressed,
         // so the agent service is contacted exactly once.
-        verify(agentClient, times(1)).invokeAgent(anyString(), anyString(), anyString(), nullable(String.class));
+        verify(agentClient, times(1)).invokeAgent(anyString(), anyString(), anyString(), nullable(String.class), eq(List.of("1")));
+        verify(documentService, org.mockito.Mockito.atLeastOnce()).getDocumentById(1L, "alice");
     }
 
     @Test
     void allQuestionsDefaultToAgentModeEvenWithoutExplicitMode() {
         when(agentClient.invokeAgent(eq("alice"), eq("session-1"),
-                eq("general question"), nullable(String.class)))
+                eq("general question"), nullable(String.class), eq(List.of("1"))))
                 .thenReturn(new AgentClient.AgentResponse("agent answer", "general",
                         List.of(), 0.95, "trace-10", false, null));
         stubSaveReturnsArgument();
@@ -287,14 +289,25 @@ class ChatServiceTest {
 
         assertEquals("agentic", response.getRagStrategy());
         assertEquals("agent answer", response.getAiResponse());
-        verify(agentClient, times(1)).invokeAgent(eq("alice"), eq("session-1"), eq("general question"), nullable(String.class));
+        verify(agentClient, times(1)).invokeAgent(eq("alice"), eq("session-1"), eq("general question"), nullable(String.class), eq(List.of("1")));
         verifyNoInteractions(retrievalService);
+    }
+
+    @Test
+    void agentRejectsDocumentNotOwnedByCallerBeforeInvoke() {
+        when(documentService.getDocumentById(42L, "alice"))
+                .thenThrow(new IllegalArgumentException("Document not found"));
+        ChatRequest req = ChatRequest.builder().sessionId("session-1")
+                .documentId(42L).message("summarize this").mode("agent").build();
+
+        assertThrows(IllegalArgumentException.class, () -> chatService.processQuery("alice", req));
+        verifyNoInteractions(agentClient);
     }
 
     @Test
     void agenticPausedActionPropagatesHitlFieldsToResponse() {
         when(agentClient.invokeAgent(eq("alice"), eq("session-1"),
-                eq("send the report by email"), nullable(String.class)))
+                eq("send the report by email"), nullable(String.class), eq(List.of("1"))))
                 .thenReturn(new AgentClient.AgentResponse("⏸ approval needed", "action",
                         List.of(), 0.5, "trace-hitl", true, "hitl-xyz"));
         stubSaveReturnsArgument();

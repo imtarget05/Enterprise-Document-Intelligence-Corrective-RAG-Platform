@@ -81,6 +81,20 @@ class AgentClientTest {
     }
 
     @Test
+    void invokeAgent_forwardsSelectedDocumentIds() {
+        mockServer.expect(requestTo("http://localhost:9000/v1/agent/invoke"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(jsonPath("$.document_ids[0]").value("42"))
+                .andRespond(withSuccess("{\"answer\":\"found\",\"agent_type\":\"rag\"}", MediaType.APPLICATION_JSON));
+
+        AgentClient.AgentResponse response = agentClient.invokeAgent(
+                "owner-1", "sess-1", "where?", "trace-1", java.util.List.of("42"));
+
+        mockServer.verify();
+        assertEquals("found", response.answer());
+    }
+
+    @Test
     void invokeAgent_agentError_throwsRuntimeException_forFallback() {
         mockServer.expect(requestTo("http://localhost:9000/v1/agent/invoke"))
                 .andExpect(method(HttpMethod.POST))
