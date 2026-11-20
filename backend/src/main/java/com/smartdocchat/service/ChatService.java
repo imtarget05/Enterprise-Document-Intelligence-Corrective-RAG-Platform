@@ -222,7 +222,7 @@ public class ChatService {
                 ChatMessage saved = saveResponse(ownerUsername, request, userMessage,
                         agentResp.answer(), null);
                 response = toResponse(ownerUsername, saved, emptyCrag("agentic"));
-                response.setAnswerOrigin("agent");
+                response.setAnswerOrigin(agentResp.answerOrigin());
                 response.setSources(agentSources(agentResp.sources(), request.getDocumentId()));
                 // HITL: surface a paused action so the frontend can render the
                 // approval card (approve/reject via /api/agent/approvals).
@@ -351,7 +351,7 @@ public class ChatService {
                         ChatMessage saved = saveResponse(ownerUsername, request, userMessage,
                                 agentResp.answer(), null);
                         ChatResponse done = toResponse(ownerUsername, saved, emptyCrag("agentic"));
-                        done.setAnswerOrigin("agent");
+                        done.setAnswerOrigin(agentResp.answerOrigin());
                         done.setSources(agentSources(agentResp.sources(), request.getDocumentId()));
                         done.setHitlPending(agentResp.hitlPending());
                         done.setHitlApprovalId(agentResp.approvalId());

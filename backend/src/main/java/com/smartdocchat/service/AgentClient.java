@@ -46,9 +46,14 @@ public class AgentClient {
 
     public record AgentResponse(String answer, String agentType, java.util.List<?> sources,
                                   Double confidence, String traceId,
-                                  boolean hitlPending, String approvalId) {
+                                  boolean hitlPending, String approvalId, String answerOrigin) {
+        public AgentResponse(String answer, String agentType, java.util.List<?> sources,
+                             Double confidence, String traceId, boolean hitlPending,
+                             String approvalId) {
+            this(answer, agentType, sources, confidence, traceId, hitlPending, approvalId, "agent");
+        }
         public AgentResponse(String answer, String traceId) {
-            this(answer, null, java.util.List.of(), null, traceId, false, null);
+            this(answer, null, java.util.List.of(), null, traceId, false, null, "agent");
         }
     }
 
@@ -121,8 +126,10 @@ public class AgentClient {
                 String respTraceId = (String) resp.getOrDefault("trace_id", traceId);
                 boolean hitlPending = Boolean.TRUE.equals(resp.get("hitl_pending"));
                 String approvalId = (String) resp.get("hitl_approval_id");
+                String answerOrigin = "abstention".equals(resp.get("answer_origin"))
+                        ? "abstention" : "agent";
                 result = new AgentResponse(answer != null ? answer : "", agentType, sources,
-                        confidence, respTraceId, hitlPending, approvalId);
+                        confidence, respTraceId, hitlPending, approvalId, answerOrigin);
             } else {
                 result = new AgentResponse("", traceId);
             }
