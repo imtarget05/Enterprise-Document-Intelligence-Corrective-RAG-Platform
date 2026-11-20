@@ -222,6 +222,23 @@ result and its scoring limits are documented in
 [`eval/results/README.md`](eval/results/README.md). No Azure service is needed
 for this local infrastructure.
 
+For a separate **Python agent** session, install `agent/requirements.txt` once
+in `agent/.venv`, then run the fixture demo below after `start_local.sh`. The
+script starts the agent, indexes a synthetic document in local Qdrant, checks
+retrieval, obtains a citation-backed agent answer, and rejects an action through
+HITL in the same session. It writes raw evidence under `eval/results`.
+
+```bash
+python3.11 -m venv agent/.venv
+agent/.venv/bin/python -m pip install -r agent/requirements.txt
+python3 scripts/run_local_agent_fixture_session.py
+```
+
+This fixture is indexed directly into Qdrant. It does not prove that Spring
+upload indexes the same document in the agent store. HITL uses the local
+in-memory approval store and the action is rejected, so no external action is
+executed. The measured Ollama cost is API spend of zero, not hardware cost.
+
 ```bash
 # Terminal 1: Pull LLM models & start Ollama (M1 Pro 16GB plan, 2026-09-18)
 # KEEP qwen2.5:3b (chat RAG default, num_ctx 4096, keep_alive 5m) +
