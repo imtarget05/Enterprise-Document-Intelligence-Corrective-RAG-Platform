@@ -191,8 +191,12 @@ class QdrantHybridSearch:
             proto = "https" if use_https else "http"
             self._base_url = f"{proto}://{host}:{settings.qdrant_port}"
         self._api_key = settings.qdrant_api_key
-        self._embed_url = f"{settings.llm_base_url}/api/embeddings"
-        self._embed_model = settings.llm_embedding_model
+        if settings.local_ollama_url:
+            self._embed_url = f"{settings.local_ollama_url.rstrip('/')}/api/embeddings"
+            self._embed_model = settings.local_ollama_embed_model
+        else:
+            self._embed_url = f"{settings.llm_base_url.rstrip('/')}/api/embeddings"
+            self._embed_model = settings.llm_embedding_model
         self._http = httpx.AsyncClient(
             timeout=httpx.Timeout(30.0, connect=5.0),
             limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
