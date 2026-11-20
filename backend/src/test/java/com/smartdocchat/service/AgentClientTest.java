@@ -145,6 +145,20 @@ class AgentClientTest {
     }
 
     @Test
+    void invokeAgent_mapsDocumentAbstentionOrigin() {
+        mockServer.expect(requestTo("http://localhost:9000/v1/agent/invoke"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess("{\"answer\":\"No document evidence\",\"answer_origin\":\"abstention\"}",
+                        MediaType.APPLICATION_JSON));
+
+        AgentClient.AgentResponse response = agentClient.invokeAgent(
+                "owner-1", "sess-1", "question", "trace-1", List.of("999"));
+
+        assertEquals("abstention", response.answerOrigin());
+        mockServer.verify();
+    }
+
+    @Test
     void invokeAgentFallback_throwsRuntimeException_andPersistsFailureState() {
         RuntimeException ex = assertThrows(RuntimeException.class, () ->
                 ReflectionTestUtils.invokeMethod(agentClient, "invokeAgentFallback",

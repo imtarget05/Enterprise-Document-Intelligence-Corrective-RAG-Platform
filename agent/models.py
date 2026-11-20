@@ -68,6 +68,7 @@ class AgentResponse(BaseModel):
     session_id: str
     answer: str
     agent_type: str  # which sub-agent produced the answer
+    answer_origin: str = "agent"
     sources: List[Dict[str, Any]] = []
     confidence_score: float = 0.0
     action_result: Optional[Dict[str, Any]] = None

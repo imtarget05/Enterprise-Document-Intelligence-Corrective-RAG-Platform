@@ -1,0 +1,14 @@
+{
+  "kind": "missing_selected_collection",
+  "session_id": "retrieval-failure-a2316416a5",
+  "document_id": "1795164923208210",
+  "qdrant_collection_http_status": 404,
+  "agent_http_status": 200,
+  "agent_answer": "I could not find reliable evidence in the selected documents to answer this question.",
+  "answer_origin": "abstention",
+  "agent_sources": [],
+  "agent_type": "rag",
+  "latency_ms": 7950.7,
+  "passed": true,
+  "environment": "localhost; Ollama qwen2.5:1.5b; Qdrant"
+}

@@ -374,6 +374,7 @@ async def invoke_agent(req: AgentRequest, request: Request):
             session_id=req.session_id,
             answer=answer,
             agent_type=result.get("agent_type", "rag"),
+            answer_origin=result.get("answer_origin", "agent"),
             sources=result.get("sources", []),
             confidence_score=confidence,
             action_result=result.get("action_result"),

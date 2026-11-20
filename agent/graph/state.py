@@ -47,6 +47,7 @@ class AgentState(TypedDict):
 
     # ── Outputs ───────────────────────────────────────────────────────────
     final_answer: str
+    answer_origin: str  # "agent" | "abstention"
     sources: List[Dict[str, Any]]
     action_result: Optional[Dict[str, Any]]
     report_path: Optional[str]

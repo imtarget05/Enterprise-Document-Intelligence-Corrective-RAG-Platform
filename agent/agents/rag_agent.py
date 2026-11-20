@@ -174,6 +174,12 @@ class RagAgent:
         elif state.get("use_web_search"):
             answer = await self._web_search_fallback(query)
             chunks = []
+        elif document_ids:
+            # A selected document is an evidence boundary. Missing/failed
+            # retrieval must not be replaced with uncited model knowledge.
+            answer = "I could not find reliable evidence in the selected documents to answer this question."
+            state["answer_origin"] = "abstention"
+            chunks = []
         else:
             answer = await self._deep_reasoning_fallback(query)
             chunks = []
