@@ -166,6 +166,8 @@ class DatasetIntegrityTests(unittest.TestCase):
             "The exact total financial cost is not specified in the provided information."}))
         self.assertTrue(evaluate_abstention(200, {"ragStrategy": "direct", "aiResponse":
             "The exact total financial cost is not provided in the given text."}))
+        self.assertTrue(evaluate_abstention(200, {"ragStrategy": "corrective", "aiResponse":
+            "The exact total financial cost is not provided in the given text. [1]"}))
         self.assertFalse(evaluate_abstention(200, {"ragStrategy": "direct", "aiResponse":
             "It is not specified in the provided information. The cost is $14,000."}))
         self.assertFalse(evaluate_abstention(200, {"ragStrategy": "error", "aiResponse": safe}))

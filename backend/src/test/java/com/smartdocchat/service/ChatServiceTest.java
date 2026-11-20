@@ -105,6 +105,21 @@ class ChatServiceTest {
     }
 
     @Test
+    void citationOnlyGenerationIsNotReportedAsAnAnswer() {
+        when(retrievalService.retrieve(eq("alice"), eq(1L), anyString(), anyInt()))
+                .thenReturn(List.of(new RetrievalService.RetrievalResult(
+                        "The Eiffel Tower is located in Paris, France.", 0.85)));
+        when(messageHandler.buildPrompt(anyString(), anyList())).thenReturn("direct prompt");
+        when(messageHandler.callLLM("direct prompt")).thenReturn("[1]");
+        stubSaveReturnsArgument();
+
+        ChatResponse response = chatService.processQuery("alice", request("Where is the Eiffel Tower located?"));
+
+        assertEquals("extractive_fallback", response.getAnswerOrigin());
+        assertTrue(response.getAiResponse().contains("Paris"));
+    }
+
+    @Test
     void highScoreButTopicallyUnrelatedContextIsRejectedByRelevanceGate() {
         // Regression for eval case q27: vector score above threshold, yet no
         // lexical overlap with the question — answering directly would let the

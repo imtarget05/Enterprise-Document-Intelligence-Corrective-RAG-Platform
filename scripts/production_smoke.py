@@ -19,6 +19,7 @@ on any pre-existing production state. It never prints secrets or full JWTs.
 Exit code: 0 if all critical checks pass, 1 otherwise.
 """
 import argparse
+import re
 import sys
 import time
 
@@ -33,13 +34,16 @@ def check(name: str, ok: bool, detail: str = "") -> bool:
     return ok
 
 
-def valid_smoke_answer(response: dict) -> bool:
+def valid_smoke_answer(response: dict, *, require_llm: bool = False) -> bool:
     """Require the fixture fact and a successful retrieval/agent strategy."""
     answer = response.get("aiResponse") or ""
     return (
         response.get("ragStrategy") in {"direct", "corrective", "agentic"}
         and "paris" in answer.casefold()
+        and bool(re.search(r"\[\d+\]", answer))
+        and "[tài liệu]" not in answer.casefold()
         and "temporarily unavailable" not in answer.casefold()
+        and (not require_llm or response.get("answerOrigin") == "llm")
     )
 
 
@@ -185,8 +189,8 @@ def main() -> int:
         results.append(check("LLM RESPONSE     ", False))
         return 1
     results.append(check("ROUTER AUTH      ", True))
-    results.append(check("LLM RESPONSE     ", valid_smoke_answer(response),
-                         "(requires fixture answer Paris and successful strategy)"))
+    results.append(check("LLM RESPONSE     ", valid_smoke_answer(response, require_llm=args.mode == "rag"),
+                         "(requires fixture answer Paris, successful strategy and RAG answerOrigin=llm)"))
     if args.mode == "agent":
         results.append(check("AGENT PATH       ", strategy == "agentic",
                              f"(strategy={strategy}; fallback RAG is not agent success)"))

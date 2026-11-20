@@ -142,3 +142,25 @@ itself does not verify provider identity, token usage, or compute cost.
 
 A live run cannot be executed from a machine without a reachable provider, and
 **no result may be fabricated in its absence**.
+
+## 7. Local rerun on 2026-11-20
+
+`live_engineering_15_ollama_qwen2_5_1_5b_2026-11-20.json` is the unchanged
+output from `python3 eval/run_live_benchmark.py --base-url
+http://127.0.0.1:18081/api --output /tmp/smartdoc-live-18081-20261120.json`
+on source `fa34bfa` with the local router selecting Ollama `qwen2.5:1.5b`.
+SHA-256 of the raw JSON is
+`440e0de0f87d07c87b876e822952b0f5d7c23eb44e8412515fc9a3aadc69ed52`.
+The fresh backend and router were on local ports 18081 and 18001. Router logs
+showed local Ollama requests; the JSON itself does not independently prove
+provider identity.
+
+The raw result reports 12/12 lexical source-keyword hits, 11/12 literal answer
+substring hits, 2/3 explicit abstentions, mean latency 16,887 ms, and no
+extractive fallbacks. Case `eng-013` says the exact cost is not provided in the
+given text, followed by citation `[1]`. The old abstention regex rejected this
+safe English refusal because it ended after the period. The corrected rubric,
+covered by `test_live_benchmark_scoring.py`, classifies that same saved answer
+as an abstention, giving 3/3 when rescored. The raw artifact remains unedited
+to preserve provenance. These are synthetic-corpus lexical checks, not semantic
+accuracy or a production latency claim. Cost remains unmeasured.

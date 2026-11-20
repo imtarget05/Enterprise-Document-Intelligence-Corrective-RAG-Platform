@@ -85,6 +85,13 @@ class MessageHandlerTest {
     }
 
     @Test
+    void stripsEchoedDocumentPromptBeforeReturningAnswer() {
+        String echoed = "[TÀI LIỆU]\n[1] Eiffel Tower is in Paris.\n[/TÀI LIỆU]\nTRẢ LỜI: Paris, France [1]";
+        assertEquals("Paris, France [1]", MessageHandler.stripEchoedDocumentPrompt(echoed));
+        assertEquals("Paris, France [1]", MessageHandler.stripEchoedDocumentPrompt("Paris, France [1]"));
+    }
+
+    @Test
     void callLLMRetriesUntilSuccess() {
         when(llmClient.chat(eq("sys"), eq("user")))
                 .thenReturn(LlmClient.NO_RESPONSE_PLACEHOLDER)
