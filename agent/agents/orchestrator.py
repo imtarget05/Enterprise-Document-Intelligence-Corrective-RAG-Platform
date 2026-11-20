@@ -87,6 +87,11 @@ class OrchestratorAgent:
             )
             intent, plan = self._heuristic_intent(query)
 
+        # A document-scoped question must not silently become open-web research.
+        # The caller has already authorized a specific set of documents.
+        if intent == "research" and state.get("document_ids") and not state.get("use_web_search"):
+            intent = "rag"
+            plan = "Answer from the selected documents using RAG."
         state["agent_type"] = intent
         state["agent_plan"] = plan
         logger.info("Orchestrator decision → intent=%s plan=%s", intent, plan)

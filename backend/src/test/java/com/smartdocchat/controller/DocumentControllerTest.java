@@ -89,6 +89,35 @@ class DocumentControllerTest {
     }
 
     @Test
+    void agentIndexUsesOnlyOwnerCheckedChunks() {
+        controller = new DocumentController(documentService, documentAccessService, auditLogService, documentVersionService);
+        com.smartdocchat.service.DocumentIndexClient indexClient = mock(com.smartdocchat.service.DocumentIndexClient.class);
+        controller.setDocumentIndexClient(indexClient);
+        when(documentService.getDocumentById(1L, "alice")).thenReturn(document());
+        when(documentService.getDocumentChunks(1L, "alice")).thenReturn(List.of("Paris, France"));
+        when(indexClient.index(1L, "alice", "report.txt", List.of("Paris, France")))
+                .thenReturn(java.util.Map.of("status", "indexed", "document_id", "1"));
+
+        ResponseEntity<?> response = controller.indexForAgent(1L, principal());
+
+        assertEquals(200, response.getStatusCode().value());
+        verify(indexClient).index(1L, "alice", "report.txt", List.of("Paris, France"));
+    }
+
+    @Test
+    void agentIndexDoesNotSendAnotherOwnersDocument() {
+        controller = new DocumentController(documentService, documentAccessService, auditLogService, documentVersionService);
+        com.smartdocchat.service.DocumentIndexClient indexClient = mock(com.smartdocchat.service.DocumentIndexClient.class);
+        controller.setDocumentIndexClient(indexClient);
+        when(documentService.getDocumentById(1L, "alice")).thenThrow(new RuntimeException("not found"));
+
+        ResponseEntity<?> response = controller.indexForAgent(1L, principal());
+
+        assertEquals(404, response.getStatusCode().value());
+        verify(indexClient, never()).index(anyLong(), anyString(), anyString(), any());
+    }
+
+    @Test
     void uploadReturnsDocumentDetails() throws Exception {
         controller = new DocumentController(documentService, documentAccessService, auditLogService, documentVersionService);
         MultipartFile file = new MockMultipartFile("file", "report.txt", "text/plain", "data".getBytes());

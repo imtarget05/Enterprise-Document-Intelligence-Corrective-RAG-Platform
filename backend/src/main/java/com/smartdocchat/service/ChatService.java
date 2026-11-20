@@ -126,6 +126,31 @@ public class ChatService {
         return ids.stream().map(String::valueOf).toList();
     }
 
+    private List<Map<String, Object>> agentSources(List<?> sources, Long documentId) {
+        if (sources == null) {
+            return List.of();
+        }
+        return sources.stream().filter(Map.class::isInstance).map(item -> {
+            Map<?, ?> source = (Map<?, ?>) item;
+            Map<String, Object> citation = new LinkedHashMap<>();
+            Object sourceId = source.get("document_id");
+            if (sourceId != null) {
+                try {
+                    citation.put("documentId", Long.parseLong(sourceId.toString()));
+                } catch (NumberFormatException ignored) {
+                    // Connector collections may have non-numeric IDs.
+                }
+            } else if (documentId != null) {
+                citation.put("documentId", documentId);
+            }
+            citation.put("documentName", source.containsKey("document_name") ? source.get("document_name") : "");
+            citation.put("content", source.containsKey("chunk_text") ? source.get("chunk_text") : "");
+            citation.put("score", source.containsKey("score") ? source.get("score") : 0.0);
+            citation.put("sourceType", source.containsKey("source_type") ? source.get("source_type") : "document");
+            return citation;
+        }).toList();
+    }
+
     /**
      * Replay one DLQ entry through the existing SSE streaming path (which
      * reuses {@code sseStreamManager}'s executor). Returns false when the key
@@ -198,6 +223,7 @@ public class ChatService {
                         agentResp.answer(), null);
                 response = toResponse(ownerUsername, saved, emptyCrag("agentic"));
                 response.setAnswerOrigin("agent");
+                response.setSources(agentSources(agentResp.sources(), request.getDocumentId()));
                 // HITL: surface a paused action so the frontend can render the
                 // approval card (approve/reject via /api/agent/approvals).
                 response.setHitlPending(agentResp.hitlPending());
@@ -325,6 +351,8 @@ public class ChatService {
                         ChatMessage saved = saveResponse(ownerUsername, request, userMessage,
                                 agentResp.answer(), null);
                         ChatResponse done = toResponse(ownerUsername, saved, emptyCrag("agentic"));
+                        done.setAnswerOrigin("agent");
+                        done.setSources(agentSources(agentResp.sources(), request.getDocumentId()));
                         done.setHitlPending(agentResp.hitlPending());
                         done.setHitlApprovalId(agentResp.approvalId());
                         emitter.send(SseEmitter.event().name("complete").data(done));

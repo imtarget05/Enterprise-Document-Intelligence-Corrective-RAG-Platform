@@ -180,6 +180,7 @@ class RagAgent:
 
         sources = [
             {
+                "document_id": c.get("document_id"),
                 "document_name": c.get("document_name", "unknown"),
                 "chunk_text": c.get("text", "")[:300],
                 "score": round(c.get("score", 0.0), 4),
@@ -223,11 +224,11 @@ class RagAgent:
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         all_chunks: List[Dict] = []
-        for r in results:
+        for doc_id, r in zip(document_ids, results):
             if isinstance(r, Exception):
                 logger.warning("Retrieval task failed: %s", r)
                 continue
-            all_chunks.extend(r)
+            all_chunks.extend({**chunk, "document_id": doc_id} for chunk in r)
 
         seen: Dict[str, Dict] = {}
         for c in all_chunks:
