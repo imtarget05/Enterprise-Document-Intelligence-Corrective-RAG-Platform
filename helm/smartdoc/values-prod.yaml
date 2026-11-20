@@ -1,0 +1,29 @@
+# Production overrides: backend scaled out with HPA, persistent storage
+# class placeholder, ingress enabled.
+#   helm template smartdoc helm/smartdoc -f helm/smartdoc/values-prod.yaml
+#   helm upgrade --install smartdoc helm/smartdoc -n portfolio \
+#     -f helm/smartdoc/values-prod.yaml
+
+backend:
+  replicaCount: 2
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 70
+
+qdrant:
+  persistence:
+    size: 10Gi
+    # REPLACE with your cluster's storage class (e.g. gp3, standard-rwo,
+    # managed-premium). Empty string = cluster default StorageClass.
+    storageClass: ""
+
+ingress:
+  enabled: true
+  className: nginx
+  # REPLACE with the production hostname and enable TLS.
+  host: smartdoc.example.com
+  tls:
+    enabled: false
+    secretName: ""

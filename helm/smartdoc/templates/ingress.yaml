@@ -1,0 +1,42 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "smartdoc.fullname" . }}
+  labels:
+    {{- include "smartdoc.labels" (dict "root" $ "component" "ingress" "role" "ingress") | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host | quote }}
+      secretName: {{ .Values.ingress.tls.secretName }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          {{- if .Values.backend.enabled }}
+          - path: {{ .Values.ingress.paths.backend }}
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "smartdoc.componentName" (dict "root" $ "component" "backend" "role" "api") }}
+                port:
+                  number: {{ .Values.backend.service.port }}
+          {{- end }}
+          {{- if .Values.frontend.enabled }}
+          - path: {{ .Values.ingress.paths.frontend }}
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "smartdoc.componentName" (dict "root" $ "component" "frontend" "role" "frontend") }}
+                port:
+                  number: {{ .Values.frontend.service.port }}
+          {{- end }}
+{{- end }}

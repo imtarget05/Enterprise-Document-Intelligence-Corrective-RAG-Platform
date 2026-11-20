@@ -1,0 +1,58 @@
+{{- if .Values.agent.enabled }}
+{{- $root := $ -}}
+{{- $ctx := dict "root" $root "component" "agent" "role" "agent" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "smartdoc.componentName" $ctx }}
+  labels:
+    {{- include "smartdoc.labels" $ctx | nindent 4 }}
+spec:
+  replicas: {{ .Values.agent.replicaCount }}
+  {{- include "smartdoc.strategy" (dict "strategy" (dict "type" "RollingUpdate" "rollingUpdate" (dict "maxUnavailable" 0 "maxSurge" 1))) | nindent 2 }}
+  selector:
+    matchLabels:
+      {{- include "smartdoc.selectorLabels" $ctx | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "smartdoc.selectorLabels" $ctx | nindent 8 }}
+    spec:
+      securityContext:
+        {{- include "smartdoc.podSecurityContext" .Values.agent.podSecurityContext | nindent 8 }}
+      containers:
+        - name: agent
+          image: "{{ .Values.agent.image.repository }}:{{ .Values.agent.image.tag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.agent.service.port }}
+          env:
+            {{- include "smartdoc.env" (dict "root" $root "env" .Values.agent.env) | nindent 12 }}
+          resources:
+            {{- toYaml .Values.agent.resources | nindent 12 }}
+          securityContext:
+            {{- include "smartdoc.containerSecurityContext" . | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          {{- include "smartdoc.probes" (dict "root" $root "probes" .Values.agent.probes) | nindent 10 }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "smartdoc.componentName" $ctx }}
+  labels:
+    {{- include "smartdoc.labels" $ctx | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "smartdoc.selectorLabels" $ctx | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.agent.service.port }}
+      targetPort: http
+{{- end }}

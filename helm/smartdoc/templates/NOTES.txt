@@ -1,0 +1,62 @@
+{{/* NOTES.txt — post-install guidance */}}
+
+SmartDoc (Enterprise Document Intelligence / Corrective-RAG platform) installed.
+
+Release:      {{ .Release.Name }}
+Namespace:    {{ .Release.Namespace }}
+Chart:        {{ .Chart.Name }}-{{ .Chart.Version }}
+
+Enabled components:
+  {{- if .Values.qdrant.enabled }}
+  - Qdrant vector DB      service/{{ include "smartdoc.componentName" (dict "root" $ "component" "qdrant" "role" "vector-db") }}:{{ .Values.qdrant.ports.http }}
+  {{- end }}
+  {{- if .Values.llmRouter.enabled }}
+  - LLM router            service/{{ include "smartdoc.componentName" (dict "root" $ "component" "llm-router" "role" "ai-service") }}:{{ .Values.llmRouter.service.port }}
+  {{- end }}
+  {{- if .Values.backend.enabled }}
+  - Spring Boot backend   service/{{ include "smartdoc.componentName" (dict "root" $ "component" "backend" "role" "api") }}:{{ .Values.backend.service.port }}
+  {{- end }}
+  {{- if .Values.agent.enabled }}
+  - Agent (LangGraph)     service/{{ include "smartdoc.componentName" (dict "root" $ "component" "agent" "role" "agent") }}:{{ .Values.agent.service.port }}
+  {{- end }}
+  {{- if .Values.redis.enabled }}
+  - Redis (HITL store)    service/{{ include "smartdoc.componentName" (dict "root" $ "component" "redis" "role" "cache") }}:{{ .Values.redis.service.port }}
+  {{- end }}
+  {{- if .Values.frontend.enabled }}
+  - Frontend (nginx)      service/{{ include "smartdoc.componentName" (dict "root" $ "component" "frontend" "role" "frontend") }}:{{ .Values.frontend.service.port }}
+  {{- end }}
+
+{{- if .Values.secrets.create }}
+
+WARNING: templates/secret-template.yaml rendered a PLACEHOLDER Secret
+("{{ include "smartdoc.secretName" . }}") with EMPTY values.
+Replace it with ExternalSecrets (or sealed-secrets/SOPS) before pointing any
+workload at it. Do not commit real credentials.
+{{- else }}
+
+Workloads read credentials from Secret "{{ include "smartdoc.secretName" . }}".
+Ensure it exists and contains every required key:
+  SMARTDOC_JDBC_URL, SPRING_DATASOURCE_USERNAME, SPRING_DATASOURCE_PASSWORD,
+  JWT_SECRET, KAFKA_BOOTSTRAP_SERVERS, KAFKA_SECURITY_PROTOCOL,
+  REDIS_PASSWORD, AGENT_DATABASE_URL, INTERNAL_SERVICE_TOKEN,
+  R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY.
+Optional keys: KAFKA_SASL_MECHANISM, KAFKA_SASL_JAAS_CONFIG,
+SSO_OIDC_ISSUER, QDRANT_URL, LLM_PROVIDER_API_KEY.
+In production prefer ExternalSecrets to manage these keys.
+{{- end }}
+
+{{- if .Values.ingress.enabled }}
+
+Ingress enabled for host "{{ .Values.ingress.host }}":
+  /      -> frontend
+  /api   -> backend
+{{- if .Values.ingress.tls.enabled }}
+TLS is enabled (secret: {{ .Values.ingress.tls.secretName }}).
+{{- else }}
+TLS is DISABLED — configure ingress.tls before exposing this publicly.
+{{- end }}
+{{- else }}
+
+Ingress is disabled. To expose the frontend/backend, enable `ingress.enabled`
+(or port-forward: kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "smartdoc.componentName" (dict "root" $ "component" "frontend" "role" "frontend") }} 8080:{{ .Values.frontend.service.port }}).
+{{- end }}

@@ -1,0 +1,65 @@
+{{- if .Values.frontend.enabled }}
+{{- $root := $ -}}
+{{- $ctx := dict "root" $root "component" "frontend" "role" "frontend" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "smartdoc.componentName" $ctx }}
+  labels:
+    {{- include "smartdoc.labels" $ctx | nindent 4 }}
+spec:
+  replicas: {{ .Values.frontend.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "smartdoc.selectorLabels" $ctx | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "smartdoc.selectorLabels" $ctx | nindent 8 }}
+    spec:
+      securityContext:
+        {{- include "smartdoc.podSecurityContext" .Values.frontend.podSecurityContext | nindent 8 }}
+      containers:
+        - name: frontend
+          image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.frontend.containerPort }}
+          env:
+            {{- include "smartdoc.env" (dict "root" $root "env" .Values.frontend.env) | nindent 12 }}
+          volumeMounts:
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
+            - name: tmp
+              mountPath: /tmp
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d
+          securityContext:
+            {{- include "smartdoc.containerSecurityContext" . | nindent 12 }}
+          resources:
+            {{- toYaml .Values.frontend.resources | nindent 12 }}
+          {{- include "smartdoc.probes" (dict "root" $root "probes" .Values.frontend.probes) | nindent 10 }}
+      volumes:
+        - name: nginx-cache
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+        - name: nginx-config
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "smartdoc.componentName" $ctx }}
+  labels:
+    {{- include "smartdoc.labels" $ctx | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "smartdoc.selectorLabels" $ctx | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.frontend.service.port }}
+      targetPort: http
+{{- end }}

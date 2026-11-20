@@ -1,0 +1,26 @@
+{{- if and .Values.backend.enabled .Values.backend.hpa.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "smartdoc.componentName" (dict "root" $ "component" "backend" "role" "api") }}
+  labels:
+    {{- include "smartdoc.labels" (dict "root" $ "component" "backend" "role" "api") | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "smartdoc.componentName" (dict "root" $ "component" "backend" "role" "api") }}
+  minReplicas: {{ .Values.backend.hpa.minReplicas }}
+  maxReplicas: {{ .Values.backend.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.backend.hpa.targetCPUUtilizationPercentage }}
+  {{- with .Values.backend.hpa.behavior }}
+  behavior:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- end }}

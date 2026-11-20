@@ -1,0 +1,97 @@
+{{- if .Values.redis.enabled }}
+{{- $root := $ -}}
+{{- $ctx := dict "root" $root "component" "redis" "role" "cache" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "smartdoc.componentName" $ctx }}
+  labels:
+    {{- include "smartdoc.labels" $ctx | nindent 4 }}
+spec:
+  replicas: {{ .Values.redis.replicaCount }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "smartdoc.selectorLabels" $ctx | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "smartdoc.selectorLabels" $ctx | nindent 8 }}
+    spec:
+      securityContext:
+        {{- include "smartdoc.podSecurityContext" .Values.redis.podSecurityContext | nindent 8 }}
+      containers:
+        - name: redis
+          image: "{{ .Values.redis.image.repository }}:{{ .Values.redis.image.tag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          args:
+            {{- range .Values.redis.args }}
+            - {{ . | quote }}
+            {{- end }}
+          ports:
+            - name: redis
+              containerPort: {{ .Values.redis.service.port }}
+          env:
+            {{- include "smartdoc.env" (dict "root" $root "env" .Values.redis.env) | nindent 12 }}
+          readinessProbe:
+          {{- with (index .Values.redis.probes "readiness") }}
+            tcpSocket:
+              port: {{ .port }}
+            initialDelaySeconds: {{ .initialDelaySeconds }}
+            periodSeconds: {{ .periodSeconds }}
+            failureThreshold: {{ .failureThreshold }}
+          {{- end }}
+          livenessProbe:
+          {{- with (index .Values.redis.probes "liveness") }}
+            tcpSocket:
+              port: {{ .port }}
+            initialDelaySeconds: {{ .initialDelaySeconds }}
+            periodSeconds: {{ .periodSeconds }}
+            failureThreshold: {{ .failureThreshold }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.redis.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          securityContext:
+            {{- include "smartdoc.containerSecurityContext" . | nindent 12 }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ .Values.redis.persistence.existingClaim | default (printf "%s-data" (include "smartdoc.componentName" $ctx)) }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "smartdoc.componentName" $ctx }}
+  labels:
+    {{- include "smartdoc.labels" $ctx | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "smartdoc.selectorLabels" $ctx | nindent 4 }}
+  ports:
+    - name: redis
+      port: {{ .Values.redis.service.port }}
+      targetPort: redis
+---
+{{- if and .Values.redis.persistence.enabled (not .Values.redis.persistence.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "smartdoc.componentName" $ctx }}-data
+  labels:
+    {{- include "smartdoc.labels" $ctx | nindent 4 }}
+spec:
+  accessModes:
+    {{- toYaml .Values.redis.persistence.accessModes | nindent 4 }}
+  {{- with .Values.redis.persistence.storageClass }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.redis.persistence.size }}
+{{- end }}
+{{- end }}

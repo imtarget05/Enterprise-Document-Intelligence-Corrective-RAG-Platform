@@ -1,0 +1,34 @@
+# Development overrides: single replica of every component, no HPA,
+# no ingress. Install with:
+#   helm template smartdoc helm/smartdoc -f helm/smartdoc/values-dev.yaml
+#   helm upgrade --install smartdoc helm/smartdoc -n portfolio \
+#     -f helm/smartdoc/values-dev.yaml
+
+backend:
+  replicaCount: 1
+  hpa:
+    enabled: false
+  env:
+    SPRING_PROFILES_ACTIVE: "dev"
+
+agent:
+  replicaCount: 1
+  env:
+    APP_ENV: "development"
+
+frontend:
+  replicaCount: 1
+
+qdrant:
+  replicaCount: 1
+  persistence:
+    size: 5Gi
+
+llmRouter:
+  replicaCount: 1
+
+redis:
+  replicaCount: 1
+
+ingress:
+  enabled: false

@@ -1,0 +1,422 @@
+# Default values for the smartdoc Helm chart.
+# Values mirror the raw manifests in k8s/ (10-qdrant, 15-llm-router,
+# 16-redis, 20-smartdoc-backend, 25-smartdoc-agent, 30-smartdoc-frontend).
+# Environment-specific overrides live in values-dev.yaml / values-prod.yaml.
+
+nameOverride: ""
+fullnameOverride: ""
+
+global:
+  imagePullPolicy: IfNotPresent
+  # Namespace is taken from the release: helm ... -n portfolio
+
+# ---------------------------------------------------------------------------
+# Credentials
+# ---------------------------------------------------------------------------
+# By default every workload pulls credentials from the pre-existing Secret
+# `portfolio-secrets` (see k8s/ manifests). When secrets.create=true the chart
+# renders templates/secret-template.yaml — a PLACEHOLDER Secret meant to be
+# replaced by ExternalSecrets in any real cluster. Never put real values here.
+secrets:
+  create: false
+  # Secret referenced by secretKeyRef when create=false.
+  existingName: portfolio-secrets
+  # Placeholder keys rendered into the chart-managed Secret (create=true).
+  # All MUST be replaced via ExternalSecrets / sealed-secrets before use.
+  databaseUrl: ""            # SMARTDOC_JDBC_URL (Spring backend)
+  datasourceUsername: ""     # SPRING_DATASOURCE_USERNAME
+  datasourcePassword: ""     # SPRING_DATASOURCE_PASSWORD
+  jwtSecret: ""              # JWT_SECRET
+  kafkaBootstrapServers: ""  # KAFKA_BOOTSTRAP_SERVERS
+  kafkaSecurityProtocol: ""  # KAFKA_SECURITY_PROTOCOL
+  kafkaSaslMechanism: ""     # KAFKA_SASL_MECHANISM (optional)
+  kafkaSaslJaasConfig: ""    # KAFKA_SASL_JAAS_CONFIG (optional)
+  redisPassword: ""          # REDIS_PASSWORD (backend + redis + agent)
+  agentDatabaseUrl: ""       # AGENT_DATABASE_URL (agent checkpoints)
+  internalServiceToken: ""   # INTERNAL_SERVICE_TOKEN (backend<->agent)
+  r2AccountId: ""            # R2_ACCOUNT_ID (Cloudflare R2 storage)
+  r2AccessKeyId: ""          # R2_ACCESS_KEY_ID
+  r2SecretAccessKey: ""      # R2_SECRET_ACCESS_KEY
+  ssoOidcIssuer: ""          # SSO_OIDC_ISSUER (SSO OIDC issuer URL)
+  qdrantUrl: ""              # QDRANT_URL (optional full-URL override)
+  llmProviderApiKey: ""      # LLM_PROVIDER_API_KEY (LLM router credentials)
+
+# ---------------------------------------------------------------------------
+# Qdrant vector database (k8s/10-qdrant.yaml — Deployment + PVC)
+# ---------------------------------------------------------------------------
+qdrant:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: qdrant/qdrant
+    tag: "v1.12.4"
+  podSecurityContext:
+    runAsUser: 1000
+    fsGroup: 1000
+  ports:
+    http: 6333
+    grpc: 6334
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+  persistence:
+    enabled: true
+    # Reuse an existing PVC instead of creating one (must hold qdrant data).
+    existingClaim: ""
+    accessModes: ["ReadWriteOnce"]
+    size: 10Gi
+    # Storage class; empty string = cluster default. Set per env, e.g. gp3.
+    storageClass: ""
+  probes:
+    readiness:
+      enabled: true
+      type: http
+      path: /readyz
+      port: http
+      initialDelaySeconds: 5
+      periodSeconds: 5
+    liveness:
+      enabled: true
+      type: http
+      path: /livez
+      port: http
+      initialDelaySeconds: 10
+      periodSeconds: 10
+
+# ---------------------------------------------------------------------------
+# LLM router — FastAPI agent service (k8s/15-llm-router.yaml)
+# ---------------------------------------------------------------------------
+llmRouter:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: smart-doc-llm-router
+    tag: latest
+  podSecurityContext:
+    runAsUser: 1000
+  service:
+    port: 8000
+  env:
+    ROUTER_CONFIDENCE_THRESHOLD: "0.7"
+    CLOUDFLARE_CHAT_MODEL: "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+    CLOUDFLARE_EMBED_MODEL: "@cf/baai/bge-base-en-v1.5"
+    # LLM provider credentials — secretRef placeholder, replace via
+    # ExternalSecrets (see secrets.llmProviderApiKey).
+    LLM_PROVIDER_API_KEY:
+      secretRef:
+        key: LLM_PROVIDER_API_KEY
+        optional: true
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+  probes:
+    readiness:
+      enabled: true
+      type: http
+      path: /health
+      port: http
+      initialDelaySeconds: 5
+      periodSeconds: 5
+    liveness:
+      enabled: true
+      type: http
+      path: /health
+      port: http
+      initialDelaySeconds: 10
+      periodSeconds: 10
+
+# ---------------------------------------------------------------------------
+# Spring Boot backend (k8s/20-smartdoc-backend.yaml)
+# ---------------------------------------------------------------------------
+backend:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: smart-document
+    tag: latest
+  podSecurityContext:
+    runAsUser: 1000
+    fsGroup: 1000
+  service:
+    port: 8080
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  serviceAccount:
+    # portfolio-api is created outside this chart by default.
+    create: false
+    name: portfolio-api
+  env:
+    SPRING_DATASOURCE_URL:
+      secretRef:
+        key: SMARTDOC_JDBC_URL
+    SPRING_DATASOURCE_USERNAME:
+      secretRef:
+        key: SPRING_DATASOURCE_USERNAME
+    SPRING_DATASOURCE_PASSWORD:
+      secretRef:
+        key: SPRING_DATASOURCE_PASSWORD
+    KAFKA_BOOTSTRAP_SERVERS:
+      secretRef:
+        key: KAFKA_BOOTSTRAP_SERVERS
+    KAFKA_TOPIC_REPLICATION_FACTOR: "3"
+    KAFKA_TOPIC_PARTITIONS: "3"
+    KAFKA_SECURITY_PROTOCOL:
+      secretRef:
+        key: KAFKA_SECURITY_PROTOCOL
+    KAFKA_SASL_MECHANISM:
+      secretRef:
+        key: KAFKA_SASL_MECHANISM
+        optional: true
+    KAFKA_SASL_JAAS_CONFIG:
+      secretRef:
+        key: KAFKA_SASL_JAAS_CONFIG
+        optional: true
+    JWT_SECRET:
+      secretRef:
+        key: JWT_SECRET
+    QDRANT_HOST: "smartdoc-qdrant"
+    QDRANT_PORT: "6333"
+    # Optional full-URL override (secretRef placeholder per platform spec).
+    QDRANT_URL:
+      secretRef:
+        key: QDRANT_URL
+        optional: true
+    LLM_BASE_URL: "http://smartdoc-llm-router:8000"
+    AGENT_BASE_URL: "http://smartdoc-agent:9000"
+    SPRING_PROFILES_ACTIVE: "prod"
+    STORAGE_PROVIDER: "r2"
+    R2_ACCOUNT_ID:
+      secretRef:
+        key: R2_ACCOUNT_ID
+    R2_ACCESS_KEY_ID:
+      secretRef:
+        key: R2_ACCESS_KEY_ID
+    R2_SECRET_ACCESS_KEY:
+      secretRef:
+        key: R2_SECRET_ACCESS_KEY
+    REDIS_ENABLED: "true"
+    REDIS_HOST: "smartdoc-redis"
+    REDIS_PORT: "6379"
+    REDIS_PASSWORD:
+      secretRef:
+        key: REDIS_PASSWORD
+    REDIS_SSL_ENABLED: "false"
+    SPRING_FLYWAY_OUT_OF_ORDER: "true"
+    JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+    # SSO OIDC issuer — secretRef placeholder, supplied by ExternalSecrets.
+    SSO_OIDC_ISSUER:
+      secretRef:
+        key: SSO_OIDC_ISSUER
+        optional: true
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "1024Mi"
+  probes:
+    readiness:
+      enabled: true
+      type: http
+      path: /api/actuator/health
+      port: http
+      initialDelaySeconds: 20
+      periodSeconds: 5
+      failureThreshold: 3
+    liveness:
+      enabled: true
+      type: http
+      path: /api/actuator/health
+      port: http
+      initialDelaySeconds: 40
+      periodSeconds: 10
+      failureThreshold: 3
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 70
+    behavior:
+      scaleDown:
+        stabilizationWindowSeconds: 300
+
+# ---------------------------------------------------------------------------
+# Agent service — LangGraph orchestrator + HITL gate (k8s/25-smartdoc-agent.yaml)
+# ---------------------------------------------------------------------------
+agent:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: smart-doc-agent
+    tag: latest
+  podSecurityContext:
+    runAsUser: 1000
+    fsGroup: 1000
+  service:
+    port: 9000
+  env:
+    APP_ENV: "production"
+    DATABASE_URL:
+      secretRef:
+        key: AGENT_DATABASE_URL
+    AGENT_PORT: "9000"
+    # Keep REDIS_PASSWORD before REDIS_URL: env $(...) expansion requires
+    # the referenced variable to be defined first (alphabetical map order
+    # already guarantees this).
+    REDIS_PASSWORD:
+      secretRef:
+        key: REDIS_PASSWORD
+    REDIS_URL: "redis://:$(REDIS_PASSWORD)@smartdoc-redis:6379/0"
+    HITL_STORE_BACKEND: "redis"
+    HITL_FAIL_CLOSED: "true"
+    HITL_REQUIRE_APPROVAL: "true"
+    INTERNAL_SERVICE_TOKEN:
+      secretRef:
+        key: INTERNAL_SERVICE_TOKEN
+    LLM_BASE_URL: "http://smartdoc-llm-router:8000"
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "2000m"
+      memory: "2Gi"
+  probes:
+    readiness:
+      enabled: true
+      type: http
+      path: /ready
+      port: http
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      failureThreshold: 3
+    liveness:
+      enabled: true
+      type: http
+      path: /health
+      port: http
+      initialDelaySeconds: 60
+      periodSeconds: 20
+      failureThreshold: 3
+
+# ---------------------------------------------------------------------------
+# Redis — HITL approval store / cache (k8s/16-redis.yaml)
+# ---------------------------------------------------------------------------
+redis:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: redis
+    tag: "7-alpine"
+  podSecurityContext:
+    runAsUser: 999
+    fsGroup: 999
+  service:
+    port: 6379
+  args:
+    - redis-server
+    - --appendonly
+    - "yes"
+    - --requirepass
+    - $(REDIS_PASSWORD)
+  env:
+    REDIS_PASSWORD:
+      secretRef:
+        key: REDIS_PASSWORD
+  persistence:
+    enabled: true
+    existingClaim: ""
+    accessModes: ["ReadWriteOnce"]
+    size: 2Gi
+    storageClass: ""
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+  probes:
+    readiness:
+      enabled: true
+      type: tcpSocket
+      port: redis
+      initialDelaySeconds: 5
+      periodSeconds: 5
+      failureThreshold: 3
+    liveness:
+      enabled: true
+      type: tcpSocket
+      port: redis
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      failureThreshold: 3
+
+# ---------------------------------------------------------------------------
+# Frontend — React static build behind nginx (k8s/30-smartdoc-frontend.yaml)
+# ---------------------------------------------------------------------------
+frontend:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: smart-doc-frontend
+    tag: latest
+  podSecurityContext:
+    runAsUser: 101
+    fsGroup: 101
+  service:
+    # Service is exposed on port 80; container listens on 8080.
+    port: 80
+  containerPort: 8080
+  env:
+    BACKEND_UPSTREAM: "smartdoc-backend:8080"
+  resources:
+    requests:
+      cpu: "25m"
+      memory: "32Mi"
+    limits:
+      cpu: "100m"
+      memory: "64Mi"
+  probes:
+    readiness:
+      enabled: true
+      type: http
+      path: /
+      port: http
+      initialDelaySeconds: 2
+      periodSeconds: 5
+    liveness:
+      enabled: true
+      type: http
+      path: /
+      port: http
+      initialDelaySeconds: 5
+      periodSeconds: 10
+
+# ---------------------------------------------------------------------------
+# Ingress — routes / to the frontend and /api to the backend.
+# ---------------------------------------------------------------------------
+ingress:
+  enabled: false
+  className: nginx
+  # REPLACE per environment (values-prod.yaml).
+  host: smartdoc.example.com
+  annotations: {}
+  tls:
+    enabled: false
+    secretName: ""
+  paths:
+    backend: /api
+    frontend: /
