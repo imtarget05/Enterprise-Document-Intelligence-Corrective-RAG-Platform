@@ -1,0 +1,75 @@
+{
+  "timestamp_utc": "2026-11-20T06:19:14.622505+00:00",
+  "source_sha": "3e6b33ed8db0fd90518068bcff338237c270ae1a",
+  "working_tree_dirty": false,
+  "scope": "Local Python agent and Qdrant; synthetic fixture indexed directly, not Spring upload",
+  "model": "qwen2.5:1.5b",
+  "embedding_model": "nomic-embed-text",
+  "embedding_dimensions": 768,
+  "document_sha256": "94ceeac824ae4dc1a09f1a387f62ac89c2f6fcf3409376b1951e5b7305820fc6",
+  "document_id": "demo_agent_55c80e96e794",
+  "session_id": "local-agent-55c80e96e794",
+  "trace_id": "local-agent-55c80e96e794",
+  "retrieval_latency_ms": 2,
+  "retrieval": [
+    {
+      "id": 1,
+      "version": 0,
+      "score": 0.8866362,
+      "payload": {
+        "text": "The Eiffel Tower is located in Paris, France. It was completed in 1889.",
+        "document_name": "paris-facts.txt",
+        "chunk_index": 0,
+        "source_type": "document",
+        "user_id": "local-owner-55c80e96e794"
+      }
+    }
+  ],
+  "answer_latency_ms": 1340,
+  "answer": {
+    "session_id": "local-agent-55c80e96e794",
+    "answer": "The Eiffel Tower is located in Paris, France. [document_name: paris-facts.txt]",
+    "agent_type": "rag",
+    "sources": [
+      {
+        "document_name": "paris-facts.txt",
+        "chunk_text": "The Eiffel Tower is located in Paris, France. It was completed in 1889.",
+        "score": 0.8866,
+        "source_type": "document"
+      }
+    ],
+    "confidence_score": 0.8866362,
+    "action_result": null,
+    "hitl_pending": false,
+    "hitl_approval_id": null,
+    "report_path": null,
+    "trace_id": "local-agent-55c80e96e794",
+    "tokens_used": 27,
+    "cost_usd": 0.0
+  },
+  "hitl_request": {
+    "session_id": "local-agent-55c80e96e794",
+    "answer": "⏸ Yêu cầu hành động cần phê duyệt của con người trước khi thực thi. Mã phê duyệt: hitl-c671bc351324. Duyệt: POST /api/v1/agent/approvals/hitl-c671bc351324/approve — hoặc từ chối: POST /api/v1/agent/approvals/hitl-c671bc351324/reject.",
+    "agent_type": "action",
+    "sources": [],
+    "confidence_score": 0.0,
+    "action_result": {
+      "hitl": true,
+      "approval_id": "hitl-c671bc351324",
+      "status": "pending_approval"
+    },
+    "hitl_pending": true,
+    "hitl_approval_id": "hitl-c671bc351324",
+    "report_path": null,
+    "trace_id": "local-agent-55c80e96e794",
+    "tokens_used": 71,
+    "cost_usd": 0.0
+  },
+  "hitl_rejection": {
+    "status": "ok",
+    "decision": "rejected",
+    "approver": "local-reviewer",
+    "request_id": "hitl-c671bc351324"
+  },
+  "complete": true
+}
