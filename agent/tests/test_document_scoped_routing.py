@@ -30,3 +30,16 @@ async def test_explicit_web_search_keeps_research_route(monkeypatch):
     result = await OrchestratorAgent().run({"query": "Search web", "document_ids": ["42"],
                                             "use_web_search": True})
     assert result["agent_type"] == "research"
+
+
+@pytest.mark.asyncio
+async def test_document_question_cannot_become_report(monkeypatch):
+    class Model:
+        async def ainvoke(self, messages):
+            return type("Response", (), {"content": '{"intent":"report","plan":"Write report"}'})()
+
+    monkeypatch.setattr("agents.orchestrator.LLMFactory.get_reasoning_model", lambda **kwargs: Model())
+    result = await OrchestratorAgent().run({
+        "query": "According to the selected documents, what is the capital of France?",
+        "document_ids": ["42"], "use_web_search": False})
+    assert result["agent_type"] == "rag"
