@@ -30,8 +30,37 @@ class ConnectorIngestionPipeline:
 
     def __init__(self) -> None:
         self._qdrant_url = f"http://{settings.qdrant_host}:{settings.qdrant_port}"
-        self._embed_url = f"{settings.llm_base_url}/api/embeddings"
-        self._embed_model = settings.llm_embedding_model
+        if settings.local_ollama_url:
+            self._embed_url = f"{settings.local_ollama_url.rstrip('/')}/api/embeddings"
+            self._embed_model = settings.local_ollama_embed_model
+        else:
+            self._embed_url = f"{settings.llm_base_url.rstrip('/')}/api/embeddings"
+            self._embed_model = settings.llm_embedding_model
+
+    async def index_backend_document(
+        self, document_id: str, user_id: str, title: str, chunks: List[str]
+    ) -> Dict[str, Any]:
+        """Index owner-checked Spring chunks under the numeric document ID."""
+        if not document_id.isdecimal() or not user_id or not chunks:
+            raise ValueError("document_id, user_id and nonempty chunks are required")
+        if len(chunks) > 200 or any(not c.strip() or len(c) > 12_000 for c in chunks):
+            raise ValueError("chunks exceed the local indexing limits")
+        async with httpx.AsyncClient(timeout=60) as client:
+            vectors = await self._embed_chunks(client, chunks)
+            if len(vectors) != len(chunks):
+                raise RuntimeError("embedding count does not match chunk count")
+            headers = self._qdrant_headers()
+            # Reindexing a replaced document removes stale trailing points.
+            existing = await client.get(f"{self._qdrant_url}/collections/{document_id}", headers=headers)
+            if existing.status_code == 200:
+                deleted = await client.delete(f"{self._qdrant_url}/collections/{document_id}", headers=headers)
+                deleted.raise_for_status()
+            elif existing.status_code != 404:
+                existing.raise_for_status()
+            await self._create_collection(client, document_id, len(vectors[0]))
+            await self._upsert_chunks(client, document_id, chunks, vectors, user_id,
+                                      "spring_upload", document_id, title, {})
+        return {"status": "indexed", "document_id": document_id, "chunk_count": len(chunks)}
 
     async def ingest_documents(
         self,
@@ -217,7 +246,7 @@ class ConnectorIngestionPipeline:
                 "text": chunk,
                 "chunk_index": idx,
                 "document_name": title,
-                "source_type": "connector",
+                "source_type": "document" if source == "spring_upload" else "connector",
                 "source": source,
                 "user_id": user_id,
                 "external_id": external_id,

@@ -12,7 +12,7 @@ import logging
 from typing import List, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 import document_purge
 from document_purge import DocumentPurgeService
@@ -35,6 +35,27 @@ class DocumentPurgeRequest(BaseModel):
     # Shared collections to tombstone the document's points out of (the
     # per-document collection is always dropped).
     collection_ids: Optional[List[str]] = None
+
+
+class DocumentIndexRequest(BaseModel):
+    user_id: str = Field(min_length=1, max_length=200)
+    document_name: str = Field(min_length=1, max_length=255)
+    chunks: List[str] = Field(min_length=1, max_length=200)
+
+
+@router.post("/{document_id}/index")
+async def index_document(document_id: str, req: DocumentIndexRequest):
+    """Index Spring-owned chunks; only the internal-token caller can use this."""
+    if not document_id.isdecimal() or int(document_id) <= 0:
+        raise HTTPException(status_code=400, detail="document_id must be positive")
+    from ingestion.pipeline import ConnectorIngestionPipeline
+
+    try:
+        return await ConnectorIngestionPipeline().index_backend_document(
+            document_id, req.user_id, req.document_name, req.chunks
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post("/{document_id}/purge")

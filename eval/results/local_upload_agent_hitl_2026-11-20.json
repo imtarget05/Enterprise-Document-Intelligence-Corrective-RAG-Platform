@@ -1,0 +1,29 @@
+{
+  "kind": "local_upload_agent_hitl",
+  "session_id": "upload-hitl-869697df35",
+  "document_id": 40,
+  "index": {
+    "status": "indexed",
+    "document_id": "40",
+    "chunk_count": 1
+  },
+  "answer": {
+    "text": "According to the uploaded document, the capital of France is Paris.",
+    "origin": "agent",
+    "sources": [
+      {
+        "documentId": 40,
+        "documentName": "paris.txt",
+        "content": "The capital of France is Paris. Paris is in France.",
+        "score": 0.8428,
+        "sourceType": "document"
+      }
+    ]
+  },
+  "approval": {
+    "request_id": "hitl-b3d1cb0d9d42",
+    "decision": "rejected"
+  },
+  "elapsed_ms": 9523.9,
+  "environment": "localhost; Ollama qwen2.5:1.5b + nomic-embed-text; Qdrant; PostgreSQL; Redis"
+}

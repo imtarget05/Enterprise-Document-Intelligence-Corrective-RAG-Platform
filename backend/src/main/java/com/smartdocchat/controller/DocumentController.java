@@ -46,6 +46,43 @@ public class DocumentController {
      * retrieval cache, memory) that hold a copy of the document's content.
      */
     private com.smartdocchat.service.DocumentPurgeClient documentPurgeClient;
+    private com.smartdocchat.service.DocumentIndexClient documentIndexClient;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setDocumentIndexClient(com.smartdocchat.service.DocumentIndexClient documentIndexClient) {
+        this.documentIndexClient = documentIndexClient;
+    }
+
+    @PostMapping("/{id}/agent-index")
+    public ResponseEntity<?> indexForAgent(@PathVariable Long id, Principal principal) {
+        if (principal == null || principal.getName() == null || principal.getName().isBlank()) {
+            return ResponseEntity.status(401).body(Map.of("error", "authentication required"));
+        }
+        // The owner lookup must happen before any call to the agent service.
+        Document document;
+        try {
+            document = documentService.getDocumentById(id, principal.getName());
+        } catch (RuntimeException exc) {
+            return ResponseEntity.status(404).body(Map.of("error", "document not found"));
+        }
+        List<String> chunks = documentService.getDocumentChunks(id, principal.getName());
+        if (chunks.isEmpty()) {
+            return ResponseEntity.unprocessableEntity().body(Map.of("error", "document has no chunks"));
+        }
+        if (documentIndexClient == null) {
+            return ResponseEntity.status(503).body(Map.of("error", "agent index unavailable"));
+        }
+        try {
+            Map<?, ?> indexed = documentIndexClient.index(id, principal.getName(),
+                    document.getFileName(), chunks);
+            return indexed != null && "indexed".equals(indexed.get("status"))
+                    ? ResponseEntity.ok(indexed)
+                    : ResponseEntity.status(502).body(Map.of("error", "agent index failed"));
+        } catch (RuntimeException exc) {
+            log.warn("Agent index failed for document {}: {}", id, exc.getMessage());
+            return ResponseEntity.status(502).body(Map.of("error", "agent index failed"));
+        }
+    }
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     public void setDocumentPurgeClient(com.smartdocchat.service.DocumentPurgeClient documentPurgeClient) {

@@ -276,7 +276,8 @@ class ChatServiceTest {
         when(agentClient.invokeAgent(eq("alice"), eq("session-1"),
                 eq("general question"), nullable(String.class), eq(List.of("1"))))
                 .thenReturn(new AgentClient.AgentResponse("agent answer", "general",
-                        List.of(), 0.95, "trace-10", false, null));
+                        List.of(java.util.Map.of("document_name", "facts.txt", "chunk_text", "Paris, France",
+                                "score", 0.9, "source_type", "document")), 0.95, "trace-10", false, null));
         stubSaveReturnsArgument();
 
         ChatRequest req = ChatRequest.builder()
@@ -289,6 +290,8 @@ class ChatServiceTest {
 
         assertEquals("agentic", response.getRagStrategy());
         assertEquals("agent answer", response.getAiResponse());
+        assertEquals(1L, response.getSources().get(0).get("documentId"));
+        assertEquals("Paris, France", response.getSources().get(0).get("content"));
         verify(agentClient, times(1)).invokeAgent(eq("alice"), eq("session-1"), eq("general question"), nullable(String.class), eq(List.of("1")));
         verifyNoInteractions(retrievalService);
     }
