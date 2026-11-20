@@ -63,7 +63,9 @@ def wait_ready(base_url: str, process: subprocess.Popen, timeout: int = 40) -> N
 
 
 def run(agent_python: Path, model: str, port: int, output: Path) -> dict:
-    agent_python = agent_python.resolve()
+    # Keep the venv's Python symlink intact; resolve() would select the system
+    # interpreter and silently drop the demo's installed agent dependencies.
+    agent_python = agent_python.absolute()
     if not agent_python.is_file():
         raise FileNotFoundError(f"Agent Python not found: {agent_python}")
     if not 1024 <= port <= 65535:
