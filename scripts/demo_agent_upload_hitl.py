@@ -5,7 +5,6 @@ import argparse
 import io
 import json
 import os
-import re
 import time
 import uuid
 
@@ -54,10 +53,9 @@ def main():
 
     action = post("/chat", headers=auth, json={"sessionId": session_id,
         "documentId": document_id, "message": "Create a Jira task to review this document.", "mode": "agent"})
-    match = re.search(r"Mã phê duyệt:\s*(hitl-[a-f0-9]+)", action.get("aiResponse", ""))
-    if not match:
+    approval_id = action.get("hitlApprovalId")
+    if not action.get("hitlPending") or not approval_id:
         raise AssertionError("Action did not enter HITL approval: " + action.get("aiResponse", "")[:400])
-    approval_id = match.group(1)
     rejected_response = session.post(args.agent + f"/agent/approvals/{approval_id}/reject",
         json={"approver": "local-demo-reviewer", "note": "Controlled rejection drill"},
         headers={"X-Internal-Token": internal_token}, timeout=20)
@@ -70,7 +68,8 @@ def main():
         "document_id": document_id, "index": indexed, "answer": {
             "text": answer.get("aiResponse"), "origin": answer.get("answerOrigin"),
             "sources": answer.get("sources")}, "approval": {
-            "request_id": approval_id, "decision": rejected["decision"]},
+        "request_id": approval_id, "pending_before_decision": action["hitlPending"],
+        "decision": rejected["decision"]},
         "elapsed_ms": round((time.perf_counter() - started) * 1000, 1),
         "environment": "localhost; Ollama qwen2.5:1.5b + nomic-embed-text; Qdrant; PostgreSQL; Redis"}
     with open(args.output, "w", encoding="utf-8") as output:
